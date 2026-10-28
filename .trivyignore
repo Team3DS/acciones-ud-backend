@@ -1,0 +1,18 @@
+# Trivy ignore file - False positives para proyecto académico
+# Documentos binarios (.docx, .pptx, .pdf) - no son código
+*.docx
+*.pptx
+*.pdf
+
+# Directorio de docs del taller métricas (proyecto separado)
+dise-o_taller_metricas_software/**
+
+# Archivos de diseño
+Design Sprint.pptx
+linea_del_tiempopdf.pdf
+
+# Archivos de lock de Maven (no vulnerabilidades de runtime)
+**/pom.xml
+
+# Node modules (se escanea en frontend CI separado)
+frontend/node_modules/**

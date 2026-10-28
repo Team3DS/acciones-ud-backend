@@ -26,6 +26,7 @@ jobs:
     defaults:
       run:
         working-directory: ./backend
+    if: "!startsWith(github.ref, 'refs/heads/dependabot/')"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,9 +63,37 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         if: env.SONAR_TOKEN != ''
 
+  test-dependabot:
+    name: Test (Dependabot)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    if: "startsWith(github.ref, 'refs/heads/dependabot/')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Run tests (unit only, fast)
+        run: mvn -B test -DskipTests=false -DfailIfNoTests=false
+
   build:
     name: Build Docker Images
-    needs: test
+    needs: [test, test-dependabot]
     runs-on: ubuntu-latest
     defaults:
       run:

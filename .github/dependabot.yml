@@ -3,10 +3,10 @@ updates:
   - package-ecosystem: "maven"
     directory: "/backend"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
+      day: "first monday"
       time: "06:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "backend"
@@ -29,10 +29,10 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
+      day: "first monday"
       time: "06:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "frontend"
@@ -54,8 +54,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
+      day: "first monday"
       time: "06:00"
     labels:
       - "dependencies"
