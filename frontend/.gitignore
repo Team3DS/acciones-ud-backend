@@ -1,0 +1,111 @@
+# Dependencias y cachés de gestores de paquetes
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+.yarn/build-state.yml
+.pnp.*
+
+# Compilaciones, cobertura y archivos generados
+dist/
+dist-ssr/
+/build/
+coverage/
+.nyc_output/
+.vite/
+.vite-temp/
+.cache/
+.eslintcache
+.stylelintcache
+.prettiercache
+*.tsbuildinfo
+
+# Variables de entorno y credenciales locales
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
+.envrc
+.envrc.local
+.secrets/
+/secrets/
+/credentials.json
+/service-account.json
+/service-account-*.json
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Registros y archivos temporales
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+*.rej
+*.pid
+*.pid.lock
+/tmp/
+/temp/
+/backups/
+
+# Diagnósticos de Node.js y perfiles de ejecución
+*.heapsnapshot
+*.heapprofile
+*.cpuprofile
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Configuración personal de editores
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.history/
+.fleet/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.sublime-workspace
+
+# Archivos del sistema operativo
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Resultados locales de pruebas de navegador
+playwright-report/
+blob-report/
+playwright/.cache/
+test-results/
+/cypress/screenshots/
+/cypress/videos/
+
+# Exportaciones y artefactos generados localmente (no código fuente)
+/exports/
+/artifacts/
+
+# Estado local de herramientas de despliegue
+.vercel/
+.netlify/
+.wrangler/
+
+# Los archivos de bloqueo (package-lock.json, pnpm-lock.yaml)
+# se conservan en Git para reproducir la instalación.
