@@ -4,61 +4,31 @@ updates:
     directory: "/backend"
     schedule:
       interval: "monthly"
-      day: "first monday"
+      day: 1
       time: "06:00"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "backend"
-    commit-message:
-      prefix: "chore(backend):"
-    groups:
-      spring-boot:
-        patterns:
-          - "org.springframework.boot:*"
-      spring-cloud:
-        patterns:
-          - "org.springframework.cloud:*"
-      testcontainers:
-        patterns:
-          - "org.testcontainers:*"
-      jackson:
-        patterns:
-          - "com.fasterxml.jackson:*"
 
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "monthly"
-      day: "first monday"
+      day: 1
       time: "06:00"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "frontend"
-    commit-message:
-      prefix: "chore(frontend):"
-    groups:
-      react:
-        patterns:
-          - "react*"
-      vite:
-        patterns:
-          - "vite*"
-      testing:
-        patterns:
-          - "@testing-library/*"
-          - "vitest*"
-          - "playwright*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-      day: "first monday"
+      day: 1
       time: "06:00"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "github-actions"
-    commit-message:
-      prefix: "chore(ci):"

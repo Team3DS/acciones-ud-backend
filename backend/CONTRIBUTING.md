@@ -1,232 +1,138 @@
-# CONTRIBUTING.md
+<div align="center">
 
-> Guía de contribución para **Acciones UD Backend** — 8 microservicios Spring Boot.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7aa2f7,100:bb9af7&height=200&section=header&text=Contributing&fontSize=45&fontAlignY=35&desc=Backend%20%C2%B7%20Acciones%20UD&descAlignY=57&descSize=16" width="100%" alt="Contributing"/>
 
-## 1. Arquitectura y límites de servicio
+[![Java 21](https://img.shields.io/badge/Java_21-e0af68?style=for-the-badge)](https://dev.java)
+[![Spring Boot 3.3](https://img.shields.io/badge/Spring_Boot_3.3-73daca?style=for-the-badge)](https://spring.io/projects/spring-boot)
+[![Maven](https://img.shields.io/badge/Maven-7dcfff?style=for-the-badge)](https://maven.apache.org)
+[![Docker](https://img.shields.io/badge/Docker-7dcfff?style=for-the-badge)](https://docker.com)
+[![License](https://img.shields.io/badge/License-Private-bb9af7?style=for-the-badge)](LICENSE)
 
-| Servicio | Puerto | Base de datos | Responsabilidad (dueño de datos) |
-|----------|--------|---------------|----------------------------------|
-| **M1 Identidad** | 8081 | `identidad_db` | Usuarios, roles, MFA, sesiones, tokens |
-| **M2 Cuentas y Fondos** | 8082 | `fondos_db` | Saldo contable, disponible, reservas, movimientos |
-| **M3 Catálogo** | 8083 | `catalogo_db` | Instrumentos, mercados, símbolos habilitados |
-| **M4 Datos de Mercado** | 8084 | `mercado_db` + Redis | Cotizaciones, feed IEX/Alpaca, caché, horarios |
-| **M5 Órdenes** | 8085 | `ordenes_db` | Ciclo de vida orden, coordinación M2/M6, Alpaca |
-| **M6 Portafolio** | 8086 | `portafolio_db` | Posiciones, disponibles/reservadas, valoración |
-| **M8 Notificaciones** | 8088 | `avisos_db` | Correos, in-app, alertas, Resend |
-| **M10 Suscripciones** | 8090 | `pagos_db` | Planes, Stripe test, webhooks, estado premium |
+</div>
 
-**Gateway** (puerto 8080) → enruta `/api/v1/**` a cada servicio.
+> ### `Objetivo`
 
-### Reglas de oro
-- **Cada servicio es dueño de su base**: nada de FK entre servicios, nada de `SELECT` cruzado.
-- **Comunicación**: solo por contratos (REST sincrónico vía Gateway, o eventos async por RabbitMQ).
-- **M5 coordina**: solicita reserva a M2 (fondos) y M6 (posiciones); no toca sus tablas.
-- **Transacciones locales**: cada servicio gestiona la suya; coordinación con **saga/outbox**.
-- **Idempotencia**: claves en comandos (crear orden, reservar, etc.).
-- **Moneda**: `BigDecimal` scale 2, `HALF_UP` (`MonetaryUtil` en `acciones-common`).
+Establecer las reglas de contribucion al backend de Acciones UD: 8 microservicios Spring Boot, cada uno dueño de su base de datos, comunicados por REST y eventos asincronos por RabbitMQ.
 
-## 2. Estructura del repo (multi-módulo Maven)
+> ### `Los 8 microservicios`
 
-```
-backend/
-├── pom.xml                          # Parent POM (gestiona 10 módulos)
-├── acciones-common/                 # Shared kernel (DTOs, events, exceptions, util)
-├── gateway/                         # Spring Cloud Gateway
-├── m1-identidad/
-├── m2-cuentas-fondos/
-├── m3-catalogo-mercados/
-├── m4-datos-mercado/
-├── m5-ordenes-ejecucion/
-├── m6-portafolio/
-├── m8-notificaciones/
-├── m10-suscripciones-pagos/
-├── docker-compose.yml               # Levanta TODO: 8 svcs + gateway + PG + Redis + RMQ
-├── init-multi-db.sh                 # Crea 8 BDs en Postgres
-└── CONTRIBUTING.md                  # Este archivo
-```
+| Servicio | Puerto | Base de datos | Dominio |
+|----------|--------|---------------|---------|
+| M1 Identidad y Accesos | 8081 | identidad_db | Usuarios, roles, MFA, tokens |
+| M2 Cuentas y Fondos | 8082 | fondos_db | Saldo, reservas, movimientos |
+| M3 Catalogo de Mercados | 8083 | catalogo_db | Instrumentos, mercados, simbolos |
+| M4 Datos de Mercado | 8084 | mercado_db | Cotizaciones, cache Redis |
+| M5 Ordenes y Ejecucion | 8085 | ordenes_db | Ciclo de vida orden, coordinacion |
+| M6 Portafolio | 8086 | portafolio_db | Posiciones, reservas de acciones |
+| M8 Notificaciones y Alertas | 8088 | avisos_db | Correos, in-app, alertas |
+| M10 Suscripciones y Pagos | 8090 | pagos_db | Planes, Stripe test, premium |
 
-Cada microservicio sigue **arquitectura hexagonal** interna:
-```
-src/main/java/co/edu/udistrital/acciones/<servicio>/
-├── domain/           # Entidades, eventos de dominio, reglas puras (sin deps externas)
-├── application/      # Casos de uso, handlers, puertos (interfaces)
-├── infrastructure/
-│   ├── adapter/
-│   │   ├── in/       # REST controllers, messaging consumers
-│   │   └── out/      # JPA repositories, Redis, RabbitMQ publishers, clientes HTTP
-│   └── config/       # Beans, security, OpenAPI
-└── Application.java  # @SpringBootApplication
-```
+Gateway (puerto 8080): punto de entrada unico /api/v1/** con enrutamiento por prefijo.
 
-## 3. Flujo de trabajo (Git + GitHub)
+> ### `Reglas de arquitectura`
 
-### Ramas
-```
-tipo/descripcion-kebab
-feat/m1-registro-mfa
-fix/m5-liberacion-reserva-fondos
-docs/readme-puertos
-chore/deps-jackson
-```
+1. Cada servicio es dueno de su base de datos. Nada de FK entre servicios, nada de SELECT cruzado.
+2. Comunicacion solo por contratos: REST sincronico via Gateway o eventos async por RabbitMQ.
+3. M5 coordina la compra/venta: reserva M2 (fondos) y M6 (posiciones), envia a Alpaca, confirma/libera reservas, actualiza M6, publica evento para M8.
+4. Transacciones locales por servicio + saga/outbox para consistencia eventual.
+5. Idempotencia en comandos con clave idempotencyKey.
+6. Dinero con BigDecimal scale 2 HALF_UP (MonetaryUtil en acciones-common).
+7. Sin comentarios en codigo salvo que se pidan explicitamente.
+8. Sin emojis en codigo ni docs.
 
-### Commits
-```
-tipo(scope): descripción en español
-feat(m1): registro con verificación de correo y MFA
-fix(m5): liberación de reserva en cancelación
-chore(gateway): actualizar rutas de m8
-```
+> ### `Flujo de trabajo (Git + GitHub)`
 
-### Pull Requests
-- **Un issue = un PR** (pequeños, revisables).
-- **Flujo**: `feature/*` → **PR → `dev`** → **PR → `main`** (producción = Netlify/Railway).
-- **Descripción PR obligatoria**: Qué / Por qué / Cómo probar / Checklist.
-- **Labels** (tokyonight): `feature` #7aa2f7, `fix` #f7768e, `docs` #7dcfff, `a11y` #9ece6a, `perf` #e0af68, `design` #bb9af7, `content` #f7768e, `infra` #e0af68, `dependencies` #f38ba8, `good first issue` #73daca, `blocked` #565f89.
-- **Milestones**: `Sprint 1 - Acceso y Catálogo` (2026-11-03), `Sprint 2 - Operación Financiera Core` (2026-11-17), `Sprint 3 - Robustez y Reportes` (2026-11-24), `Sprint 4 - Entrega Final` (2026-11-24).
-- **CI debe pasar** antes de merge (GitHub bloquea si checks corren → esperar `success`).
-- **Nunca**: squash, rebase, force-push, `--amend` sobre commits pusheados. **Merge commit** siempre.
+1. Rama: tipo/descripcion-kebab (feat/, fix/, chore/, docs/).
+2. Commit: tipo(scope): descripcion en espanol.
+3. Un issue = un MR.
+4. Flujo: feature/* -> MR -> dev -> MR -> main (produccion).
+5. Descripcion del MR: Qué / Por qué / Cómo probar / Checklist.
+6. CI verde obligatorio antes de merge.
+7. Merge commit siempre. Nunca squash, rebase, force-push, --amend sobre commits pusheados.
+8. Nunca commitear secretos ni archivos .env. Revisar git status/git diff antes de stagear.
 
-## 4. Puesta en marcha local
+> ### `Etiquetas y milestones (tokyonight)`
 
-```bash
-# 1. Requisitos: Java 21, Maven, Docker, Docker Compose
-# 2. Levantar infraestructura + todos los servicios
-docker compose up -d
+| Etiqueta | Color | Uso |
+|----------|-------|-----|
+| feature | #7aa2f7 | Nueva funcionalidad |
+| fix | #f7768e | Correccion de bug |
+| docs | #7dcfff | Documentacion |
+| a11y | #9ece6a | Accesibilidad |
+| perf | #e0af68 | Rendimiento |
+| design | #bb9af7 | Diseno |
+| content | #f7768e | Contenido |
+| infra | #e0af68 | Infraestructura |
+| dependencies | #f38ba8 | Dependencias |
+| good first issue | #73daca | Para nuevos integrantes |
+| blocked | #565f89 | Bloqueado |
 
-# 3. Verificar salud
-curl http://localhost:8080/actuator/health   # Gateway
-curl http://localhost:8081/actuator/health   # M1
-# ... 8082-8090 para los demás
-```
+| Milestone | Fecha limite |
+|-----------|--------------|
+| Sprint 1 - Acceso y Catalogo | 2026-11-03 |
+| Sprint 2 - Operacion Financiera Core | 2026-11-17 |
+| Sprint 3 - Robustez y Reportes | 2026-11-24 |
+| Sprint 4 - Entrega Final | 2026-11-24 |
 
-### Variables de entorno (.env local)
-```bash
-DB_USER=acciones_ud
-DB_PASSWORD=acciones_ud
-RABBITMQ_USER=acciones_ud
-RABBITMQ_PASSWORD=acciones_ud
-ALPACA_API_KEY=tu_key_paper
-ALPACA_API_SECRET=tu_secret_paper
-ALPACA_BASE_URL=https://paper-api.alpaca.markets
-RESEND_API_KEY=re_xxx
-STRIPE_API_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-```
+> ### `Puesta en marcha local`
 
-## 5. Desarrollo paralelo — qué se puede hacer a la vez
+1. Prerrequisitos: Java 21, Maven 3.9+, Docker + Docker Compose.
+2. cd backend
+3. cp .env.example .env y editar variables (ALPACA_API_KEY, RESEND_API_KEY, STRIPE_API_KEY).
+4. docker compose up -d
+5. curl http://localhost:8080/actuator/health (y 8081-8090 para cada servicio).
 
-| Frente | Servicios | Puede empezar día 1 | Necesita para integración real |
-|--------|-----------|---------------------|--------------------------------|
-| **Acceso y comunicación** | M1 + M8 (mínimo) | ✅ Contratos, usuarios de prueba, simuladores | M8 envío real de correo |
-| **Consulta de mercado** | M3 + M4 | ✅ Catálogo inicial, adaptador Alpaca, Redis | Símbolos de M3, credenciales Alpaca |
-| **Operación financiera (ruta crítica)** | M2 + M5 + M6 | ✅ Reservas, movimientos, estados con simuladores | Contratos M2/M6 estables, Alpaca paper |
-| **Frontend y plataforma** | Gateway, Docker, CI, pruebas | ✅ Rutas, healthchecks, pipelines | Servicios arriba |
+> ### `Desarrollo paralelo`
 
-**Regla**: programar contra **contratos y simuladores (WireMock/Testcontainers)** desde el día 1. No esperar a que otro servicio termine.
+| Frente | Servicios | Dia 1 | Integracion real necesita |
+|--------|-----------|-------|--------------------------|
+| Acceso y comunicacion | M1 + M8 | Contratos, usuarios prueba, simuladores | Envio correo real (M8) |
+| Consulta de mercado | M3 + M4 | Catalogo 10 simbolos, adaptador Alpaca | Credenciales Alpaca |
+| Operacion financiera (ruta critica) | M2 + M5 + M6 | Reservas, movimientos, estados con mocks | Contratos M2/M6 estables, Alpaca paper |
+| Frontend y plataforma | Gateway, Docker, CI, pruebas | Rutas, healthchecks, pipelines | Servicios arriba |
 
-### Asignación sugerida (5 personas)
-| Integrante | Foco inicial |
-|------------|--------------|
-| Juan Carlos (Líder backend) | M5 coordinación + prueba integrada compra/venta |
-| Jamyson (Backend/QA) | M1 + M8 mínimo; apoyo ejecución/mercado |
-| Sebastián (DB) | Separación de BDs, migraciones M2/M6, contratos |
-| Andrés (Frontend) | Catálogo, cotizaciones, formulario/seguimiento órdenes |
-| Paula (Frontend/QA) | Acceso, portafolio, avisos; evidencias y docs |
+> ### `Definicion de Hecho por servicio`
 
-> Si Sebastián no implementa backend, **quedan 2 personas para 8 servicios**. Redistribuir o recortar alcance con el cliente (profesor), no cargar todo a uno.
+1. Contratos documentados y aprobados (OpenAPI/AsyncAPI).
+2. Migraciones Flyway/Liquibase versionadas.
+3. Pruebas unitarias >= 70% cobertura (JaCoCo).
+4. Pruebas de integración pasando (Testcontainers).
+5. Imagen Docker construible (docker build).
+6. Endpoints /actuator/health funcionando.
+7. Logs estructurados JSON + correlation-id.
+8. Documentacion OpenAPI (/v3/api-docs).
+9. Desplegado en dev y humo pasando.
 
-## 6. Contratos mínimos (definir antes de codificar)
+> ### `Contratos minimos`
 
-### M2 ↔ M5 (Fondos ↔ Órdenes)
-```
-POST   /api/v1/funds/reservations        { orderId, userId, amount, idempotencyKey } → 201 { reservationId }
-POST   /api/v1/funds/reservations/{id}/confirm   { executionId, amount } → 200
-POST   /api/v1/funds/reservations/{id}/release   { reason } → 200
-GET    /api/v1/accounts/{userId}/balance         → 200 { available, reserved, total }
-```
+M2 <-> M5 (Fondos <-> Ordenes):
+POST /api/v1/funds/reservations -> 201 { reservationId }
+POST /api/v1/funds/reservations/{id}/confirm -> 200
+POST /api/v1/funds/reservations/{id}/release -> 200
+GET /api/v1/accounts/{userId}/balance -> 200 { available, reserved, total }
 
-### M6 ↔ M5 (Portafolio ↔ Órdenes)
-```
-POST   /api/v1/positions/reservations   { orderId, userId, symbol, quantity, idempotencyKey } → 201 { reservationId }
-POST   /api/v1/positions/reservations/{id}/release { reason } → 200
-POST   /api/v1/positions/updates        { execution } → 200
-GET    /api/v1/portfolio/{userId}       → 200 { positions[], totalValue }
-```
+M6 <-> M5 (Portafolio <-> Ordenes):
+POST /api/v1/positions/reservations -> 201 { reservationId }
+POST /api/v1/positions/reservations/{id}/release -> 200
+POST /api/v1/positions/updates -> 200
+GET /api/v1/portfolio/{userId} -> 200 { positions[], totalValue }
 
-### M1 → M8 (evento)
-```
-UsuarioRegistrado { userId, email, tipo: "BIENVENIDA" | "MFA" }
-```
+Eventos async (RabbitMQ):
+M1 -> M8: UsuarioRegistrado { userId, email, tipo }
+M5 -> M8: OrdenCreada | OrdenEjecutada | OrdenCancelada | OrdenRechazada
+M10 -> M1/M8: SuscripcionActivada | SuscripcionCancelada | PagoFallido
 
-### M5 → M8 (evento)
-```
-OrdenCreada | OrdenEjecutada | OrdenCancelada | OrdenRechazada
-```
+> ### `Contacto`
 
-### M10 → M1/M8 (evento)
-```
-SuscripcionActivada | SuscripcionCancelada | PagoFallido
-```
-
-> Documentar contratos en `docs/contracts/` (OpenAPI/AsyncAPI) y versionar.
-
-## 7. Pruebas y calidad
-
-- **Unitarias**: JUnit 5 + Mockito (dominio puro, sin BD). Meta: ≥ 70% cobertura en lógica crítica (JaCoCo).
-- **Integración**: Testcontainers (Postgres, RabbitMQ, Redis reales) + WireMock (Alpaca, Stripe, Resend).
-- **Contrato**: Pact o Spring Cloud Contract entre servicios.
-- **E2E**: Playwright (frontend) + k6 (carga: 1500 VU, p95 ≤ 2s, confirmación ≤ 5s).
-- **Seguridad**: OWASP ZAP en entorno público.
-- **Pipeline**: GitHub Actions → unitarias + integración + static analysis (SonarQube) en cada PR.
-
-## 8. Definición de Hecho (DoD) por servicio
-
-- [ ] Contratos documentados y aprobados.
-- [ ] Migraciones Flyway/Liquibase versionadas.
-- [ ] Pruebas unitarias ≥ 70% (lógica crítica).
-- [ ] Pruebas de integración pasando (Testcontainers).
-- [ ] Imagen Docker construible (`docker build`).
-- [ ] Health/readiness endpoints (`/actuator/health`).
-- [ ] Logs estructurados (JSON) + correlation-id.
-- [ ] Métricas Prometheus expuestas.
-- [ ] Documentación OpenAPI (`/v3/api-docs`).
-- [ ] Desplegado en `dev` y humo pasando.
-
-## 9. Convenciones de código
-
-- **Java 21**, `record` para DTOs inmutables, `sealed` para jerarquías cerradas.
-- **Sin comentarios** en código (salvo `@param`/`@return` en APIs públicas).
-- **Lombok** `@Data`/`@Builder`/`@RequiredArgsConstructor` permitido.
-- **Nada de `System.out.println`** → SLF4J.
-- **Nada de `Float`/`Double` para dinero** → `BigDecimal` + `MonetaryUtil`.
-- **Fechas**: `Instant` (UTC), ISO-8601 en JSON.
-- **Excepciones**: usar las de `acciones-common` (`BusinessRuleViolationException`, `ResourceNotFoundException`, `ConflictException`, `IdempotencyException`).
-
-## 10. Seguridad
-
-- **HTTPS** en Gateway (terminación TLS).
-- **Tokens validados también en servicios** (no solo Gateway).
-- **RBAC**: usuario no accede a órdenes/portafolio ajenos.
-- **Secretos**: nunca en repo. `.env` local, variables de entorno en CI/CD.
-- **Bases/Redis/RabbitMQ** sin exposición pública.
-- **Rate limiting** en login, MFA, creación de órdenes.
-
-## 11. Cómo añadir un endpoint nuevo
-
-1. Definir contrato (OpenAPI) en `docs/contracts/<servicio>.yaml`.
-2. Crear DTO en `acciones-common` si es compartido, o en `application/dto` del servicio.
-3. Puerto de entrada (`application/port/in/...`).
-4. Caso de uso (`application/usecase/...`).
-5. Adaptador REST (`infrastructure/adapter/in/rest/...`).
-6. Test unitario del caso de uso.
-7. Test de integración del endpoint.
-8. Actualizar `CHANGELOG.md` del servicio.
-
-## 12. Contacto
-
-- **Líder backend / Procesos y Calidad**: Juan Carlos Quintero Rubiano
-- **Issues**: GitHub (Projects "Kanban Soltech": To Do → Doing → Blocked)
+Líder backend / Procesos y Calidad: Juan Carlos Quintero Rubiano.
+Issues: GitHub Projects (Kanban Soltech: To Do -> Doing -> Blocked).
 
 ---
 
+<div align="center">
+
 **Soltech** · Universidad Distrital Francisco José de Caldas · 2026
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7aa2f7,100:bb9af7&height=120&section=footer" width="100%" alt=""/>
+
+</div>
