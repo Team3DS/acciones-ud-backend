@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:gfcdb-test
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+gfc:
+  jwt:
+    secret: "secreto-de-pruebas-no-usar-en-produccion-taller-metricas-gfc"
+    expiracion-minutos: 60
+  cors:
+    allowed-origins: http://localhost:4321
+  seed:
+    empleado:
+      usuario: empleado
+      clave: empleado123
+    cliente:
+      usuario: cliente
+      clave: cliente123
+      nombre: Cliente Demo
+      documento: "1023000001"
+      email: cliente@demo.com
+    empresa:
+      usuario: empresa
+      clave: empresa123
+      nombre: Empresa Demo S.A.S.
+      documento: "901000001"
+      email: empresa@demo.com

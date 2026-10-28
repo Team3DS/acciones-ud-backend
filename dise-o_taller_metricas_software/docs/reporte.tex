@@ -1,0 +1,315 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{float}
+
+\geometry{margin=2.5cm}
+\pagestyle{fancy}
+\fancyhf{}
+\chead{GLUD Fried Chicken - Taller de Métricas de Software}
+\lhead{}
+\rhead{}
+\cfoot{\thepage}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+
+  {\Huge\bfseries GLUD Fried Chicken (GFC)\par}
+  \vspace{1cm}
+  {\Large Taller de Métricas de Software\par}
+  \vspace{0.5cm}
+  {\large Diseño de Software\par}
+
+  \vspace{2cm}
+  \begin{tabular}{rl}
+    \textbf{Nombre} & \textbf{Código} \\
+    \hline
+    Daniel Mateo Ballesteros Molina & 20221020102 \\
+    Jan Henrik Sánchez Jerez & 20231020130 \\
+    Juan Carlos Quintero Rubiano & 20232020172 \\
+    Juan Diego Peralta Barbosa & 20231020146 \\
+  \end{tabular}
+
+  \vspace{3cm}
+  {\large \today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Introducción}
+El presente informe detalla el análisis de métricas de software aplicado al proyecto GLUD Fried Chicken (GFC). El objetivo principal es evaluar la calidad estructural del código fuente del backend mediante herramientas de análisis estático, asegurando que el diseño cumple con los estándares de mantenibilidad, legibilidad y eficiencia requeridos en el taller.
+
+\section{Descripción de la aplicación}
+GLUD Fried Chicken (GFC) es una aplicación CRUD desarrollada en Spring Boot para gestionar las operaciones de un restaurante. El sistema se compone de entidades clave como \texttt{Cliente}, \texttt{Comida}, \texttt{Pedido}, e \texttt{Ingrediente}. El diseño incorpora decisiones orientadas a la seguridad, implementando JSON Web Tokens (JWT) y codificación PBKDF2 para las contraseñas. Además, cuenta con una lógica robusta para la gestión de inventarios y personalización de pedidos.
+
+\section{Métricas con Source Monitor}
+
+\subsection{Métricas manejadas por la herramienta}
+Source Monitor evalúa la estructura interna del código fuente midiendo atributos clave como el volumen absoluto del sistema (líneas de código y sentencias), la complejidad ciclomática (que evalúa la cantidad de rutas independientes en la lógica de un método), y la profundidad de bloques, la cual mide el nivel de anidamiento de las estructuras de control.
+
+\subsection{Resultados obtenidos}
+A continuación, se presentan las métricas base del proyecto extraídas de Source Monitor:
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Métrica} & \textbf{Valor} & \textbf{Rango aceptable} \\
+    \midrule
+    Líneas de Código (M0) & 3,809 & Depende del proyecto \\
+    Sentencias (M1) & 2,277 & Depende del proyecto \\
+    Métodos por Clase (M6) & 5.37 & $< 10$ \\
+    Sentencias por Método (M7) & 3.04 & $< 15$ \\
+    Complejidad Máxima (M10) & 9 & $< 10$ \\
+    Profundidad Promedio (M13) & 1.22 & $< 3$ \\
+    \bottomrule
+  \end{tabular}
+  \caption{Métricas obtenidas con Source Monitor (Checkpoint: Baseline)}
+\end{table}
+
+\subsection{Representación visual de las métricas (Diagramas)}
+Para una mejor comprensión de la distribución de la complejidad y las métricas del proyecto, Source Monitor genera representaciones gráficas. 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=1.0\textwidth]{diagramas/diagrama-kiviat.png}
+  \caption{Diagrama Kiviat generado por Source Monitor}
+  \label{fig:kiviat}
+\end{figure}
+
+\subsection{Interpretación profunda de resultados}
+Al examinar a fondo las métricas arrojadas por Source Monitor, se pueden identificar patrones arquitectónicos y de diseño muy sólidos dentro del backend del proyecto, estructurados en los siguientes frentes:
+
+\textbf{1. Modularidad y Responsabilidad Única:} \\
+El proyecto consta de 78 archivos y 62 clases/interfaces, sumando un total de 3,809 líneas de código. El promedio de \textbf{5.37 métodos por clase} y apenas \textbf{3.04 sentencias por método} demuestra una adherencia estricta al Principio de Responsabilidad Única (SRP). Los métodos son extremadamente cortos y concisos, lo que facilita enormemente la escritura de pruebas unitarias (como se evidencia en las clases de test registradas) y previene la existencia de "God Classes" (clases monolíticas). Adicionalmente, el alto número de sentencias de llamada a métodos (1,012 \textit{Method Call Statements}) indica un sistema basado fuertemente en la delegación de tareas entre capas (Controladores, Servicios, Repositorios), típico y deseable en la arquitectura de Spring Boot.
+
+\textbf{2. Complejidad y Flujo de Control:} \\
+La complejidad promedio del proyecto es de tan solo \textbf{1.35}, respaldada por un bajo porcentaje de sentencias de ramificación (\textbf{3.6\% Branch Statements}). Esto significa que la ejecución del código es casi lineal en su mayor parte. 
+No obstante, la herramienta identifica componentes críticos de negocio y seguridad donde la complejidad aumenta justificadamente:
+\begin{itemize}
+    \item \texttt{Pbkdf2CodificadorContrasena.comprobar()}: Complejidad máxima de 9, natural dado el manejo de arreglos y algoritmos criptográficos.
+    \item \texttt{IngredienteService.crear()}: Complejidad de 8 y 17 sentencias, concentrando validaciones de reglas de negocio al ingresar stock.
+    \item \texttt{MovimientoInventario.aplicar()} y \texttt{JwtAuthenticationFilter.doFilterInternal()}: Ambas con complejidad de 6. Representan el núcleo del control de existencias y el filtro de seguridad de peticiones HTTP, respectivamente.
+\end{itemize}
+
+\textbf{3. Anidamiento y Estructura de Bloques:} \\
+La \textbf{profundidad de bloque máxima es 5}, presente únicamente en 9 sentencias de todo el proyecto (asociadas a validaciones complejas como \texttt{DetallePedido.cantidadesNecesarias()}). Sin embargo, la distribución general es sobresaliente: de las 2,277 sentencias, más de 2,150 se encuentran en profundidades de nivel 0, 1 y 2. Una profundidad promedio de \textbf{1.22} garantiza que los desarrolladores no tengan que hacer un seguimiento mental exhaustivo de estructuras condicionales anidadadas (ej. evitar el antipatrón de código pirámide o \textit{Arrow Anti-Pattern}).
+
+\textbf{4. Documentación (Oportunidad de Mejora):} \\
+El único factor verdaderamente crítico arrojado por Source Monitor es el porcentaje de líneas con comentarios, el cual se ubica en \textbf{4.4\%}. Para aplicaciones de nivel empresarial, este indicador suele sugerirse por encima del 10\%. Aunque el código es altamente descriptivo ("Clean Code") debido a la baja cantidad de sentencias por método, se recomienda aumentar la documentación de las reglas de negocio, específicamente en las validaciones de dominio y JavaDocs.
+
+\section{Métricas de Interfaz de Usuario (Lighthouse)}
+Para complementar el análisis del backend, se evaluó el rendimiento y calidad del frontend ("Crujiente hasta el alma") utilizando Google Lighthouse. Es importante destacar que estas métricas fueron tomadas específicamente desde la \textbf{landing page} del aplicativo; este detalle es crucial ya que cada página web posee un \textit{score} independiente basado en sus propios recursos, peso e interacciones DOM. Los resultados de la landing page destacan la eficiencia de la interfaz principal:
+
+\begin{itemize}
+    \item \textbf{Performance (Rendimiento):} 99/100, con un First Contentful Paint de 0.5s.
+    \item \textbf{Accesibilidad:} 95/100.
+    \item \textbf{Mejores Prácticas:} 96/100.
+    \item \textbf{SEO:} 100/100.
+\end{itemize}
+
+La vista inicial no presenta bloqueos en el hilo principal (Total Blocking Time de 0 ms), aunque la herramienta sugiere ligeras optimizaciones en el tamaño de las imágenes y ajustes menores en el contraste de colores para alcanzar la puntuación perfecta en accesibilidad.
+
+\section{Métricas con SonarQube}
+El análisis estático del backend fue complementado con el \textit{Project Health Dashboard} de SonarQube para evaluar los atributos de calidad externos. El \textit{Quality Gate} general del proyecto alcanzó el estado de \textbf{Passed} (cumpliendo exitosamente todas las condiciones), registrando un total de 32 \textit{Open issues} y un índice de \textbf{0.0\%} en Duplicaciones de código.
+
+A continuación, se presenta el desglose de los diferentes apartados de salud del proyecto:
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Snapshot (Categoría)} & \textbf{Rating} & \textbf{Issues} & \textbf{Observaciones} \\
+    \midrule
+    Security (Seguridad) & A & 0 & 1 resuelto exitosamente (MTTR: 13 min) \\
+    Security Hotspots & A & 0 & Sin vulnerabilidades críticas reportadas \\
+    Reliability (Fiabilidad) & A & 5 & Severidad: 20\% Medium, 80\% Info \\
+    Maintainability (Mantenibilidad) & A & 31 & Concentra el grueso de los \textit{Open issues} \\
+    \bottomrule
+  \end{tabular}
+  \caption{Desglose de Salud del Proyecto (SonarQube)}
+\end{table}
+
+\subsection{Interpretación de resultados (SonarQube)}
+Los resultados del \textit{Project Health Dashboard} reafirman la alta calidad y robustez del backend desarrollado:
+
+En el frente de \textbf{Seguridad (Security y Hotspots)}, el proyecto ostenta una calificación \textbf{A} perfecta con 0 vulnerabilidades abiertas. Además, destaca un sobresaliente \textit{Mean Time To Repair (MTTR)} de apenas \textbf{13 minutos} en la resolución del único incidente introducido y cerrado recientemente, demostrando una alta capacidad de respuesta del equipo frente a brechas de seguridad.
+
+En cuanto a la \textbf{Fiabilidad (Reliability)}, el análisis registra un Rating \textbf{A} con tan solo 5 issues. Es importante destacar que el desglose de severidad de estos problemas arroja que el \textbf{80\% son netamente informativos (Info)} y solo el \textbf{20\% son de nivel medio (Medium)}. No existe ningún fallo clasificado como \textit{Blocker} o \textit{Critical}, lo que garantiza la estabilidad en la ejecución del software.
+
+Por el lado de la \textbf{Mantenibilidad (Maintainability)}, se identificaron 31 issues de código. Aunque representan la gran mayoría de los 32 problemas abiertos en general, mantener una calificación \textbf{A} indica que el esfuerzo y tiempo necesario para saldar esta deuda técnica es mínimo y no compromete el avance del proyecto a mediano plazo.
+
+El único punto crítico revelado sigue siendo la \textbf{cobertura de pruebas (Coverage) situada en un 0.0\%}. Dado que el análisis interno demostró la existencia de múltiples métodos de pruebas, este 0\% confirma que la herramienta no está recibiendo correctamente el reporte de ejecución (ej. archivo de JaCoCo). Se requiere ajustar el pipeline o el plugin del scanner para que la cobertura real sea procesada.
+
+\section{Conclusiones}
+La evaluación integral de GLUD Fried Chicken demuestra un proyecto de alta calidad técnica y excelentes prácticas de ingeniería. Desde el backend, Source Monitor y SonarQube convergen en evidenciar un código modular, seguro (Rating A constante) y mantenible, con un 0\% de duplicación de código y un tiempo de resolución de vulnerabilidades (MTTR) sobresaliente de 13 minutos. Por su parte, el análisis de Lighthouse sobre la \textit{landing page} garantiza una primera impresión inmejorable para el usuario, con un rendimiento web de 99/100. Las tareas clave para los siguientes sprints se reducen a mejorar la densidad de los comentarios internos y arreglar la vinculación del \textit{Coverage} de pruebas unitarias hacia SonarQube.
+
+\end{document}documentclass[12pt, a4paper]{article}
+usepackage[utf8]{inputenc}
+usepackage[T1]{fontenc}
+usepackage[spanish]{babel}
+usepackage{graphicx}
+usepackage{booktabs}
+usepackage{geometry}
+usepackage{fancyhdr}
+usepackage{hyperref}
+usepackage{float}
+
+geometry{margin=2.5cm}
+pagestyle{fancy}
+fancyhf{}
+chead{GLUD Fried Chicken - Taller de Metricas de Software}
+lhead{}
+rhead{}
+cfoot{\thepage}
+
+begin{document}
+
+begin{titlepage}
+ \centering
+ \vspace*{2cm}
+
+ {\Huge\bfseries GLUD Fried Chicken (GFC)\par}
+ \vspace{1cm}
+ {\Large Taller de Metricas de Software\par}
+ \vspace{0.5cm}
+ {\large Diseño de Software\par}
+
+ \vspace{2cm}
+ \begin{tabular}{rl}
+   \textbf{Nombre} & \textbf{Codigo} \\
+   \hline
+   Daniel Mateo Ballesteros Molina & 20221020102 \\
+   Jan Henrik Sanchez Jerez & 20231020130 \\
+   Juan Carlos Quintero Rubiano & 20232020172 \\
+   Juan Diego Peralta Barbosa & 20231020146 \\
+ \end{tabular}
+
+ \vspace{3cm}
+ {\large \today\par}
+end{titlepage}
+
+tableofcontents
+newpage
+
+section{Introduccion}
+l presente informe detalla el analisis de metricas de software aplicado al proyecto GLUD Fried Chicken (GFC). El objetivo principal es evaluar la calidad estructural del codigo fuente del backend mediante herramientas de analisis estatico, asegurando que el diseno cumple con los estandares de mantenibilidad, legibilidad y eficiencia requeridos en el taller.
+
+section{Descripcion de la aplicacion}
+LUD Fried Chicken (GFC) es una aplicacion CRUD desarrollada en Spring Boot para gestionar las operaciones de un restaurante. El sistema se compone de entidades clave como \texttt{Cliente}, \texttt{Comida}, \texttt{Pedido}, e \texttt{Ingrediente}. El diseno incorpora decisiones orientadas a la seguridad, implementando JSON Web Tokens (JWT) y codificacion PBKDF2 para las contrasenas. Ademas, cuenta con una logica robusta para la gestion de inventarios y personalizacion de pedidos.
+
+section{Metricas con Source Monitor}
+
+subsection{Metricas manejadas por la herramienta}
+ource Monitor evalua la estructura interna del codigo fuente midiendo atributos clave como el volumen absoluto del sistema (lineas de codigo y sentencias), la complejidad ciclomatica (que evalua la cantidad de rutas independientes en la logica de un metodo), y la profundidad de bloques, la cual mide el nivel de anidamiento de las estructuras de control.
+
+subsection{Resultados obtenidos}
+ continuacion, se presentan las metricas base del proyecto extraidas de Source Monitor:
+
+begin{table}[H]
+ \centering
+ \begin{tabular}{lcc}
+   \toprule
+   \textbf{Metrica} & \textbf{Valor} & \textbf{Rango aceptable} \\
+   \midrule
+   Lineas de Codigo (M0) & 3,809 & Depende del proyecto \\
+   Sentencias (M1) & 2,277 & Depende del proyecto \\
+   Metodos por Clase (M6) & 5.37 & $< 10$ \\
+   Sentencias por Metodo (M7) & 3.04 & $< 15$ \\
+   Complejidad Maxima (M10) & 9 & $< 10$ \\
+   Profundidad Promedio (M13) & 1.22 & $< 3$ \\
+   \bottomrule
+ \end{tabular}
+ \caption{Metricas obtenidas con Source Monitor (Checkpoint: Baseline)}
+end{table}
+
+subsection{Representacion visual de las metricas (Diagramas)}
+ara una mejor comprension de la distribucion de la complejidad y las metricas del proyecto, Source Monitor genera representaciones graficas. 
+
+begin{figure}[H]
+ \centering
+ \includegraphics[width=1.0\textwidth]{diagramas/diagrama-kiviat.png}
+ \caption{Diagrama Kiviat generado por Source Monitor}
+ \label{fig:kiviat}
+end{figure}
+
+subsection{Interpretacion profunda de resultados}
+l examinar a fondo las metricas arrojadas por Source Monitor, se pueden identificar patrones arquitectonicos y de diseno muy solidos dentro del backend del proyecto, estructurados en los siguientes frentes:
+
+textbf{1. Modularidad y Responsabilidad Unica:} \\
+l proyecto consta de 78 archivos y 62 clases/interfaces, sumando un total de 3,809 lineas de codigo. El promedio de \textbf{5.37 metodos por clase} y apenas \textbf{3.04 sentencias por metodo} demuestra una adherencia estricta al Principio de Responsabilidad Unica (SRP). Los metodos son extremadamente cortos y concisos, lo que facilita enormemente la escritura de pruebas unitarias (como se evidencia en las clases de test registradas) y previene la existencia de "God Classes" (clases monoloticas). Adicionalmente, el alto numero de sentencias de llamada a metodos (1,012 \textit{Method Call Statements}) indica un sistema basado fuertemente en la delegacion de tareas entre capas (Controladores, Servicios, Repositorios), tipico y deseable en la arquitectura de Spring Boot.
+
+textbf{2. Complejidad y Flujo de Control:} \\
+a complejidad promedio del proyecto es de tan solo \textbf{1.35}, respaldada por un bajo porcentaje de sentencias de ramificacion (\textbf{3.6\% Branch Statements}). Esto significa que la ejecucion del codigo es casi lineal en su mayor parte. 
+o obstante, la herramienta identifica componentes criticos de negocio y seguridad donde la complejidad aumenta justificadamente:
+begin{itemize}
+   \item \texttt{Pbkdf2CodificadorContrasena.comprobar()}: Complejidad maxima de 9, natural dado el manejo de arreglos y algoritmos criptograficos.
+   \item \texttt{IngredienteService.crear()}: Complejidad de 8 y 17 sentencias, concentrando validaciones de reglas de negocio al ingresar stock.
+   \item \texttt{MovimientoInventario.aplicar()} y \texttt{JwtAuthenticationFilter.doFilterInternal()}: Ambas con complejidad de 6. Representan el nucleo del control de existencias y el filtro de seguridad de peticiones HTTP, respectivamente.
+end{itemize}
+
+textbf{3. Anidamiento y Estructura de Bloques:} \\
+a \textbf{profundidad de bloque maxima es 5}, presente unicamente en 9 sentencias de todo el proyecto (asociadas a validaciones complejas como \texttt{DetallePedido.cantidadesNecesarias()}). Sin embargo, la distribucion general es sobresaliente: de las 2,277 sentencias, mas de 2,150 se encuentran en profundidades de nivel 0, 1 y 2. Una profundidad promedio de \textbf{1.22} garantiza que los desarrolladores no tengan que hacer un seguimiento mental exhaustivo de estructuras condicionales anidadas (ej. evitar el antipatron de codigo piramide o \textit{Arrow Anti-Pattern}).
+
+textbf{4. Documentacion (Oportunidad de Mejora):} \\
+l unico factor verdaderamente critico arrojado por Source Monitor es el porcentaje de lineas con comentarios, el cual se ubica en \textbf{4.4\%}. Para aplicaciones de nivel empresarial, este indicador suele sugerirse por encima del 10\%. Aunque el codigo es altamente descriptivo ("Clean Code") debido a la baja cantidad de sentencias por metodo, se recomienda aumentar la documentacion de las reglas de negocio, especificamente en las validaciones de dominio y JavaDocs.
+
+section{Metricas de Interfaz de Usuario (Lighthouse)}
+ara complementar el analisis del backend, se evaluo el rendimiento y calidad del frontend (''"Crujiente hasta el alma"'') utilizando Google Lighthouse. Es importante destacar que estas metricas fueron tomadas especificamente desde la \textbf{landing page} del aplicativo; este detalle es crucial ya que cada pagina web posee un \textit{score} independiente basado en sus propios recursos, peso e interacciones DOM. Los resultados de la landing page destacan la eficiencia de la interfaz principal:
+
+begin{itemize}
+   \item \textbf{Performance (Rendimiento):} 99/100, con un First Contentful Paint de 0.5s.
+   \item \textbf{Accesibilidad:} 95/100.
+   \item \textbf{Mejores Practicas:} 96/100.
+   \item \textbf{SEO:} 100/100.
+end{itemize}
+
+a vista inicial no presenta bloqueos en el hilo principal (Total Blocking Time de 0 ms), aunque la herramienta sugiere ligeras optimizaciones en el tamano de las imagenes y ajustes menores en el contraste de colores para alcanzar la puntuacion perfecta en accesibilidad.
+
+section{Metricas con SonarQube}
+l analisis estatico del backend fue complementado con el \textit{Project Health Dashboard} de SonarQube para evaluar los atributos de calidad externos. El \textit{Quality Gate} general del proyecto alcanzo el estado de \textbf{Passed} (cumpliendo exitosamente todas las condiciones), registrando un total de 32 \textit{Open issues} y un indice de \textbf{0.0\%} en Duplicaciones de codigo.
+
+ continuacion, se presenta el desglose de los diferentes apartados de salud del proyecto:
+
+begin{table}[H]
+ \centering
+ \begin{tabular}{lccc}
+   \toprule
+   \textbf{Snapshot (Categoria)} & \textbf{Rating} & \textbf{Issues} & \textbf{Observaciones} \\
+   \midrule
+   Security (Seguridad) & A & 0 & 1 resuelto exitosamente (MTTR: 13 min) \\
+   Security Hotspots & A & 0 & Sin vulnerabilidades criticas reportadas \\
+   Reliability (Fiabilidad) & A & 5 & Severidad: 20\% Medium, 80\% Info \\
+   Maintainability (Mantenibilidad) & A & 31 & Concentra el grueso de los \textit{Open issues} \\
+   \bottomrule
+ \end{tabular}
+ \caption{Desglose de Salud del Proyecto (SonarQube)}
+end{table}
+
+subsection{Interpretacion de resultados (SonarQube)}
+os resultados del \textit{Project Health Dashboard} reafirman la alta calidad y robustez del backend desarrollado:
+
+n el frente de \textbf{Seguridad (Security y Hotspots)}, el proyecto ostenta una calificacion \textbf{A} perfecta con 0 vulnerabilidades abiertas. Ademas, destaca un sobresaliente \textit{Mean Time To Repair (MTTR)} de apenas \textbf{13 minutos} en la resolucion del unico incidente introducido y cerrado recientemente, demostrando una alta capacidad de respuesta del equipo frente a brechas de seguridad.
+
+n cuanto a la \textbf{Fiabilidad (Reliability)}, el analisis registra un Rating \textbf{A} con tan solo 5 issues. Es importante destacar que el desglose de severidad de estos problemas arroja que el \textbf{80\% son netamente informativos (Info)} y solo el \textbf{20\% son de nivel medio (Medium)}. No existe ningun fallo clasificado como \textit{Blocker} o \textit{Critical}, lo que garantiza la estabilidad en la ejecucion del software.
+
+or el lado de la \textbf{Mantenibilidad (Maintainability)}, se identificaron 31 issues de codigo. Aunque representan la gran mayoria de los 32 problemas abiertos en general, mantener una calificacion \textbf{A} indica que el esfuerzo y tiempo necesario para saldar esta deuda tecnica es minimo y no compromete el avance del proyecto a mediano plazo.
+
+l unico punto critico revelado sigue siendo la \textbf{cobertura de pruebas (Coverage) situada en un 0.0\%}. Dado que el analisis interno demostro la existencia de multiples metodos de pruebas, este 0\% confirma que la herramienta no esta recibiendo correctamente el reporte de ejecucion (ej. archivo de JaCoCo). Se requiere ajustar el pipeline o el plugin del scanner para que la cobertura real sea procesada.
+
+section{Conclusiones}
+a evaluacion integral de GLUD Fried Chicken demuestra un proyecto de alta calidad tecnica y excelentes practicas de ingenieria. Desde el backend, Source Monitor y SonarQube convergen en evidenciar un codigo modular, seguro (Rating A constante) y mantenible, con un 0\% de duplicacion de codigo y un tiempo de resolucion de vulnerabilidades (MTTR) sobresaliente de 13 minutos. Por su parte, el analisis de Lighthouse sobre la \textit{landing page} garantiza una primera impresion inmejorable para el usuario, con un rendimiento web de 99/100. Las tareas clave para los siguientes sprints se reducen a mejorar la densidad de los comentarios internos y arreglar la vinculacion del \textit{Coverage} de pruebas unitarias hacia SonarQube.
+
+end{document}
+
+

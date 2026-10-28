@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+@import 'tailwindcss/index.css';
+
+@theme {
+	--font-display: 'Fredoka', sans-serif;
+	--font-body: 'Nunito', sans-serif;
+	--color-gfc-red: #e60012;
+	--color-gfc-red-dark: #a9000d;
+	--color-gfc-yellow: #ffc928;
+	--color-gfc-ink: #242125;
+	--color-gfc-cream: #fffaf0;
+}
+
+:root { font-family: var(--font-body); color: var(--color-gfc-ink); background: var(--color-gfc-cream); }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; background-color: #fffaf0; background-image: radial-gradient(#f5d5c7 0.8px, transparent 0.8px); background-size: 14px 14px; }
+button, input, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid #242125; outline-offset: 3px; }
+.paper { border: 2px solid var(--color-gfc-ink); border-radius: 18px; box-shadow: 5px 5px 0 var(--color-gfc-ink); }
+.paper-lift { transition: transform 180ms ease, box-shadow 180ms ease; }
+.paper-lift:hover { transform: translate(-2px, -4px) rotate(-1deg); box-shadow: 8px 9px 0 var(--color-gfc-ink); }
+.sticker { border: 2px solid var(--color-gfc-ink); border-radius: 999px; box-shadow: 3px 3px 0 var(--color-gfc-ink); }
+.manga-dash { background-image: repeating-linear-gradient(115deg, transparent 0 11px, rgba(230, 0, 18, .18) 12px 13px); }
+.pop-in { animation: pop-in 520ms cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(16px) rotate(2deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }

@@ -1,0 +1,17 @@
+---
+import '../styles/global.css';
+
+const { title = 'GLUD Fried Chicken' } = Astro.props;
+---
+<!doctype html>
+<html lang="es-CO">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="description" content="Pollo crujiente con sazón que se siente." />
+		<title>{title}</title>
+	</head>
+	<body>
+		<slot />
+	</body>
+</html>

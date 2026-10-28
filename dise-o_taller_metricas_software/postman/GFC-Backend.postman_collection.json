@@ -1,0 +1,445 @@
+{
+  "info": {
+    "_postman_id": "b6f2e9b2-6f1a-4e3a-9a2a-gfc-backend-0001",
+    "name": "GFC Backend - GLUD Fried Chicken",
+    "description": "Coleccion del API REST del backend (Spring Boot). Cubre autenticacion JWT, catalogo, pedidos e inventario, tal como se documenta en docs/endpoints-propuestos.md.\n\nOrden recomendado de ejecucion (Runner): correr la carpeta completa de arriba hacia abajo. Las variables (tokenCliente, tokenEmpleado, comidaId, configuracionId, ingredienteId) se completan solas via test scripts a medida que cada request se ejecuta.\n\nRequiere el backend corriendo en {{baseUrl}} (por defecto http://localhost:8080) con el empleado y catalogo demo sembrados por DatosDemoSeeder.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "tokenCliente", "value": "", "type": "string" },
+    { "key": "tokenEmpleado", "value": "", "type": "string" },
+    { "key": "nombreUsuarioCliente", "value": "", "type": "string" },
+    { "key": "idCliente", "value": "", "type": "string" },
+    { "key": "comidaId", "value": "", "type": "string" },
+    { "key": "configuracionId", "value": "", "type": "string" },
+    { "key": "ingredienteId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticacion",
+      "item": [
+        {
+          "name": "Registro - cliente nuevo (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('devuelve token', () => pm.expect(body.token).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('tokenCliente', body.token);",
+                  "pm.collectionVariables.set('idCliente', body.idCliente);",
+                  "pm.collectionVariables.set('nombreUsuarioCliente', body.nombreUsuario);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"cliente_{{$timestamp}}\",\n  \"nombre\": \"Ana Torres\",\n  \"tipoDocumento\": \"CC\",\n  \"numeroDocumento\": \"{{$timestamp}}{{$randomInt}}\",\n  \"correo\": \"cliente{{$timestamp}}@example.com\",\n  \"contrasena\": \"una-clave-segura\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/registro", "host": ["{{baseUrl}}"], "path": ["api", "auth", "registro"] }
+          }
+        },
+        {
+          "name": "Registro - nombre de usuario repetido (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('409 Conflict', () => pm.response.to.have.status(409));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"{{nombreUsuarioCliente}}\",\n  \"nombre\": \"Otra Persona\",\n  \"tipoDocumento\": \"CC\",\n  \"numeroDocumento\": \"{{$timestamp}}{{$randomInt}}\",\n  \"correo\": \"otro{{$timestamp}}@example.com\",\n  \"contrasena\": \"otra-clave\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/registro", "host": ["{{baseUrl}}"], "path": ["api", "auth", "registro"] }
+          },
+          "description": "Ejecutar despues de 'Registro - cliente nuevo': reusa el mismo nombreUsuario para forzar el conflicto de unicidad."
+        },
+        {
+          "name": "Login - cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('tokenCliente', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identificador\": \"{{nombreUsuarioCliente}}\",\n  \"contrasena\": \"una-clave-segura\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login - empleado (seed demo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('rol EMPLEADO', () => pm.expect(body.rol).to.eql('EMPLEADO'));",
+                  "pm.collectionVariables.set('tokenEmpleado', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identificador\": \"empleado\",\n  \"contrasena\": \"empleado123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          },
+          "description": "Credenciales sembradas por DatosDemoSeeder al arrancar el backend (ver docs/funcionalidades.md)."
+        },
+        {
+          "name": "Login - credenciales invalidas (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identificador\": \"{{nombreUsuarioCliente}}\",\n  \"contrasena\": \"clave-incorrecta\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenCliente}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+          },
+          "description": "JWT sin estado: no hay revocacion en el servidor, solo confirma que el cliente puede descartar el token."
+        }
+      ]
+    },
+    {
+      "name": "2. Catalogo",
+      "item": [
+        {
+          "name": "Listar comidas (publico)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('hay al menos una comida', () => pm.expect(body.length).to.be.above(0));",
+                  "if (body.length > 0) pm.collectionVariables.set('comidaId', body[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/comidas", "host": ["{{baseUrl}}"], "path": ["api", "comidas"] }
+          }
+        },
+        {
+          "name": "Detalle de comida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('tiene receta', () => pm.expect(body.ingredientes.length).to.be.above(0));",
+                  "pm.collectionVariables.set('configuracionId', body.ingredientes[0].id);",
+                  "pm.collectionVariables.set('ingredienteId', body.ingredientes[0].ingrediente.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comidas/{{comidaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comidas", "{{comidaId}}"]
+            }
+          }
+        },
+        {
+          "name": "Comida inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('404 Not Found', () => pm.response.to.have.status(404));"] }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/comidas/999999", "host": ["{{baseUrl}}"], "path": ["api", "comidas", "999999"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Pedidos",
+      "item": [
+        {
+          "name": "Crear pedido con adicion (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('trae el resumen de pago', () => {",
+                  "    pm.expect(body.valorTotal).to.be.a('number');",
+                  "    pm.expect(body.detalle[0].personalizaciones[0].costoAdicional).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenCliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"detalles\": [\n    {\n      \"comidaId\": {{comidaId}},\n      \"cantidad\": 2,\n      \"personalizaciones\": [\n        { \"configuracionId\": {{configuracionId}}, \"tipoAdicion\": \"ADICIONAL\", \"cantidad\": 1 }\n      ]\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pedidos", "host": ["{{baseUrl}}"], "path": ["api", "pedidos"] }
+          },
+          "description": "Descuenta el stock del ingrediente consumido en la misma transaccion (PedidoService)."
+        },
+        {
+          "name": "Crear pedido sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"detalles\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/api/pedidos", "host": ["{{baseUrl}}"], "path": ["api", "pedidos"] }
+          }
+        },
+        {
+          "name": "Crear pedido sin stock suficiente (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('409 Conflict', () => pm.response.to.have.status(409));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenCliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"detalles\": [\n    { \"comidaId\": {{comidaId}}, \"cantidad\": 1000000, \"personalizaciones\": [] }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pedidos", "host": ["{{baseUrl}}"], "path": ["api", "pedidos"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Inventario",
+      "item": [
+        {
+          "name": "Listar ingredientes sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"] }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/ingredientes", "host": ["{{baseUrl}}"], "path": ["api", "ingredientes"] }
+          }
+        },
+        {
+          "name": "Listar ingredientes (empleado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "if (body.length > 0 && !pm.collectionVariables.get('ingredienteId')) {",
+                  "    pm.collectionVariables.set('ingredienteId', body[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenEmpleado}}" }],
+            "url": { "raw": "{{baseUrl}}/api/ingredientes", "host": ["{{baseUrl}}"], "path": ["api", "ingredientes"] }
+          }
+        },
+        {
+          "name": "Entrada de inventario con rol CLIENTE (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('403 Forbidden', () => pm.response.to.have.status(403));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenCliente}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"cantidad\": 5,\n  \"motivo\": \"prueba de permisos\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/ingredientes/{{ingredienteId}}/entradas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ingredientes", "{{ingredienteId}}", "entradas"]
+            }
+          }
+        },
+        {
+          "name": "Registrar entrada - carga de inventario (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('movimiento aplicado', () => pm.expect(body.movimiento.aplicado).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenEmpleado}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"cantidad\": 10,\n  \"motivo\": \"Reabastecimiento proveedor\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/ingredientes/{{ingredienteId}}/entradas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ingredientes", "{{ingredienteId}}", "entradas"]
+            }
+          }
+        },
+        {
+          "name": "Registrar salida - descarga de inventario (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('movimiento aplicado', () => pm.expect(body.movimiento.aplicado).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenEmpleado}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cantidad\": 5,\n  \"motivo\": \"Producto vencido\",\n  \"fecha\": \"2026-09-07T09:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ingredientes/{{ingredienteId}}/salidas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ingredientes", "{{ingredienteId}}", "salidas"]
+            }
+          },
+          "description": "El acuerdo de negocio pide explicitamente fecha y motivo para las descargas manuales de inventario."
+        },
+        {
+          "name": "Registrar salida sin stock suficiente (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('409 Conflict', () => pm.response.to.have.status(409));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenEmpleado}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cantidad\": 1000000,\n  \"motivo\": \"Forzar stock insuficiente\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ingredientes/{{ingredienteId}}/salidas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ingredientes", "{{ingredienteId}}", "salidas"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>404 - GFC | GLUD Fried Chicken</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24253a;
+      --text: #c0caf5;
+      --blue: #7aa2f7;
+      --purple: #bb9af7;
+      --muted: #565f89;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .card {
+      max-width: 480px;
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid rgba(122, 162, 247, 0.25);
+      border-radius: 16px;
+      padding: 48px 32px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    .emoji {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .code {
+      font-size: 72px;
+      font-weight: 800;
+      margin: 0;
+      background: linear-gradient(90deg, var(--blue), var(--purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 8px 0 4px;
+      color: var(--text);
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .brand {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    a.button {
+      display: inline-block;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.15s ease;
+    }
+
+    a.button:hover {
+      opacity: 0.85;
+    }
+
+    .primary {
+      background: linear-gradient(90deg, var(--blue), var(--purple));
+      color: #1a1b26;
+    }
+
+    .secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="emoji">🍗</div>
+    <p class="brand">GFC · GLUD Fried Chicken</p>
+    <p class="code">404</p>
+    <h1>Recurso no encontrado</h1>
+    <p>El endpoint que buscas no existe o fue movido. Verifica la URL o revisa la documentacion de la API.</p>
+    <div class="actions">
+      <a class="button primary" href="/swagger-ui.html">Ver documentacion (Swagger)</a>
+      <a class="button secondary" href="/">Volver al inicio</a>
+    </div>
+  </main>
+</body>
+</html>

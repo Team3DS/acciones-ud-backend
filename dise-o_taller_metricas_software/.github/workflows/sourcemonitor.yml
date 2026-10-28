@@ -1,0 +1,81 @@
+name: Source Monitor - Diagrama Kiviat
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  metrics:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SourceMonitor
+        uses: crazy-max/ghaction-chocolatey@v4
+        with:
+          args: install sourcemonitor -y
+
+      - name: Crear archivo de comandos SourceMonitor
+        shell: pwsh
+        run: |
+          $xml = @"
+          <?xml version="1.0" encoding="UTF-8" ?>
+          <sourcemonitor_commands>
+            <write_log>true</write_log>
+            <command>
+              <project_file>${{ github.workspace }}\metrics.smp</project_file>
+              <project_language>Java</project_language>
+              <source_directory>${{ github.workspace }}\backend\src\main\java</source_directory>
+              <file_extensions>*.java</file_extensions>
+              <include_subdirectories>true</include_subdirectories>
+              <parse_utf8_files>True</parse_utf8_files>
+              <checkpoint_name>Tag ${{ github.ref_name }}</checkpoint_name>
+              <export>
+                <export_file>${{ github.workspace }}\metrics.xml</export_file>
+                <export_type>2 (project details as XML)</export_type>
+                <export_option>Include method metrics: option 3</export_option>
+              </export>
+            </command>
+          </sourcemonitor_commands>
+          "@
+          Set-Content -Path "commands.xml" -Value $xml -Encoding UTF8
+
+      - name: Ejecutar SourceMonitor
+        run: |
+          & "C:\Program Files (x86)\SourceMonitor\SourceMonitor.exe" /C commands.xml
+
+      - name: Subir metrics XML
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-monitor-metrics
+          path: metrics.xml
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generar diagrama Kiviat
+        run: |
+          pip install matplotlib numpy
+          python scripts/generate_kiviat.py metrics.xml kiviat.png
+
+      - name: Subir diagrama Kiviat
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiviat-diagram
+          path: kiviat.png
+
+      - name: Crear release con diagrama
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            kiviat.png
+            metrics.xml
+          generate_release_notes: true

@@ -1,0 +1,234 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Panel de operación | GFC">
+	<div id="dashboard-app" class="min-h-screen bg-gfc-cream">
+		<header class="border-b-2 border-gfc-ink bg-white"><div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8"><a href="/" class="flex items-center gap-2"><span class="grid h-11 w-11 rotate-[-8deg] place-items-center rounded-xl border-2 border-gfc-ink bg-gfc-red font-display text-xl font-bold text-white shadow-[3px_3px_0_#242125]">G</span><span class="font-display text-xl font-bold">GLUD<span class="text-gfc-red">.</span></span></a><div class="flex items-center gap-4"><span id="dashboard-user" class="hidden text-sm font-extrabold sm:block"></span><button id="logout" class="rounded-xl border-2 border-gfc-ink px-4 py-2 text-sm font-extrabold hover:bg-gfc-yellow">Cerrar sesión</button></div></div></header>
+		<main class="mx-auto max-w-7xl px-5 py-10 lg:px-8"><div class="mb-10"><p class="font-display font-bold uppercase tracking-[.2em] text-gfc-red">Centro de operación</p><h1 class="mt-2 font-display text-5xl font-bold">Todo bajo control.</h1><p class="mt-3 max-w-xl font-semibold text-black/60">Monitorea lo que más se pide y mantén la cocina lista para el siguiente crunch.</p></div>
+			<section class="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><div class="paper bg-gfc-red p-6 text-white sm:p-8"><div class="flex items-start justify-between gap-4"><div><p class="font-bold uppercase tracking-widest text-gfc-yellow">Pulso del menú</p><h2 class="mt-2 font-display text-3xl font-bold">¿Qué se está pidiendo más?</h2></div><span class="sticker rotate-3 bg-gfc-yellow px-3 py-1 font-bold text-gfc-ink">Esta semana</span></div><div id="top-dishes" class="mt-8 space-y-4"><div class="h-12 animate-pulse rounded-xl bg-white/20"></div><div class="h-12 animate-pulse rounded-xl bg-white/20"></div><div class="h-12 animate-pulse rounded-xl bg-white/20"></div></div></div><div class="paper bg-white p-6 sm:p-8"><p class="font-bold uppercase tracking-widest text-gfc-red">Regla de inventario</p><h2 class="mt-2 font-display text-3xl font-bold">Alerta temprana</h2><p class="mt-3 text-sm font-semibold text-black/60">Marca productos cuando su stock esté por debajo de:</p><div class="mt-6 flex items-center gap-3"><input id="threshold" type="number" min="1" value="10" class="w-24 rounded-xl border-2 border-gfc-ink bg-gfc-cream px-4 py-3 text-center font-display text-2xl font-bold" /><span class="font-bold">unidades</span></div></div></section>
+			<section class="mt-10"><div class="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p class="font-display font-bold uppercase tracking-[.2em] text-gfc-red">Despensa</p><h2 class="mt-2 font-display text-4xl font-bold">Inventario actual</h2></div><button id="reload-inventory" class="paper bg-gfc-yellow px-5 py-3 font-bold">Actualizar datos</button></div><div id="inventory-status" class="paper flex min-h-32 items-center justify-center bg-white p-6 text-center font-bold">Cargando inventario...</div><div class="paper mt-4 overflow-x-auto bg-white"><table class="w-full min-w-[650px] text-left"><thead class="border-b-2 border-gfc-ink bg-gfc-ink text-sm text-white"><tr><th class="px-5 py-4">Ingrediente</th><th class="px-5 py-4">Unidad</th><th class="px-5 py-4">Stock actual</th><th class="px-5 py-4">Estado</th><th class="px-5 py-4 text-right">Movimiento</th></tr></thead><tbody id="inventory-body"></tbody></table></div></section>
+			<section class="mt-10"><div class="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p class="font-display font-bold uppercase tracking-[.2em] text-gfc-red">Carta</p><h2 class="mt-2 font-display text-4xl font-bold">Menú</h2></div><button id="new-comida-btn" class="paper bg-gfc-yellow px-5 py-3 font-bold">Nueva comida</button></div><div id="menu-crud-status" class="paper flex min-h-32 items-center justify-center bg-white p-6 text-center font-bold">Cargando menú...</div><div class="paper mt-4 overflow-x-auto bg-white"><table class="w-full min-w-[650px] text-left"><thead class="border-b-2 border-gfc-ink bg-gfc-ink text-sm text-white"><tr><th class="px-5 py-4">Nombre</th><th class="px-5 py-4">Precio</th><th class="px-5 py-4">Imagen</th><th class="px-5 py-4 text-right">Acciones</th></tr></thead><tbody id="menu-crud-body"></tbody></table></div></section>
+			<section class="mt-10"><div class="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p class="font-display font-bold uppercase tracking-[.2em] text-gfc-red">Materia prima</p><h2 class="mt-2 font-display text-4xl font-bold">Ingredientes</h2></div><button id="new-ingrediente-btn" class="paper bg-gfc-yellow px-5 py-3 font-bold">Nuevo ingrediente</button></div><div id="ing-crud-status" class="paper flex min-h-32 items-center justify-center bg-white p-6 text-center font-bold">Cargando ingredientes...</div><div class="paper mt-4 overflow-x-auto bg-white"><table class="w-full min-w-[650px] text-left"><thead class="border-b-2 border-gfc-ink bg-gfc-ink text-sm text-white"><tr><th class="px-5 py-4">Nombre</th><th class="px-5 py-4">Unidad</th><th class="px-5 py-4">Stock actual</th><th class="px-5 py-4 text-right">Acciones</th></tr></thead><tbody id="ing-crud-body"></tbody></table></div></section>
+		</main>
+	</div>
+	<div id="movement-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gfc-ink/70 p-4" role="dialog" aria-modal="true" aria-labelledby="movement-title"><div class="paper w-full max-w-md bg-gfc-cream p-6 sm:p-8"><div class="flex items-start justify-between"><div><p id="movement-type" class="font-display font-bold uppercase tracking-widest text-gfc-red">Movimiento</p><h2 id="movement-title" class="mt-1 font-display text-3xl font-bold">Registrar movimiento</h2><p id="movement-ingredient" class="mt-1 font-semibold text-black/60"></p></div><button id="close-movement" class="rounded-full border-2 border-gfc-ink px-3 py-1 font-bold" aria-label="Cerrar movimiento">×</button></div><form id="movement-form" class="mt-6 space-y-4"><label class="block text-sm font-extrabold">Cantidad<input name="cantidad" type="number" min="1" required class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" /></label><label class="block text-sm font-extrabold">Motivo<span class="ml-1 text-gfc-red">*</span><textarea name="motivo" required rows="3" class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" placeholder="Ej. Compra de proveedor"></textarea></label><label class="block text-sm font-extrabold">Fecha <span class="font-normal text-black/50">(opcional)</span><input name="fecha" type="datetime-local" class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" /></label><p id="movement-message" class="hidden rounded-lg p-3 text-sm font-bold"></p><button class="paper w-full bg-gfc-red px-5 py-3 font-display text-lg font-bold text-white" type="submit">Guardar movimiento</button></form></div></div>
+	<div id="comida-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gfc-ink/70 p-4" role="dialog" aria-modal="true" aria-labelledby="comida-modal-title"><div class="paper w-full max-w-lg max-h-[90vh] overflow-y-auto bg-gfc-cream p-6 sm:p-8"><div class="flex items-start justify-between"><div><p id="comida-modal-type" class="font-display font-bold uppercase tracking-widest text-gfc-red">Comida</p><h2 id="comida-modal-title" class="mt-1 font-display text-3xl font-bold">Nueva comida</h2></div><button id="close-comida" class="rounded-full border-2 border-gfc-ink px-3 py-1 font-bold" aria-label="Cerrar comida">×</button></div><form id="comida-form" class="mt-6 space-y-4"><label class="block text-sm font-extrabold">Nombre<span class="ml-1 text-gfc-red">*</span><input name="nombre" required class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" /></label><label class="block text-sm font-extrabold">Precio<span class="ml-1 text-gfc-red">*</span><input name="precio" type="number" min="0" required class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" /></label><label class="block text-sm font-extrabold">URL de imagen <span class="font-normal text-black/50">(opcional)</span><input name="imagenURL" type="url" class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" placeholder="https://..." /></label><div><p class="text-sm font-extrabold">Receta</p><div id="recipe-rows" class="mt-2 space-y-2"></div><button type="button" id="add-recipe-row" class="mt-2 rounded-lg border-2 border-gfc-ink bg-white px-3 py-2 text-sm font-bold hover:bg-gfc-yellow">Agregar ingrediente</button></div><p id="comida-message" class="hidden rounded-lg p-3 text-sm font-bold"></p><button class="paper w-full bg-gfc-red px-5 py-3 font-display text-lg font-bold text-white" type="submit">Guardar comida</button></form></div></div>
+	<div id="ingrediente-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gfc-ink/70 p-4" role="dialog" aria-modal="true" aria-labelledby="ingrediente-modal-title"><div class="paper w-full max-w-md bg-gfc-cream p-6 sm:p-8"><div class="flex items-start justify-between"><div><p id="ingrediente-modal-type" class="font-display font-bold uppercase tracking-widest text-gfc-red">Ingrediente</p><h2 id="ingrediente-modal-title" class="mt-1 font-display text-3xl font-bold">Nuevo ingrediente</h2></div><button id="close-ingrediente" class="rounded-full border-2 border-gfc-ink px-3 py-1 font-bold" aria-label="Cerrar ingrediente">×</button></div><form id="ingrediente-form" class="mt-6 space-y-4"><label class="block text-sm font-extrabold">Nombre<span class="ml-1 text-gfc-red">*</span><input name="nombre" required class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" /></label><label class="block text-sm font-extrabold">Unidad de medida<span class="ml-1 text-gfc-red">*</span><select name="unidadMedida" required class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3"><option value="UNIDAD">Unidad</option><option value="GRAMO">Gramo</option><option value="MILILITRO">Mililitro</option></select></label><label id="stock-field" class="block text-sm font-extrabold">Stock actual<span class="ml-1 text-gfc-red">*</span><input name="stockActual" type="number" min="0" required class="mt-1 w-full rounded-xl border-2 border-gfc-ink bg-white px-4 py-3" /></label><p id="ingrediente-message" class="hidden rounded-lg p-3 text-sm font-bold"></p><button class="paper w-full bg-gfc-red px-5 py-3 font-display text-lg font-bold text-white" type="submit">Guardar ingrediente</button></form></div></div>
+</Layout>
+
+<script>
+import { api, clearSession, getSession, topComidasDemo, type Ingrediente, type Comida, type ComidaBody } from '../lib/api';
+const session = getSession();
+if (!session || session.rol !== 'EMPLEADO') window.location.href = '/';
+const thresholdInput = document.querySelector('#threshold') as HTMLInputElement; let threshold = Number(localStorage.getItem('gfc_threshold') || 10); thresholdInput.value = String(threshold); thresholdInput.addEventListener('change', () => { threshold = Math.max(1, Number(thresholdInput.value)); localStorage.setItem('gfc_threshold', String(threshold)); loadInventory(); });
+const modal = document.querySelector('#movement-modal') as HTMLElement; const form = document.querySelector('#movement-form') as HTMLFormElement; let selectedId = 0; let movementType: 'entrada' | 'salida' = 'entrada';
+const formatDate = (date: string) => new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(date));
+async function loadTop() { try { const top = await Promise.resolve(topComidasDemo); (document.querySelector('#top-dishes') as HTMLElement).innerHTML = top.map((item, index) => `<div class="flex items-center gap-4 rounded-xl border-2 border-white/30 bg-white/10 p-3"><span class="grid h-9 w-9 place-items-center rounded-lg bg-gfc-yellow font-display font-bold text-gfc-ink">${index + 1}</span><span class="flex-1 font-bold">${item.nombre}</span><strong class="font-display text-xl">${item.pedidos}</strong><span class="text-sm font-bold text-white/70">pedidos</span></div>`).join(''); } catch { (document.querySelector('#top-dishes') as HTMLElement).innerHTML = '<p class="font-bold">No hay datos de pedidos todavía.</p>'; } }
+async function loadInventory() { const status = document.querySelector('#inventory-status') as HTMLElement; try { const items = await api.getIngredientes(); status.classList.add('hidden'); renderInventory(items); } catch (error) { status.classList.remove('hidden'); status.innerHTML = `<div><p>No pudimos cargar el inventario.</p><p class="mt-2 text-sm text-black/60">${error instanceof Error ? error.message : 'Verifica tu sesión de empleado.'}</p></div>`; } }
+function renderInventory(items: Ingrediente[]) { (document.querySelector('#inventory-body') as HTMLElement).innerHTML = items.map((item) => { const low = item.stockActual < threshold; return `<tr class="border-b border-gfc-ink/10 last:border-0"><td class="px-5 py-4 font-display text-lg font-bold">${item.nombreIngrediente}</td><td class="px-5 py-4 font-semibold text-black/60">${item.unidadMedida}</td><td class="px-5 py-4"><span class="font-display text-2xl font-bold ${low ? 'text-gfc-red' : ''}">${item.stockActual}</span></td><td class="px-5 py-4"><span class="rounded-full px-3 py-1 text-xs font-extrabold ${low ? 'bg-red-100 text-gfc-red-dark' : 'bg-green-100 text-green-800'}">${low ? 'Por agotarse' : 'Disponible'}</span></td><td class="px-5 py-4 text-right"><div class="flex justify-end gap-2"><button class="movement-button rounded-lg border-2 border-gfc-ink bg-white px-3 py-2 text-sm font-bold hover:bg-gfc-yellow" data-id="${item.id}" data-type="entrada" data-name="${item.nombreIngrediente}">Entrada</button><button class="movement-button rounded-lg border-2 border-gfc-ink bg-gfc-red px-3 py-2 text-sm font-bold text-white hover:bg-gfc-red-dark" data-id="${item.id}" data-type="salida" data-name="${item.nombreIngrediente}">Salida</button></div></td></tr>`; }).join(''); document.querySelectorAll<HTMLButtonElement>('.movement-button').forEach((button) => button.addEventListener('click', () => openMovement(Number(button.dataset.id), button.dataset.type as 'entrada' | 'salida', button.dataset.name || ''))); }
+function openMovement(id: number, type: 'entrada' | 'salida', name: string) { selectedId = id; movementType = type; (document.querySelector('#movement-type') as HTMLElement).textContent = type === 'entrada' ? 'Entrada de inventario' : 'Salida de inventario'; (document.querySelector('#movement-ingredient') as HTMLElement).textContent = name; modal.classList.remove('hidden'); modal.classList.add('flex'); form.reset(); }
+function closeMovement() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+document.querySelector('#close-movement')?.addEventListener('click', closeMovement); document.querySelector('#reload-inventory')?.addEventListener('click', loadInventory); document.querySelector('#logout')?.addEventListener('click', () => { clearSession(); window.location.href = '/'; });
+form.addEventListener('submit', async (event) => { event.preventDefault(); const data = Object.fromEntries(new FormData(form).entries()); const message = document.querySelector('#movement-message') as HTMLElement; try { const date = data.fecha ? new Date(String(data.fecha)).toISOString() : undefined; const body = { cantidad: Number(data.cantidad), motivo: String(data.motivo), ...(date ? { fecha: date } : {}) }; if (movementType === 'entrada') await api.addInventory(selectedId, body); else await api.removeInventory(selectedId, body); closeMovement(); await loadInventory(); } catch (error) { message.textContent = error instanceof Error ? error.message : 'No se pudo registrar el movimiento. Revisa stock y permisos.'; message.className = 'rounded-lg bg-red-100 p-3 text-sm font-bold text-gfc-red-dark'; } });
+
+let allIngredientes: Array<{ id: number; nombre: string }> = [];
+let editingComidaId: number | null = null;
+let editingIngredienteId: number | null = null;
+
+const money = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+
+const comidaModal = document.querySelector('#comida-modal') as HTMLElement;
+const comidaForm = document.querySelector('#comida-form') as HTMLFormElement;
+const recipeRows = document.querySelector('#recipe-rows') as HTMLElement;
+const ingredienteModal = document.querySelector('#ingrediente-modal') as HTMLElement;
+const ingredienteForm = document.querySelector('#ingrediente-form') as HTMLFormElement;
+const stockField = document.querySelector('#stock-field') as HTMLElement;
+
+async function loadAllIngredientes() { try { const items = await api.getIngredientes(); allIngredientes = items.map((i) => ({ id: i.id, nombre: i.nombreIngrediente })); } catch { allIngredientes = []; } }
+
+function buildRecipeRow(data?: { ingredienteId: number; cantidadBase: number; incluidoPorDefecto: boolean; permiteAdicional: boolean; permiteRetirar: boolean; precioAdicional: number }) {
+	const row = document.createElement('div');
+	row.className = 'flex flex-wrap items-end gap-2 rounded-xl border-2 border-gfc-ink bg-white p-3';
+	row.innerHTML = `<select class="flex-1 min-w-[140px] rounded-lg border-2 border-gfc-ink bg-white px-3 py-2 text-sm font-bold" data-field="ingredienteId" required>${allIngredientes.map((i) => `<option value="${i.id}" ${data && data.ingredienteId === i.id ? 'selected' : ''}>${i.nombre}</option>`).join('')}</select><label class="text-xs font-extrabold">Cant.<input type="number" min="0" step="0.01" data-field="cantidadBase" value="${data ? data.cantidadBase : 1}" required class="ml-1 w-20 rounded-lg border-2 border-gfc-ink bg-white px-2 py-2 text-sm" /></label><label class="text-xs font-extrabold"><input type="checkbox" data-field="incluidoPorDefecto" ${data && data.incluidoPorDefecto ? 'checked' : ''} class="mr-1 accent-gfc-red" />Base</label><label class="text-xs font-extrabold"><input type="checkbox" data-field="permiteAdicional" ${data && data.permiteAdicional ? 'checked' : ''} class="mr-1 accent-gfc-red" />Extra</label><label class="text-xs font-extrabold"><input type="checkbox" data-field="permiteRetirar" ${data && data.permiteRetirar ? 'checked' : ''} class="mr-1 accent-gfc-red" />Retirar</label><label class="text-xs font-extrabold">Precio<input type="number" min="0" step="0.01" data-field="precioAdicional" value="${data ? data.precioAdicional : 0}" class="ml-1 w-24 rounded-lg border-2 border-gfc-ink bg-white px-2 py-2 text-sm" /></label><button type="button" class="remove-recipe-row rounded-lg border-2 border-gfc-ink bg-gfc-red px-3 py-2 text-sm font-bold text-white hover:bg-gfc-red-dark">Quitar</button>`;
+	row.querySelector('.remove-recipe-row')!.addEventListener('click', () => row.remove());
+	return row;
+}
+
+document.querySelector('#add-recipe-row')?.addEventListener('click', () => { recipeRows.appendChild(buildRecipeRow()); });
+
+function collectRecipe() {
+	return Array.from(recipeRows.children).map((row) => {
+		const el = row as HTMLElement;
+		return {
+			ingredienteId: Number((el.querySelector('[data-field="ingredienteId"]') as HTMLSelectElement).value),
+			cantidadBase: Number((el.querySelector('[data-field="cantidadBase"]') as HTMLInputElement).value),
+			incluidoPorDefecto: (el.querySelector('[data-field="incluidoPorDefecto"]') as HTMLInputElement).checked,
+			permiteAdicional: (el.querySelector('[data-field="permiteAdicional"]') as HTMLInputElement).checked,
+			permiteRetirar: (el.querySelector('[data-field="permiteRetirar"]') as HTMLInputElement).checked,
+			precioAdicional: Number((el.querySelector('[data-field="precioAdicional"]') as HTMLInputElement).value),
+		};
+	});
+}
+
+async function openComidaModal(id?: number) {
+	editingComidaId = id ?? null;
+	recipeRows.innerHTML = '';
+	const title = document.querySelector('#comida-modal-title') as HTMLElement;
+	const typeLabel = document.querySelector('#comida-modal-type') as HTMLElement;
+	const msg = document.querySelector('#comida-message') as HTMLElement;
+	msg.classList.add('hidden');
+	comidaForm.reset();
+	if (editingComidaId) {
+		typeLabel.textContent = 'Editar comida';
+		title.textContent = 'Editar comida';
+		try {
+			const detalle = await api.getComida(editingComidaId);
+			(comidaForm.elements.namedItem('nombre') as HTMLInputElement).value = detalle.nombre;
+			(comidaForm.elements.namedItem('precio') as HTMLInputElement).value = String(detalle.precio);
+			(comidaForm.elements.namedItem('imagenURL') as HTMLInputElement).value = detalle.imagenURL || '';
+			detalle.ingredientes.forEach((c) => recipeRows.appendChild(buildRecipeRow({
+				ingredienteId: c.ingrediente.id,
+				cantidadBase: c.cantidadBase,
+				incluidoPorDefecto: c.incluidoPorDefecto,
+				permiteAdicional: c.permiteAdicional,
+				permiteRetirar: c.permiteRetirar,
+				precioAdicional: c.precioAdicional,
+			})));
+		} catch (error) {
+			msg.textContent = error instanceof Error ? error.message : 'No se pudo cargar la comida.';
+			msg.className = 'rounded-lg bg-red-100 p-3 text-sm font-bold text-gfc-red-dark';
+			msg.classList.remove('hidden');
+		}
+	} else {
+		typeLabel.textContent = 'Nueva comida';
+		title.textContent = 'Nueva comida';
+	}
+	comidaModal.classList.remove('hidden');
+	comidaModal.classList.add('flex');
+}
+
+function closeComidaModal() { comidaModal.classList.add('hidden'); comidaModal.classList.remove('flex'); }
+
+document.querySelector('#close-comida')?.addEventListener('click', closeComidaModal);
+document.querySelector('#new-comida-btn')?.addEventListener('click', async () => { await loadAllIngredientes(); openComidaModal(); });
+
+comidaForm.addEventListener('submit', async (event) => {
+	event.preventDefault();
+	const data = Object.fromEntries(new FormData(comidaForm).entries());
+	const msg = document.querySelector('#comida-message') as HTMLElement;
+	try {
+		const body: ComidaBody = {
+			nombre: String(data.nombre),
+			precio: Number(data.precio),
+			imagenURL: String(data.imagenURL) || null,
+			ingredientes: collectRecipe(),
+		};
+		if (editingComidaId) await api.updateComida(editingComidaId, body);
+		else await api.createComida(body);
+		closeComidaModal();
+		await loadMenuCrud();
+	} catch (error) {
+		msg.textContent = error instanceof Error ? error.message : 'No se pudo guardar la comida.';
+		msg.className = 'rounded-lg bg-red-100 p-3 text-sm font-bold text-gfc-red-dark';
+		msg.classList.remove('hidden');
+	}
+});
+
+async function loadMenuCrud() {
+	const status = document.querySelector('#menu-crud-status') as HTMLElement;
+	try {
+		const items = await api.getComidas();
+		status.classList.add('hidden');
+		renderMenuCrud(items);
+	} catch (error) {
+		status.classList.remove('hidden');
+		status.innerHTML = `<div><p>No pudimos cargar el menú.</p><p class="mt-2 text-sm text-black/60">${error instanceof Error ? error.message : 'Revisa la conexión.'}</p></div>`;
+	}
+}
+
+function renderMenuCrud(items: Comida[]) {
+	const tbody = document.querySelector('#menu-crud-body') as HTMLElement;
+	tbody.innerHTML = items.map((item) => `<tr class="border-b border-gfc-ink/10 last:border-0"><td class="px-5 py-4 font-display text-lg font-bold">${item.nombre}</td><td class="px-5 py-4 font-semibold">${money(Number(item.precio))}</td><td class="px-5 py-4">${item.imagenURL ? `<img src="${item.imagenURL}" alt="${item.nombre}" width="80" height="52" loading="lazy" class="h-14 w-20 rounded-lg object-cover" />` : '<span class="text-sm text-black/40">Sin imagen</span>'}</td><td class="px-5 py-4 text-right"><div class="flex justify-end gap-2"><button class="edit-comida-btn rounded-lg border-2 border-gfc-ink bg-white px-3 py-2 text-sm font-bold hover:bg-gfc-yellow" data-id="${item.id}">Editar</button><button class="delete-comida-btn rounded-lg border-2 border-gfc-ink bg-gfc-red px-3 py-2 text-sm font-bold text-white hover:bg-gfc-red-dark" data-id="${item.id}" data-name="${item.nombre}">Eliminar</button></div></td></tr>`).join('');
+	tbody.querySelectorAll<HTMLButtonElement>('.edit-comida-btn').forEach((btn) => btn.addEventListener('click', async () => { await loadAllIngredientes(); openComidaModal(Number(btn.dataset.id)); }));
+	tbody.querySelectorAll<HTMLButtonElement>('.delete-comida-btn').forEach((btn) => btn.addEventListener('click', async () => { if (confirm(`Eliminar "${btn.dataset.name}"? Esta accion no se puede deshacer.`)) { try { await api.deleteComida(Number(btn.dataset.id)); await loadMenuCrud(); } catch (error) { alert(error instanceof Error ? error.message : 'No se pudo eliminar la comida.'); } } }));
+}
+
+function openIngredienteModal(id?: number, existing?: { nombre: string; unidadMedida: string }) {
+	editingIngredienteId = id ?? null;
+	ingredienteForm.reset();
+	const title = document.querySelector('#ingrediente-modal-title') as HTMLElement;
+	const typeLabel = document.querySelector('#ingrediente-modal-type') as HTMLElement;
+	const msg = document.querySelector('#ingrediente-message') as HTMLElement;
+	msg.classList.add('hidden');
+	if (editingIngredienteId) {
+		typeLabel.textContent = 'Editar ingrediente';
+		title.textContent = 'Editar ingrediente';
+		stockField.classList.add('hidden');
+		if (existing) {
+			(ingredienteForm.elements.namedItem('nombre') as HTMLInputElement).value = existing.nombre;
+			(ingredienteForm.elements.namedItem('unidadMedida') as HTMLSelectElement).value = existing.unidadMedida;
+		}
+	} else {
+		typeLabel.textContent = 'Nuevo ingrediente';
+		title.textContent = 'Nuevo ingrediente';
+		stockField.classList.remove('hidden');
+	}
+	ingredienteModal.classList.remove('hidden');
+	ingredienteModal.classList.add('flex');
+}
+
+function closeIngredienteModal() { ingredienteModal.classList.add('hidden'); ingredienteModal.classList.remove('flex'); }
+
+document.querySelector('#close-ingrediente')?.addEventListener('click', closeIngredienteModal);
+document.querySelector('#new-ingrediente-btn')?.addEventListener('click', () => openIngredienteModal());
+
+ingredienteForm.addEventListener('submit', async (event) => {
+	event.preventDefault();
+	const data = Object.fromEntries(new FormData(ingredienteForm).entries());
+	const msg = document.querySelector('#ingrediente-message') as HTMLElement;
+	try {
+		if (editingIngredienteId) {
+			await api.updateIngrediente(editingIngredienteId, {
+				nombre: String(data.nombre),
+				unidadMedida: String(data.unidadMedida) as 'UNIDAD' | 'GRAMO' | 'MILILITRO',
+			});
+		} else {
+			await api.createIngrediente({
+				nombre: String(data.nombre),
+				unidadMedida: String(data.unidadMedida) as 'UNIDAD' | 'GRAMO' | 'MILILITRO',
+				stockActual: Number(data.stockActual),
+			});
+		}
+		closeIngredienteModal();
+		await loadIngCrud();
+		await loadInventory();
+		await loadAllIngredientes();
+	} catch (error) {
+		msg.textContent = error instanceof Error ? error.message : 'No se pudo guardar el ingrediente.';
+		msg.className = 'rounded-lg bg-red-100 p-3 text-sm font-bold text-gfc-red-dark';
+		msg.classList.remove('hidden');
+	}
+});
+
+async function loadIngCrud() {
+	const status = document.querySelector('#ing-crud-status') as HTMLElement;
+	try {
+		const items = await api.getIngredientes();
+		status.classList.add('hidden');
+		renderIngCrud(items);
+	} catch (error) {
+		status.classList.remove('hidden');
+		status.innerHTML = `<div><p>No pudimos cargar los ingredientes.</p><p class="mt-2 text-sm text-black/60">${error instanceof Error ? error.message : 'Revisa la conexion.'}</p></div>`;
+	}
+}
+
+function renderIngCrud(items: Ingrediente[]) {
+	const tbody = document.querySelector('#ing-crud-body') as HTMLElement;
+	tbody.innerHTML = items.map((item) => `<tr class="border-b border-gfc-ink/10 last:border-0"><td class="px-5 py-4 font-display text-lg font-bold">${item.nombreIngrediente}</td><td class="px-5 py-4 font-semibold text-black/60">${item.unidadMedida}</td><td class="px-5 py-4"><span class="font-display text-2xl font-bold">${item.stockActual}</span></td><td class="px-5 py-4 text-right"><div class="flex justify-end gap-2"><button class="edit-ing-btn rounded-lg border-2 border-gfc-ink bg-white px-3 py-2 text-sm font-bold hover:bg-gfc-yellow" data-id="${item.id}" data-name="${item.nombreIngrediente}" data-unit="${item.unidadMedida}">Editar</button><button class="delete-ing-btn rounded-lg border-2 border-gfc-ink bg-gfc-red px-3 py-2 text-sm font-bold text-white hover:bg-gfc-red-dark" data-id="${item.id}" data-name="${item.nombreIngrediente}">Eliminar</button></div></td></tr>`).join('');
+	tbody.querySelectorAll<HTMLButtonElement>('.edit-ing-btn').forEach((btn) => btn.addEventListener('click', () => openIngredienteModal(Number(btn.dataset.id), { nombre: btn.dataset.name || '', unidadMedida: btn.dataset.unit || '' })));
+	tbody.querySelectorAll<HTMLButtonElement>('.delete-ing-btn').forEach((btn) => btn.addEventListener('click', async () => { if (confirm(`Eliminar "${btn.dataset.name}"? Esta accion no se puede deshacer.`)) { try { await api.deleteIngrediente(Number(btn.dataset.id)); await loadIngCrud(); await loadInventory(); } catch (error) { alert(error instanceof Error ? error.message : 'No se pudo eliminar el ingrediente.'); } } }));
+}
+
+if (session) (document.querySelector('#dashboard-user') as HTMLElement).textContent = `${session.nombreUsuario} · Empleado`;
+loadTop(); loadInventory(); loadMenuCrud(); loadIngCrud();
+</script>
