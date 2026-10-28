@@ -1,0 +1,450 @@
+PORTAFOLIO DE SOLUCIONES ARQUITECTÓNICAS
+Acciones UD | 
+SolTech
+ | 27 de octubre de 2026
+1. Alternativa 1: Arquitectura Hexagonal con Eventos
+1.1 Descripción de la solución
+La plataforma funciona como una sola aplicación organizada por áreas: cuentas, órdenes, portafolios y notificaciones. El usuario realiza su solicitud y puede consultar su avance mientras la plataforma se comunica con el proveedor financiero. Esta organización permite iniciar con pocos recursos y mantener separadas las reglas del negocio de los servicios contratados.
+Para Acciones UD, el beneficio es concentrar la operación en un despliegue sencillo sin depender de un único proveedor para todas las funciones. Si cambia el servicio de correo o el proveedor financiero, la integración se puede sustituir sin rehacer la lógica de comisiones y validaciones.
+1.2 Aclaraciones técnicas
+Aplicación: 
+Monolito modular en Java Spring Boot. El dominio contiene comisiones, reservas, validación de tenencias y estados de las órdenes; los puertos y adaptadores conectan Alpaca, Stripe y correo.
+Procesamiento de órdenes: 
+RabbitMQ
+ permite tareas asíncronas. El acuse de recepción de una orden no equivale a su ejecución; la interfaz debe mostrar ambos estados sin confundirlos.
+Integridad y recuperación: 
+PostgreSQL registra órdenes y movimientos. Se propone patrón 
+outbox
+, mensajes persistentes, confirmación de entrega, consumidores idempotentes y conciliación con Alpaca para controlar duplicados y fallos.
+Consultas de mercado: 
+Redis mantiene datos de consulta temporalmente, con fuente y fecha de actualización. Su indisponibilidad no debe modificar saldos ni posiciones.
+1.3 Infraestructura propuesta
+Recurso
+Distribución del despliegue
+Servidor de aplicación y datos
+1 VPS 
+DigitalOcean
+ Basic: 2 
+vCPU
+, 4 GiB de RAM y 80 GiB SSD.
+Servicios alojados
+Spring Boot, PostgreSQL, 
+RabbitMQ
+, Redis y servidor web en contenedores. El 
+frontend
+ estático se sirve desde el mismo VPS.
+Acceso y protección
+Un dominio, HTTPS, firewall y acceso administrativo restringido. Solo el servicio web queda público.
+Respaldo y operación
+Imagen diaria del VPS y respaldos lógicos de PostgreSQL; restauración y consistencia verificadas mediante pruebas.
+Perfil de uso: piloto con una sola unidad de despliegue y operación centralizada.
+1.4 Diagrama de arquitectura
+Figura 1. Arquitectura de la alternativa 1.
+Se muestra
+n
+ 
+las múltiples capas del sistema
+: 
+el dominio (arriba) no conoce a Alpaca, Stripe ni al correo; solo habla con los puertos 
+BrokerGateway
+, 
+MarketDataProvider
+, 
+PaymentProvider
+, 
+Notifier
+. Si Alpaca cambia o entra un proveedor de pago real, se reemplaza el adaptador, no el dominio.
+ 
+ 
+1.5 Análisis FODA
+Factor
+Implicación para Acciones UD
+Fortalezas
+Una sola aplicación simplifica el despliegue y el seguimiento. La separación del dominio facilita probar reglas financieras. Las colas desacoplan notificaciones y tareas de integración.
+Oportunidades
+Cambiar proveedores mediante adaptadores; incorporar módulos por etapas; extraer una capacidad a un servicio independiente si su crecimiento lo justifica.
+Debilidades
+El servidor concentra aplicación, datos y mensajería. Una caída del VPS afecta toda la plataforma. Los cambios se publican como una unidad y requieren pruebas de regresión.
+Amenazas
+Caídas o cambios de condiciones de Alpaca y correo; crecimiento superior al dimensionamiento; acumulación de mensajes si los consumidores no procesan a tiempo.
+1.6 Condiciones de operación y alcance
+El alcance operativo presupuestado comprende NYSE y NASDAQ, órdenes, fondos de prueba, portafolio, notificaciones y suscripción premium en entorno de prueba. Los módulos de comisionistas y auditoría ampliada, así como LSE, TSE y ASX, requieren aprobación de alcance antes de su implementación.
+La meta de 5.000 usuarios registrados, 1.500 concurrentes, respuesta de hasta 2 segundos y confirmación de órdenes de hasta 5 segundos debe verificarse con pruebas de carga e integración. Las configuraciones cotizadas son puntos de partida para un piloto, no una certificación de esa capacidad.
+Continuidad: 
+La cola reduce el acoplamiento, pero no garantiza por sí sola que una orden nunca se pierda. Deben probarse la persistencia, la recuperación y la conciliación de mensajes con movimientos financieros.
+Disponibilidad: 
+El servidor único no ofrece alta disponibilidad. Una operación con redundancia requiere otra topología y un presupuesto adicional.
+Responsabilidad operativa: 
+El equipo administra sistema operativo, actualizaciones, certificados, contenedores, restauración y monitoreo. No se contrata un servicio administrado de base de datos o mensajería.
+Dinero y cotizaciones: 
+Alpaca 
+paper
+ trading simula la ejecución y no envía órdenes a una bolsa real. La cuenta Paper 
+Only
+ ofrece datos IEX y no representa una licencia completa de datos de mercado.
+1.7 Consideraciones de implementación
+La validación inicial debe demostrar una compra completa: autorización, reserva de fondos, envío a Alpaca, recepción del resultado, actualización del portafolio y notificación. También debe comprobarse el comportamiento ante respuestas tardías, ejecuciones parciales y reintentos.
+1.8 Costos de infraestructura y servicios
+El despliegue utiliza un solo servidor de USD 24,00/mes. Base de datos, caché, mensajería y 
+frontend
+ comparten sus recursos, por lo que no se cobran otra vez como servicios administrados.
+Precios de lista consultados el 27/10/2026. Valores en USD, sin descuentos de bienvenida ni créditos temporales. Las cantidades de servidores corresponden al despliegue propuesto; no son una exigencia universal del estilo arquitectónico.
+Concepto
+Plan o cantidad
+Costo USD
+Periodicidad / condición
+Fuente
+Servidores 
+cloud
+1 VPS Basic de 4 GiB
+24,00
+Mensual
+DigitalOcean
+Respaldos diarios de los VPS
+30% del cómputo
+7,20
+Mensual; retención 7 días
+Backups
+Datos, caché y mensajería
+Autohospedados
+Incluido
+Consumen recursos del VPS
+Cómputo
+Frontend
+ y acceso HTTPS
+En el VPS contratado
+Incluido
+Sin hosting adicional
+Dominio y SSL
+Correo transaccional
+Resend
+ Free
+0,00
+Máx. 3.000/mes y 100/día
+Resend
+Integración bursátil de prueba
+Alpaca 
+paper
+ trading
+0,00
+Sin dinero real
+Alpaca
+Cobros de prueba
+Stripe 
+sandbox
+0,00
+Transacciones simuladas
+Stripe
+Dominio .
+com
+Porkbun
+, no premium
+11,08/año
+Pago anual; sujeto a disponibilidad
+Porkbun
+Concepto presupuestal
+Valor USD
+Operación mensual, sin prorratear dominio
+31,20
+Equivalente mensual con dominio anualizado
+32,12
+Primer mes de operación + registro del dominio por un año
+42,28
+Primer año: 12 meses de operación + un año de dominio
+385,48
+El dominio es opcional si se utiliza una dirección o subdominio ya disponible. Si se contrata, se paga el año completo; su equivalente mensual no es una factura adicional. El precio de renovación publicado para .
+com
+ no premium es USD 11,08/año y puede cambiar.
+1.9 Ampliaciones y límites del presupuesto
+Correo de mayor volumen: 
+Resend
+ 
+Pro cuesta
+ USD 20,00/mes para 50.000 correos mensuales, con excedentes a USD 0,90 por cada 1.000. Con este plan, la operación mensual sería USD 51,20, más el dominio anual. Los límites de envío y de API también deben revisarse antes del lanzamiento.
+El presupuesto incluye infraestructura del piloto y servicios en los límites descritos. No incluye desarrollo, migración, soporte humano, impuestos aplicables, diferencias cambiarias, tráfico excedente, SMS/WhatsApp, almacenamiento externo adicional, datos bursátiles premium ni operación financiera con dinero real. Los respaldos de disco no sustituyen las pruebas de restauración de PostgreSQL.
+Las cuentas y el esquema multiusuario de Alpaca Broker API requieren una validación independiente de acceso y condiciones comerciales; el precio gratuito de Paper 
+Only
+ no constituye una cotización de corretaje para clientes finales.
+2. Alternativa 2: Arquitectura 
+Microkernel
+ con Plug-
+ins
+2.1 Descripción de la solución
+La plataforma se construye alrededor de un núcleo que mantiene las funciones esenciales y recibe extensiones para conectarse con proveedores o incorporar capacidades nuevas. El cliente puede añadir funciones sin sustituir toda la aplicación, siempre que cada extensión respete las reglas de integración del núcleo.
+Para Acciones UD, esta opción resulta útil si se prevé ampliar con frecuencia el catálogo de proveedores, tipos de órdenes o servicios adicionales. Su principal inversión está en definir y probar esas reglas de extensión antes de incorporar nuevos módulos.
+2.2 Aclaraciones técnicas
+Núcleo: 
+Java Spring Boot administra identidad, autorización, coordinación de órdenes y transacciones. PostgreSQL mantiene saldos, órdenes y posiciones; los contratos delimitan qué puede modificar cada extensión.
+Extensiones: 
+Interfaces Java o SPI permiten incorporar conectores de datos, ejecución, pagos y notificaciones. Una interfaz por sí sola no implica instalación en caliente; la carga dinámica debe diseñarse expresamente si se requiere.
+Seguridad y premium: 
+Los permisos y las suscripciones habilitan o restringen capacidades por usuario. Esta autorización se valida en el servidor y no depende únicamente de activar un 
+plug
+-in.
+Aislamiento: 
+Los 
+plug-ins
+ comparten proceso y recursos con el núcleo. Deben aplicarse tiempos de espera y manejo de excepciones; un fallo grave o consumo excesivo de memoria puede afectar la aplicación completa.
+2.3 Infraestructura propuesta
+Recurso
+Distribución del despliegue
+Servidor de aplicación y datos
+1 VPS 
+DigitalOcean
+ Basic: 2 
+vCPU
+, 4 GiB de RAM y 80 GiB SSD.
+Servicios alojados
+Núcleo y 
+plug-ins
+ en un proceso de aplicación; PostgreSQL, caché y servidor web dentro del mismo VPS.
+Mensajería
+Las tareas asíncronas pueden usar 
+RabbitMQ
+ en el mismo servidor si los conectores lo requieren. Su uso no define el patrón 
+microkernel
+.
+Acceso y recuperación
+Un dominio, HTTPS, firewall, respaldo diario del VPS y respaldo lógico de PostgreSQL.
+El dimensionamiento mantiene 4 GiB para no asumir un ahorro de servidor que no se ha demostrado mediante mediciones.
+2.4 Diagrama de arquitectura
+Figura 2. Arquitectura de la alternativa 2.
+La conexión inicial de ejecución corresponde a NYSE y NASDAQ mediante Alpaca en entorno de simulación. Los conectores internacionales y la firma de comisionista requieren autorización de alcance y acceso al proveedor correspondiente.
+2.5 Análisis FODA
+Factor
+Implicación para Acciones UD
+Fortalezas
+Contratos de extensión explícitos; organización clara de integraciones; despliegue concentrado en una aplicación y un servidor inicial.
+Oportunidades
+Crear un catálogo de conectores reutilizables y añadir proveedores o reglas de ejecución cuando el negocio lo requiera.
+Debilidades
+Mayor esfuerzo inicial en contratos y compatibilidad. El núcleo y sus extensiones comparten recursos; el aislamiento de fallos no está garantizado por el patrón.
+Amenazas
+Cambios de API o de contratos que obliguen a actualizar varias extensiones; fallos de un 
+plug
+-in que afecten fondos o disponibilidad; ampliaciones que excedan la capacidad del servidor.
+2.6 Condiciones de operación y alcance
+El alcance operativo presupuestado comprende NYSE y NASDAQ, órdenes, fondos de prueba, portafolio, notificaciones y suscripción premium en entorno de prueba. Los módulos de comisionistas y auditoría ampliada, así como LSE, TSE y ASX, requieren aprobación de alcance antes de su implementación.
+Un nuevo proveedor puede exigir cambios en contratos, pruebas y migraciones. La capacidad de extensión reduce acoplamiento, pero no elimina ese trabajo ni garantiza compatibilidad automática.
+La meta de 5.000 usuarios registrados, 1.500 concurrentes, respuesta de hasta 2 segundos y confirmación de órdenes de hasta 5 segundos debe verificarse con pruebas de carga e integración. Las configuraciones cotizadas son puntos de partida para un piloto, no una certificación de esa capacidad.
+2.7 Consideraciones de implementación
+Los contratos del núcleo deben definir validación, errores, autorización, versionado y reversión de transacciones. Antes de aceptar un 
+plug
+-in se prueba que no duplique órdenes, no modifique saldos sin autorización y gestione adecuadamente los fallos del proveedor.
+2.8 Costos de infraestructura y servicios
+El núcleo y sus 
+plug-ins
+ se alojan en un servidor de USD 24,00/mes. La organización del software cambia, pero no exige más servidores ni un dominio por extensión. PostgreSQL, caché y cualquier mensajería local quedan incluidos en el mismo cómputo.
+Precios de lista consultados el 27/10/2026. Valores en USD, sin descuentos de bienvenida ni créditos temporales. Las cantidades de servidores corresponden al despliegue propuesto; no son una exigencia universal del estilo arquitectónico.
+Concepto
+Plan o cantidad
+Costo USD
+Periodicidad / condición
+Fuente
+Servidores 
+cloud
+1 VPS Basic de 4 GiB
+24,00
+Mensual
+DigitalOcean
+Respaldos diarios de los VPS
+30% del cómputo
+7,20
+Mensual; retención 7 días
+Backups
+Datos, caché y mensajería
+Autohospedados
+Incluido
+Consumen recursos del VPS
+Cómputo
+Frontend
+ y acceso HTTPS
+En el VPS contratado
+Incluido
+Sin hosting adicional
+Dominio y SSL
+Correo transaccional
+Resend
+ Free
+0,00
+Máx. 3.000/mes y 100/día
+Resend
+Integración bursátil de prueba
+Alpaca 
+paper
+ trading
+0,00
+Sin dinero real
+Alpaca
+Cobros de prueba
+Stripe 
+sandbox
+0,00
+Transacciones simuladas
+Stripe
+Dominio .
+com
+Porkbun
+, no premium
+11,08/año
+Pago anual; sujeto a disponibilidad
+Porkbun
+Concepto presupuestal
+Valor USD
+Operación mensual, sin prorratear dominio
+31,20
+Equivalente mensual con dominio anualizado
+32,12
+Primer mes de operación + registro del dominio por un año
+42,28
+Primer año: 12 meses de operación + un año de dominio
+385,48
+El dominio es opcional si se utiliza una dirección o subdominio ya disponible. Si se contrata, se paga el año completo; su equivalente mensual no es una factura adicional. El precio de renovación publicado para .
+com
+ no premium es USD 11,08/año y puede cambiar.
+2.9 Ampliaciones y límites del presupuesto
+Correo de mayor volumen: 
+Resend
+ 
+Pro cuesta
+ USD 20,00/mes para 50.000 correos mensuales, con excedentes a USD 0,90 por cada 1.000. Con este plan, la operación mensual sería USD 51,20, más el dominio anual. Los límites de envío y de API también deben revisarse antes del lanzamiento.
+El presupuesto incluye infraestructura del piloto y servicios en los límites descritos. No incluye desarrollo, migración, soporte humano, impuestos aplicables, diferencias cambiarias, tráfico excedente, SMS/WhatsApp, almacenamiento externo adicional, datos 
+bursátiles premium ni operación financiera con dinero real. Los respaldos de disco no sustituyen las pruebas de restauración de PostgreSQL.
+Las cuentas y el esquema multiusuario de Alpaca Broker API requieren una validación independiente de acceso y condiciones comerciales; el precio gratuito de Paper 
+Only
+ no constituye una cotización de corretaje para clientes finales.
+3. Alternativa 3: Microservicios Desplegados en Contenedores
+3.1 Descripción de la solución
+La plataforma se divide en aplicaciones pequeñas que colaboran entre sí. Cada una atiende un área del negocio, como identidad, órdenes, portafolio o notificaciones. Una función puede actualizarse o recibir más recursos sin publicar de nuevo toda la plataforma, siempre que sus dependencias lo permitan.
+Para Acciones UD, esta opción permite organizar equipos o cargas de trabajo por área. A cambio, exige más coordinación: los servicios deben comunicarse de forma segura, mantener sus datos consistentes y permitir localizar una operación a través de varios componentes.
+3.2 Aclaraciones técnicas
+Servicios: 
+Identidad, trading, portafolio, notificaciones/suscripciones y auditoría operativa. El servicio de comisionistas se incorpora solo si se aprueba ese módulo.
+Comunicación y datos: 
+API de entrada y comunicación HTTP o por eventos. Cada servicio es propietario de sus datos. El piloto puede compartir una instancia física de PostgreSQL con bases y credenciales separadas, sin acceso directo a tablas ajenas.
+Consistencia: 
+Las operaciones entre servicios requieren idempotencia, 
+outbox
+, conciliación y acciones compensatorias. No se asume una transacción ACID única entre todos los procesos.
+Despliegue: 
+Contenedores con configuración y publicación independientes. No se requiere una máquina virtual por servicio ni Kubernetes para que la solución sea de microservicios.
+3.3 Infraestructura propuesta
+Recurso
+Distribución del despliegue
+Servidores de aplicación
+2 VPS Basic de 4 GiB, 2 
+vCPU
+ y 80 GiB SSD cada uno. Servicios distribuidos entre ambos; entrada web en uno de ellos.
+Servidor de datos
+1 VPS Basic de 4 GiB para PostgreSQL, 
+RabbitMQ
+ y Redis. Red privada y puertos restringidos.
+Frontend
+ y dominio
+Frontend
+ estático en la capa web. Un dominio compartido con rutas o subdominios para la API; no se compra un dominio por servicio.
+Operación
+Publicación independiente, logs correlacionados, métricas por servicio y respaldo diario de las tres máquinas.
+La distribución en tres VPS es una decisión de este despliegue. Compartir hosts reduce aislamiento físico, pero no elimina la independencia de publicación de los servicios.
+3.4 Diagrama de arquitectura
+Figura 3. Arquitectura de la alternativa 3.
+El diagrama representa la separación funcional por servicios. 
+Brokerage
+ corresponde al módulo de comisionistas sujeto a aprobación. La infraestructura presupuestada distribuye los contenedores entre dos hosts de aplicación y un host de datos.
+3.5 Análisis FODA
+Factor
+Implicación para Acciones UD
+Fortalezas
+Publicaciones por servicio; responsabilidades delimitadas; posibilidad de aumentar recursos para una capacidad concreta y de asignar equipos por dominio.
+Oportunidades
+Atender crecimiento desigual de consultas y órdenes; evolucionar funcionalidades por área; introducir aislamiento o redundancia adicional según la demanda.
+Debilidades
+Más componentes que operar y proteger. Mayor dificultad de pruebas de integración, diagnóstico y consistencia de datos entre servicios.
+Amenazas
+Fallos de red o de dependencias que se propaguen; incompatibilidad de contratos; incremento del costo de monitoreo, tráfico y recursos al crecer el sistema.
+3.6 Condiciones de operación y alcance
+El alcance operativo presupuestado comprende NYSE y NASDAQ, órdenes, fondos de prueba, portafolio, notificaciones y suscripción premium en entorno de prueba. Los módulos de comisionistas y auditoría ampliada, así como LSE, TSE y ASX, requieren aprobación de alcance antes de su implementación.
+Los tres VPS no constituyen alta disponibilidad: el host de datos y el punto de entrada siguen siendo dependencias únicas. La redundancia de datos y balanceadores externos requieren otra configuración y costos adicionales.
+La meta de 5.000 usuarios registrados, 1.500 concurrentes, respuesta de hasta 2 segundos y confirmación de órdenes de hasta 5 segundos debe verificarse con pruebas de carga e integración. Las configuraciones cotizadas son puntos de partida para un piloto, no una certificación de esa capacidad.
+3.7 Consideraciones de implementación
+Antes de distribuir la lógica financiera deben definirse quién reserva fondos, quién confirma una ejecución y cómo se recupera una operación incompleta. La aceptación exige probar caídas parciales, mensajes repetidos, interrupciones de red y trazabilidad de una orden entre servicios.
+3.8 Costos de infraestructura y servicios
+La propuesta utiliza tres servidores de USD 24,00/mes cada uno: dos para aplicaciones y uno para datos y mensajería. El costo de cómputo es USD 72,00/mes; el respaldo diario se calcula sobre las tres máquinas. No se incluyen servicios administrados duplicados ni un clúster Kubernetes.
+Precios de lista consultados el 27/10/2026. Valores en USD, sin descuentos de bienvenida ni créditos temporales. Las cantidades de servidores corresponden al despliegue propuesto; no son una exigencia universal del estilo arquitectónico.
+Concepto
+Plan o cantidad
+Costo USD
+Periodicidad / condición
+Fuente
+Servidores 
+cloud
+3 VPS Basic de 4 GiB
+72,00
+Mensual
+DigitalOcean
+Respaldos diarios de los VPS
+30% del cómputo
+21,60
+Mensual; retención 7 días
+Backups
+Datos, caché y mensajería
+Autohospedados
+Incluido
+Consumen recursos del VPS
+Cómputo
+Frontend
+ y acceso HTTPS
+En el VPS contratado
+Incluido
+Sin hosting adicional
+Dominio y SSL
+Correo transaccional
+Resend
+ Free
+0,00
+Máx. 3.000/mes y 100/día
+Resend
+Integración bursátil de prueba
+Alpaca 
+paper
+ trading
+0,00
+Sin dinero real
+Alpaca
+Cobros de prueba
+Stripe 
+sandbox
+0,00
+Transacciones simuladas
+Stripe
+Dominio .
+com
+Porkbun
+, no premium
+11,08/año
+Pago anual; sujeto a disponibilidad
+Porkbun
+Concepto presupuestal
+Valor USD
+Operación mensual, sin prorratear dominio
+93,60
+Equivalente mensual con dominio anualizado
+94,52
+Primer mes de operación + registro del dominio por un año
+104,68
+Primer año: 12 meses de operación + un año de dominio
+1134,28
+El dominio es opcional si se utiliza una dirección o subdominio ya disponible. Si se contrata, se paga el año completo; su equivalente mensual no es una factura adicional. El precio de renovación publicado para .
+com
+ no premium es USD 11,08/año y puede cambiar.
+3.9 Ampliaciones y límites del presupuesto
+Correo de mayor volumen: 
+Resend
+ 
+Pro cuesta
+ USD 20,00/mes para 50.000 correos mensuales, con excedentes a USD 0,90 por cada 1.000. Con este plan, la operación mensual sería USD 113,60, más el dominio anual. Los límites de envío y de API también deben revisarse antes del lanzamiento.
+El presupuesto incluye infraestructura del piloto y servicios en los límites descritos. No incluye desarrollo, migración, soporte humano, impuestos aplicables, diferencias cambiarias, tráfico excedente, SMS/WhatsApp, almacenamiento externo adicional, datos 
+bursátiles premium ni operación financiera con dinero real. Los respaldos de disco no sustituyen las pruebas de restauración de PostgreSQL.
+Las cuentas y el esquema multiusuario de Alpaca Broker API requieren una validación independiente de acceso y condiciones comerciales; el precio gratuito de Paper 
+Only
+ no constituye una cotización de corretaje para clientes finales.

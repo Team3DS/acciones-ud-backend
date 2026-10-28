@@ -1,0 +1,633 @@
+UNIVERSIDAD DISTRITAL FRANCISCO JOSÉ DE CALDAS
+Facultad de Ingeniería · Ingeniería de Sistemas
+Diseño de Software · Proyecto Final
+PLAN DE PRUEBAS
+Acciones UD · Plataforma web de Day Trading
+Empresa de desarrollo: 
+Soltech
+Grupo 3 · Scrum
+Versión: 1.0
+Fecha: 22 de octubre de 2026
+Cliente: Ing. Helio Ramírez, 
+MSc
+.
+Integrantes: Sebastián Pardo Tirado · Andrés David Murillo Castro · Juan Carlos Quintero Rubiano · Jamyson Steven Rolón Castaño · Paula Isabella Martínez Escalante
+1. Introducción y objetivo del documento
+Este documento define el plan de pruebas del proyecto Acciones UD: qué se va a probar, cómo, dónde y cuándo se realizarán las pruebas, con qué herramientas y por qué se eligieron. Su objetivo es garantizar que el sistema entregado cumpla los requerimientos funcionales y no funcionales priorizados como Must y 
+Should
+ en el documento "Levantamiento de Requerimientos y Alcance v0.2", y servir como evidencia formal del proceso de verificación para el cliente y la asignatura.
+El plan está alineado con las siguientes referencias del proyecto:
+Enunciado "Instrumento Financiero 2026-3": reglas de compra/venta, escenarios 1 a 10, requisitos de trazabilidad y rendimiento (≤ 2 s, confirmación ≤ 5 s, 5000 usuarios registrados / 1500 concurrentes).
+Levantamiento de Requerimientos y Alcance v0.2: 82 RF en 13 módulos y 24 RNF; alcance limitado a NYSE y NASDAQ con ejecución real en el 
+sandbox
+ de Alpaca.
+Informe de estimación de esfuerzo y costos: alerta de capacidad; las pruebas se dimensionan para no consumir el presupuesto de desarrollo.
+Acta de reunión #1 y documento de asignación de roles: Scrum semanal, gestión en Jira, líder de procesos y calidad (Juan Carlos Quintero).
+Audiencia: equipo de desarrollo (Team3DS/
+Soltech
+), el cliente (docente) para validación, y el grupo de calidad como guía operativa diaria.
+1.1 Objetivos de las pruebas
+Verificar que los 6 flujos Must (F-01 a F-06) y los 4 flujos 
+Should
+ (F-07 a F-10) funcionan de extremo a extremo.
+Comprobar los atributos de calidad pactados: respuesta ≤ 2 s (p95), confirmación de órdenes ≤ 5 s, integridad transaccional (3FN, ACID), seguridad (MFA, OWASP Top 10), despliegue público HTTPS.
+Prevenir regresiones durante los 
+sprints
+ mediante pruebas automatizadas ejecutadas en el pipeline CI.
+Producir evidencia medible y trazable (reportes de ejecución, defectos en Jira) para los entregables finales.
+2. Alcance de las pruebas
+2.1 Dentro del alcance
+Requerimientos funcionales Must (27) y 
+Should
+ (19) de los módulos M1 a M6, M8 a M11 y M13.
+Requerimientos no funcionales Must (13) y 
+Should
+ (8) de los grupos G1 a G6.
+Integraciones reales en modo 
+sandbox
+/prueba: Alpaca (cuentas, fondos, órdenes, datos), Stripe (suscripción) y proveedor de correo (OTP).
+Flujos de excepción explícitos: fondos insuficientes, venta sin tenencia, mercado cerrado (encolamiento), cancelación de órdenes, expiración de límites.
+2.2 Fuera del alcance
+Módulos M7 (Comisionistas) y M12 (Auditoría avanzada): solo se probarán en caso de implementarse (actualmente 
+Could
+ Have).
+Los 10 requerimientos 
+Won't
+ Have (retiros reales, bolsas internacionales, WhatsApp, 
+Splunk
+, entre otros).
+Certificaciones formales de seguridad o accesibilidad (WCAG se cubre con buenas prácticas básicas).
+Prueba de carga contra la Broker API de producción de Alpaca (no existe; todo opera en 
+paper
+ trading).
+3. Estrategia y niveles de prueba
+La estrategia es de "pirámide invertida balanceada": la mayor parte del esfuerzo se automatiza en pruebas unitarias e integración (rápidas y baratas), un conjunto menor de pruebas 
+end-to-end
+ cubre los flujos de negocio, y un grupo de pruebas manuales/exploratorias complementa la experiencia de usuario. Cada nivel se ejecuta automáticamente en el pipeline por cada integración (CI) y en la noche sobre el entorno desplegado, salvo la UAT que es guiada por el cliente al final de cada sprint.
+Nivel
+Objetivo
+Técnica
+Responsable principal
+Herramientas
+Unitarias (
+backend
+)
+Reglas puras de negocio: comisión 2 % y reparto 60/40, máquina de estados de la orden, validaciones de fondos/tenencia, cálculo de precios promedio.
+Caja negra y caja blanca; casos de equivalencia, límites (0, 1, N) y redondeo a 2 decimales.
+Juan Carlos / Jamyson
+JUnit
+ 5, 
+Mockito
+, 
+JaCoCo
+Unitarias (
+frontend
+)
+Componentes 
+React
+: formularios de orden, 
+dashboard
+, portafolio, 
+estados de carga y error.
+Caja negra; renderizado y eventos.
+Paula / Andrés
+Vitest
+ + 
+React
+ 
+Testing
+ Library
+Integración
+Adaptadores hacia Alpaca, Stripe y correo; persistencia en PostgreSQL; mensajería 
+RabbitMQ
+; caché Redis; idempotencia y reservas de saldo.
+Contratos simulados (
+WireMock
+) + contenedores reales (
+Testcontainers
+); casos positivos y de fallo (
+timeout
+, error HTTP, cola caída).
+Juan Carlos
+Testcontainers
+, 
+WireMock
+, 
+JUnit
+ 5
+Sistema / API
+Endpoints
+ REST: autenticación MFA, creación de órdenes, consulta de portafolio, reportes.
+Pruebas funcionales de API sobre el entorno de despliegue.
+Jamyson
+JUnit
+ (
+MockMvc
+) y Newman/Postman
+End-
+to
+-
+end
+ (E2E)
+Flujos de negocio completos F-01 a F-10 desde el navegador.
+Escenarios automatizados basados en los escenarios 1-10 del enunciado.
+Paula / Andrés
+Playwright
+ (
+Chromium
+, móvil y escritorio)
+Rendimiento y carga
+RNF-01 (p95 ≤ 2 s), RNF-02 (confirmación ≤ 5 s), RNF-03 (1500 concurrentes, 5000 registrados).
+Prueba de carga y de estrés con rampa hasta 1500 usuarios virtuales sobre login, cotizaciones y órdenes.
+Jamyson / Juan Carlos
+k6
+Seguridad
+RNF-09/10/11: HTTPS, OWASP Top 10, gestión de secretos, control de acceso por roles.
+Escaneo dinámico sobre el entorno público + revisión manual de autorización (comisionista no ve portafolios ajenos).
+Juan Carlos
+OWASP ZAP, revisión de código
+Exploratoria
+Usabilidad del flujo de compra (≤ 4 pasos, mensajes en español), 
+responsividad
+ desde 360 
+px
+.
+Sesiones temporizadas por integrante con 
+checklist
+ ligero.
+Todos (rotación)
+Navegadores Chrome, Edge, Firefox, Safari
+Aceptación (UAT)
+Validación del cliente por sprint: demostración de los flujos entregados contra los criterios de aceptación.
+Demostración guiada + 
+checklist
+ de aceptación por flujo; retroalimentación registrada en el acta.
+Scrum (PO/SM del sprint)
+Jira, actas de reunión
+4. Qué se prueba: matriz de flujos y requisitos
+La unidad de verificación funcional es el flujo de extremo a extremo definido en el alcance (sección 8.2 del levantamiento v0.2). Cada flujo se descompone en casos de prueba trazables a los RF/RNF que lo implementan.
+Flujo
+Descripción
+Requisitos clave
+Niveles
+Sprint de verificación
+F-01
+Registro → verificación de correo → MFA → cuenta Alpaca → fondeo simulado → 
+dashboard
+.
+RF-01, RF-02, RF-06, RF-08, RF-18
+Unitaria, Integración, E2E
+S2-S3
+F-02
+Compra Market con fondos suficientes → confirmación ≤ 5 s → portafolio actualizado → notificación.
+RF-25, RF-29, RF-30, RF-33, RNF-02
+Unitaria, Integración, E2E, Carga
+S3-S4
+F-03
+Orden Limit pendiente → ejecución automática o cancelación con liberación de saldo.
+RF-26, RF-34, RF-09, RF-36
+Unitaria, Integración, E2E
+S4-S5
+F-04
+Orden con mercado cerrado → confirmación 
+explícita → cola → envío en siguiente apertura.
+RF-13, RF-12, RF-32
+Unitaria, Integración, E2E
+S4
+F-05
+Trazabilidad: línea de tiempo de estados con actor, causa e instante y desglose de comisión.
+RF-32, RF-35, RNF-15, RNF-16
+Unitaria, Sistema
+S5
+F-06
+Reportes de transacciones y comisiones desglosadas por periodo.
+RF-64, RF-65
+Unitaria, Sistema, E2E
+S5
+F-07
+Stop Loss, Take Profit y expiración de órdenes.
+RF-27, RF-36
+Unitaria, Integración
+S5-S6
+F-08
+Premium: Stripe test → 
+watchlist
+ y alertas de precio → gestión de suscripción.
+RF-59 a RF-62
+Integración, E2E
+S5-S6
+F-09
+Administración: gestión de usuarios y parametrización de comisiones.
+RF-81, RF-82, RF-05
+Sistema, Exploratoria
+S6
+F-10
+KPI empresariales, reporte de ganancias y pérdidas, reporte mensual.
+RF-70, RF-66, RF-68
+Sistema
+S6
+RNF G1
+Rendimiento: p95 ≤ 2 s y 1500 usuarios virtuales sostenidos.
+RNF-01, RNF-03, RNF-04
+Carga (k6)
+S5 (primera pasada) y S6 (final)
+RNF G3/G4
+Seguridad e integridad: HTTPS, secretos, RBAC, 3FN, 
+precisión monetaria, UTC.
+RNF-09 a RNF-16
+Seguridad, Integración, revisión
+S6
+Criterio de trazabilidad: cada caso de prueba en Jira referencia el ID del requisito (RF-
+nn
+ / RNF-
+nn
+) que verifica; un requisito Must o 
+Should
+ no se considera "Verificado" hasta tener al menos un caso en estado 
+Passed
+.
+5. Dónde se prueban: entornos y datos
+5.1 Entornos
+Entorno
+Propósito
+Configuración
+Disponibilidad
+Local de desarrollo
+Pruebas unitarias e integración en cada 
+commit
+ del integrante.
+Docker 
+Compose
+: PostgreSQL 16, 
+RabbitMQ
+, Redis; 
+wiremocks
+ de Alpaca/Stripe/correo.
+Máquinas de cada integrante (semáforo local antes de 
+push
+).
+CI (GitHub 
+Actions
+)
+Ejecución automática de unitarias + integración + análisis estático en cada 
+pull
+ 
+request
+.
+Runners gratuitos de GitHub; 
+job
+ 
+backend
+ (Maven + 
+JUnit
+ + SonarQube) y 
+job
+ 
+frontend
+ (
+Vitest
+ + 
+build
+).
+Por cada PR a 
+main
+.
+Despliegue público (
+staging
+/producción del proyecto)
+Pruebas de sistema, E2E, carga, seguridad y UAT.
+Contenedores desplegados en la nube con HTTPS público (requisito: NO localhost); mismo grafo de servicios que producción.
+Permanente desde la semana 1 (S1).
+Sandbox de Alpaca (
+paper
+ trading)
+Ejecución real simulada de órdenes en NYSE/NASDAQ.
+Cuentas 
+paper
+ por usuario; 
+feed
+ de datos IEX (limitado: se asume y documenta la degradación).
+Continuo; ventanas de mercado de EE. UU. (9:30-16:00 ET).
+Modo test de Stripe
+Suscripción premium sin cobros reales.
+Tarjetas de prueba documentadas de Stripe; 
+webhooks
+ simulados.
+Continuo.
+5.2 Datos de prueba
+Semilla de catálogo: las 10 acciones del alcance (AAPL, MSFT, GOOGL, AMZN, META, TSLA, NVDA, JNJ, JPM, XOM) con horarios de NYSE/NASDAQ.
+Usuarios de prueba por rol: inversionista principiante, experimentado, administrador; cada uno con correo y celular ficticios verificables.
+Saldos sembrados: casos de borde en fondos (compra exacta del saldo, saldo insuficiente, saldo con comisión al límite).
+Órdenes sembradas en todos los estados de la máquina de estados para validar la trazabilidad.
+Ningún dato personal real: se usa la política de minimización (RNF-12).
+6. Cuándo: cronograma de pruebas por sprint
+Las pruebas son continuas desde ya (
+sprints
+ 2 y 3), escalan su cobertura junto con el desarrollo, y concentran la validación formal en las últimas tres semanas. El cronograma respeta el congelamiento de funcionalidades al final de la semana 6 y la semana 7 de estabilización.
+Semana
+Fechas (2026)
+Actividades de prueba
+Evidencia de salida
+S2 (actual)
+17-23 oct
+Aprobación de este plan por el equipo; creación del tablero de defectos en Jira; diseño de los primeros casos unitarios de comisión y estados de orden; semáforo de PR con unitarias en CI.
+Plan de pruebas v1.0 aprobado; 
+checklist
+ de 
+smoke
+ en Jira.
+S3
+24-30 oct
+Pruebas unitarias de M1/M2/M5 (comisión, validaciones, estados); integración de Alpaca con 
+WireMock
+; 
+smoke
+ test del flujo de registro y primera compra en el entorno público.
+Cobertura ≥ 50 % del código nuevo; reporte de 
+smoke
+ en el acta.
+S4
+31 oct-6 nov
+Integración de órdenes, reservas y encolamiento; E2E de F-02, F-03 y F-4 (
+Playwright
+); primera suite de regresión nocturna automatizada.
+Suite E2E Must de trading en verde; defectos críticos cerrados.
+S5
+7-13 nov
+E2E de F-05, F-06 y F-08 (Stripe test); pruebas de trazabilidad y reportes; primera pasada de carga con k6 (rampa a 1500 VU) y registro de línea base de p95.
+Línea base de rendimiento documentada; flujos Must completos en verde.
+S6
+14-20 nov
+Pruebas 
+Should
+ completas (F-07, F-09, F-10); carga final con umbrales; OWASP ZAP sobre el entorno público; exploratoria de 
+responsividad
+ y usabilidad; congelamiento de funcionalidades.
+Reporte de carga con umbrales p95 ≤ 2 s; reporte ZAP sin alertas críticas.
+S7
+21-24 nov
+Regresión total de suites automatizadas; corrección de defectos; UAT final con el cliente (
+checklist
+ por flujo); reporte de resultados de pruebas como entregable del proyecto.
+Reporte final de pruebas; firma de aceptación del cliente; métricas de cobertura y defectos en Jira.
+Cada demostración de sprint incluye la ejecución en vivo de los flujos entregados; la reunión con el cliente (mínimo una por sprint) registra en el acta las observaciones de la UAT.
+7. Herramientas y justificación de su elección
+Herramienta
+Se usa para
+Por qué se eligió
+JUnit
+ 5 + 
+Mockito
+Pruebas unitarias del 
+backend
+ (lógica de dominio en Java puro).
+Estándar de facto en Spring Boot; el equipo ya lo conoce; permite probar las reglas de comisión y estados en milisegundos sin base de datos (ventaja directa de la arquitectura hexagonal elegida).
+JaCoCo
+Medición de cobertura de código.
+Integración nativa con Maven y umbrales configurables; permite exigir ≥ 70 % sobre la lógica crítica (RNF-21) y romper el 
+build
+ si baja.
+Testcontainers
+Pruebas de integración con PostgreSQL, 
+RabbitMQ
+ y Redis reales.
+Levanta servicios efímeros idénticos a los de despliegue dentro de contenedores: detecta errores que los 
+mocks
+ esconden (SQL, colas, caché) sin mantener ambientes manuales.
+WireMock
+Simulación de las 
+APIs
+ de Alpaca, Stripe y correo.
+Permite probar fallos de terceros (
+timeouts
+, 429, 500) de forma determinista: necesario para verificar reintentos y degradación controlada (RNF-06) sin depender de la disponibilidad real de Alpaca.
+Vitest
+ + 
+React
+ 
+Testing
+ Library
+Pruebas de componentes y 
+hooks
+ del 
+frontend
+ 
+React
+.
+Emparejado nativo de Vite (nuestro 
+bundler
+): ejecución instantánea y 
+cero configuración
+; RTL prueba el componente como lo usa el usuario, no detalles internos.
+Playwright
+Pruebas 
+end-to-end
+ de los flujos F-01 a F-10.
+Un solo 
+framework
+ para 
+Chromium
+/Firefox/WebKit y móvil (la interfaz es responsiva desde 360 
+px
+); 
+auto-espera
+ que 
+evita
+ falsos negativos por asincronía; paralelización gratuita.
+k6
+Prueba de carga (RNF-04: 1500 usuarios virtuales).
+Scripts en JavaScript (curva de aprendizaje mínima para el equipo), más liviano que 
+JMeter
+ en el runner de CI, y umbrales declarativos que marcan FAIL el 
+build
+ si el p95 supera 2 s.
+OWASP ZAP
+Escaneo dinámico de seguridad sobre el entorno público.
+Gratuito y de código abierto (restricción RES-03 del proyecto: sin licencias comerciales); cubre la verificación práctica del OWASP Top 10 (RNF-10) que exige el enunciado.
+SonarQube (Cloud o 
+Community
+)
+Análisis estático continuo (RNF-22).
+Detecta bugs, 
+code
+ 
+smells
+ y duplicación en cada PR; gratuito para repos públicos; complementa las pruebas con calidad preventiva.
+Docker / Docker 
+Compose
+Reproducibilidad de entornos de prueba.
+Garantiza que lo probado es lo desplegado (RNF-23: contenedores reproducibles) y elimina el "en mi máquina funciona".
+Jira
+Gestión de casos y defectos; trazabilidad requisito ↔ prueba ↔ defecto.
+Herramienta oficial de gestión del proyecto ("lo que no está en Jira no existe para la evaluación"); cada defecto enlaza el requisito afectado y el sprint.
+Postman / Newman
+Colección de pruebas de API ejecutable en CI (complemento).
+Permite a cualquier integrante (incluso de 
+frontend
+) ejecutar y mantener las pruebas de API sin escribir Java; exportable como evidencia.
+8. Gestión de defectos
+Todo defecto se registra como 
+issue
+ en Jira con: título descriptivo, pasos para reproducirlo, evidencia (captura o log), requisito afectado, severidad y prioridad. El ciclo de vida es: Nuevo → En progreso → Resuelto → Verificado (el paso a "Verificado" solo lo hace el Scrum 
+Master
+ del sprint) o Reabierto.
+Severidad
+Definición
+Ejemplo en Acciones UD
+Compromiso de corrección
+Bloqueante
+Impide un flujo Must o corrompe datos financieros.
+La compra no descuenta el saldo; la orden se duplica en Alpaca.
+Mismo día; congela el 
+merge
+ de la rama afectada.
+Crítica
+Rompe un flujo Must sin 
+workaround
+ o viola un RNF Must.
+La confirmación tarda más de 5 s; el historial de estados no registra el actor.
+Antes del cierre del sprint.
+Media
+Funcionalidad degradada o 
+Should
+ roto con alternativa.
+Filtro de reportes 
+falla
+ pero la consulta general sirve.
+Antes del congelamiento (fin de S6).
+Baja
+Cosmético o de usabilidad sin impacto funcional.
+Etiqueta mal alineada en el 
+dashboard
+ móvil.
+Si el cronograma lo permite.
+Política de salida por sprint: ningún defecto Bloqueante o Crítico abierto al cierre; los 
+Could
+ Have defectuosos no bloquean la entrega.
+9. Criterios de entrada, salida y aceptación
+9.1 Criterios de entrada (para iniciar cada ciclo de pruebas)
+Código integrado en 
+main
+ con el pipeline en verde y 
+build
+ reproducible por contenedores.
+Semilla de datos actualizada y entorno de despliegue accesible por HTTPS.
+Casos de prueba diseñados y cargados en Jira para los requisitos del sprint.
+9.2 Criterios de salida (para declarar el sistema listo)
+100 % de los flujos Must (F-01 a F-06) pasando en automatizado o manual, sin defectos Bloqueantes/Críticos abiertos.
+Cobertura ≥ 70 % (
+JaCoCo
+) sobre la lógica crítica: órdenes, comisiones y fondos (RNF-21).
+Prueba de carga ejecutada con 1500 VU y p95 ≤ 2 s en consultas y creación de órdenes; confirmación de órdenes ≤ 5 s en horario de mercado (RNF-01/02/03/04).
+Escaneo OWASP ZAP sin alertas críticas ni altas sin justificar; secretos fuera del repositorio (RNF-11).
+UAT final firmada por el cliente con 
+checklist
+ por flujo.
+10. Riesgos de las pruebas y mitigaciones
+Riesgo
+Impacto
+Mitigación
+El 
+feed
+ gratuito de Alpaca (IEX) no sostiene las cargas de la prueba.
+Alto
+La prueba de carga apunta a NUESTRO 
+backend
+ (el sistema bajo prueba); Alpaca se sustituye con 
+WireMock
+ a tasas reales y el resultado se documenta con su extrapolación, como ya pacta RNF-04.
+El hosting gratuito no aguanta 1500 VU reales.
+Medio
+Se ejecuta la prueba en el entorno disponible con escala reducida documentada y se extrapolan resultados; el p95 medido por 
+endpoint
+ es la evidencia.
+Las ventanas de mercado (9:30-16:00 ET) limitan las pruebas de ejecución real.
+Medio
+Fuera de horario se prueba el encolamiento (F-04) con mercado cerrado real; dentro de horario se reserva un bloque nocturno colombiano (mañana ET) para 
+smoke
+ de ejecución.
+Falsos positivos por datos de terceros inestables.
+Medio
+Contratos 
+WireMock
+ en CI (deterministas) + una suite pequeña de humo contra Alpaca real marcada como "no bloqueante".
+Tiempo del equipo: la estimación advierte capacidad ajustada.
+Alto
+Solo se automatiza lo Must y el humo; pruebas exploratorias se asignan por rotación de 30-45 min por integrante; los 
+Could
+ no se prueban salvo holgura.
+Entorno público caído durante la UAT.
+Bajo
+Respaldos diarios (RNF-07) y 
+rollback
+ a la imagen previa del contenedor; demo con plan B en local documentado como último recurso.
+11. Roles y responsabilidades
+Rol
+Responsable
+Responsabilidad en pruebas
+Líder de procesos y calidad
+Juan Carlos Quintero Rubiano
+Mantiene este plan, define la Definición de Hecho, revisa cobertura y organiza las sesiones de exploratoria; gate final de calidad del sprint.
+Apoyo QA / 
+backend
+Jamyson Steven Rolón Castaño
+Ejecuta y mantiene las suites de integración y de carga (k6); 
+triaje
+ de defectos 
+backend
+.
+Apoyo QA / 
+frontend
+Paula Isabella Martínez Escalante
+Mantiene suites 
+Vitest
+ y 
+Playwright
+; valida 
+responsividad
+ y usabilidad; registra la evidencia de las demos.
+Desarrolladores
+Todos
+Escriben las pruebas unitarias de su propio código antes de 
+abrir PR; corrigen defectos asignados.
+Scrum 
+Master
+ (rotativo)
+Rotación semanal
+Único que pasa tareas y defectos a "Verificado"; organiza la UAT y consolida la retroalimentación del cliente.
+Cliente
+Ing. Helio Ramírez
+Participa de la UAT por sprint y firma la aceptación final.
+12. Entregables de pruebas
+Este plan de pruebas (v1.0) aprobado por el equipo.
+Suites automatizadas versionadas en los repositorios de GitHub (
+backend
+ y 
+frontend
+).
+Reportes de ejecución por sprint: cobertura, resultados de E2E y humo (adjuntos en Jira).
+Reporte de prueba de carga con k6 (línea base y final) con umbrales p95.
+Reporte del escaneo OWASP ZAP y matriz de tratamiento de alertas.
+Registro consolidado de defectos por sprint con severidad y estado.
+Checklist
+ de UAT firmado por el cliente y acta de la reunión final.
+Firmas de aprobación
+Sebastián Pardo
+Andrés D. Murillo
+Juan C. Quintero
+Jamyson S. Rolón
+Paula I. Martínez
+____________
+Fecha: ___/___/2026
+____________
+Fecha: ___/___/2026
+____________
+Fecha: 
+22
+/
+10
+/2026
+____________
+Fecha: ___/___/2026
+____________
+Fecha: ___/___/2026
