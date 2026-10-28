@@ -1,0 +1,316 @@
+version: '3.8'
+
+services:
+  # Infraestructura compartida
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-acciones_ud}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-acciones_ud}
+      POSTGRES_MULTIPLE_DATABASES: identidad_db,fondos_db,catalogo_db,mercado_db,ordenes_db,portafolio_db,avisos_db,pagos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-multi-db.sh:/docker-entrypoint-initdb.d/init-multi-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acciones_ud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-acciones_ud}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-acciones_ud}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Service Discovery (opcional, para futuro)
+  # eureka:
+  #   image: springcloud/eureka-server
+  #   ports:
+  #     - "8761:8761"
+
+  # Gateway - Punto de entrada único
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EUREKA_URL=http://eureka:8761/eureka
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M1 - Identidad y Accesos
+  m1-identidad:
+    build:
+      context: .
+      dockerfile: m1-identidad/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=identidad_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M2 - Cuentas y Fondos
+  m2-cuentas-fondos:
+    build:
+      context: .
+      dockerfile: m2-cuentas-fondos/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=fondos_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M3 - Catálogo de Mercados
+  m3-catalogo-mercados:
+    build:
+      context: .
+      dockerfile: m3-catalogo-mercados/Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=catalogo_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M4 - Datos de Mercado
+  m4-datos-mercado:
+    build:
+      context: .
+      dockerfile: m4-datos-mercado/Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=mercado_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_API_SECRET=${ALPACA_API_SECRET}
+      - ALPACA_BASE_URL=${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M5 - Órdenes y Ejecución
+  m5-ordenes-ejecucion:
+    build:
+      context: .
+      dockerfile: m5-ordenes-ejecucion/Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=ordenes_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_API_SECRET=${ALPACA_API_SECRET}
+      - ALPACA_BASE_URL=${ALPACA_BASE_URL:-https://paper-api.alpaca.markets}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M6 - Portafolio
+  m6-portafolio:
+    build:
+      context: .
+      dockerfile: m6-portafolio/Dockerfile
+    ports:
+      - "8086:8086"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=portafolio_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M8 - Notificaciones y Alertas
+  m8-notificaciones:
+    build:
+      context: .
+      dockerfile: m8-notificaciones/Dockerfile
+    ports:
+      - "8088:8088"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=avisos_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # M10 - Suscripciones y Pagos
+  m10-suscripciones-pagos:
+    build:
+      context: .
+      dockerfile: m10-suscripciones-pagos/Dockerfile
+    ports:
+      - "8090:8090"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=pagos_db
+      - DB_USER=${DB_USER:-acciones_ud}
+      - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - EUREKA_URL=http://eureka:8761/eureka
+      - STRIPE_API_KEY=${STRIPE_API_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:

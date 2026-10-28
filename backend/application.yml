@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: acciones-ud-backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:acciones_ud}
+    username: ${DB_USER:acciones_ud}
+    password: ${DB_PASSWORD:acciones_ud}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:acciones_ud}
+    password: ${RABBITMQ_PASSWORD:acciones_ud}
+
+server:
+  port: ${SERVER_PORT:8080}

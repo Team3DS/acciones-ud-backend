@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: gateway
+  main:
+    web-application-type: reactive
+  cloud:
+    gateway:
+      routes:
+        - id: m1-identidad
+          uri: http://m1-identidad:8081
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/users/**
+        - id: m2-cuentas-fondos
+          uri: http://m2-cuentas-fondos:8082
+          predicates:
+            - Path=/api/v1/accounts/**,/api/v1/funds/**
+        - id: m3-catalogo-mercados
+          uri: http://m3-catalogo-mercados:8083
+          predicates:
+            - Path=/api/v1/markets/**,/api/v1/instruments/**
+        - id: m4-datos-mercado
+          uri: http://m4-datos-mercado:8084
+          predicates:
+            - Path=/api/v1/quotes/**,/api/v1/market-hours/**
+        - id: m5-ordenes-ejecucion
+          uri: http://m5-ordenes-ejecucion:8085
+          predicates:
+            - Path=/api/v1/orders/**,/api/v1/executions/**
+        - id: m6-portafolio
+          uri: http://m6-portafolio:8086
+          predicates:
+            - Path=/api/v1/portfolio/**,/api/v1/positions/**
+        - id: m8-notificaciones
+          uri: http://m8-notificaciones:8088
+          predicates:
+            - Path=/api/v1/notifications/**,/api/v1/alerts/**
+        - id: m10-suscripciones-pagos
+          uri: http://m10-suscripciones-pagos:8090
+          predicates:
+            - Path=/api/v1/subscriptions/**,/api/v1/payments/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: ${SERVER_PORT:8080}

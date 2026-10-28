@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent><groupId>co.edu.udistrital.acciones</groupId><artifactId>acciones-ud-backend</artifactId><version>0.0.1-SNAPSHOT</version></parent>
+    <artifactId>m4-datos-mercado</artifactId>
+    <name>M4 Datos de Mercado</name>
+    <description>Cotizaciones, feed IEX/Alpaca, caché Redis, horarios de mercado</description>
+    <packaging>jar</packaging>
+    <dependencies>
+        <dependency><groupId>co.edu.udistrital.acciones</groupId><artifactId>acciones-common</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webflux</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-amqp</artifactId></dependency>
+    </dependencies>
+</project>
