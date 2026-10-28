@@ -14,9 +14,6 @@ jobs:
   test:
     name: Test & Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,7 +65,7 @@ jobs:
       - name: Build and push all services
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
           file: ${{ matrix.service }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}-${{ matrix.service }}
