@@ -1,0 +1,44 @@
+# Maven
+/target/
+*.log
+*.log.*
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+frontend/*.local
+
+# Docs
+docs/*.docx
+*.pdf
+*.pptx
+
+# Build
+*.jar
+*.war
+*.ear
