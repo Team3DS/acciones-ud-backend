@@ -316,4 +316,4 @@ M10→M1/M8: SuscripcionActivada | SuscripcionCancelada | PagoFallido
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:7aa2f7,100:bb9af7&height=120&section=footer" width="100%" alt=""/>
 
-</div># Test
+</div>
