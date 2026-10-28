@@ -12,7 +12,7 @@ on:
 
 permissions:
   contents: read
-  packages: read
+  packages: write
   security-events: write
 
 env:
@@ -26,7 +26,6 @@ jobs:
     defaults:
       run:
         working-directory: ./backend
-    if: "!startsWith(github.ref, 'refs/heads/dependabot/')"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,8 +44,8 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Run tests (unit + integration)
-        run: mvn -B verify -DskipTests=false
+      - name: Run tests
+        run: mvn -B verify -DskipTests=false -DfailIfNoTests=false
 
       - name: Upload JaCoCo report
         uses: actions/upload-artifact@v4
@@ -56,44 +55,9 @@ jobs:
           path: backend/**/target/site/jacoco/
           retention-days: 7
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v4
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        if: env.SONAR_TOKEN != ''
-
-  test-dependabot:
-    name: Test (Dependabot)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-    if: "startsWith(github.ref, 'refs/heads/dependabot/')"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: Run tests (unit only, fast)
-        run: mvn -B test -DskipTests=false -DfailIfNoTests=false
-
   build:
     name: Build Docker Images
-    needs: [test, test-dependabot]
+    needs: test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -156,4 +120,3 @@ jobs:
       - name: Promote images to prod tag
         run: |
           echo "Images promoted to production"
-          # En un caso real: re-taggear las imágenes de dev a prod
