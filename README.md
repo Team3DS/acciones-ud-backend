@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7aa2f7,100:bb9af7&height=200&section=header&text=Acciones%20UD&fontSize=45&fontAlignY=35&desc=Backend%20%C2%B7%208%20Microservicios%20%C2%B7%20Soltech&descAlignY=57&descSize=16" width="100%" alt="Acciones UD Backend"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7aa2f7,100:bb9af7&height=200&section=header&text=Acciones%20UD&fontSize=45&fontAlignY=35&desc=Backend%20%C2%B7%208%20Microservicios%20%C2%B7%20Team3DS&descAlignY=57&descSize=16" width="100%" alt="Acciones UD Backend"/>
 
-<img src="https://github.com/Soltech.png" width="110" alt="Soltech"/>
+<img src="https://github.com/Team3DS.png" width="110" alt="Team3DS"/>
 
 [![Java 21](https://img.shields.io/badge/Java_21-e0af68?style=for-the-badge)](https://dev.java)
 [![Spring Boot 4.1](https://img.shields.io/badge/Spring_Boot_4.1-73daca?style=for-the-badge)](https://spring.io/projects/spring-boot)
@@ -20,7 +20,7 @@
 
 > ### `Sobre el repositorio`
 
-Backend de **Acciones UD**, la plataforma web de Day Trading para el mercado colombiano que desarrolla el equipo [Soltech](https://github.com/Soltech) en el Proyecto Final de Diseño Arquitectural de Software y Patrones (Universidad Distrital Francisco José de Caldas).
+Backend de **Acciones UD**, la plataforma web de Day Trading para el mercado colombiano que desarrolla el equipo [Team3DS](https://github.com/Team3DS) en el Proyecto Final de Diseño Arquitectural de Software y Patrones (Universidad Distrital Francisco José de Caldas).
 
 **Arquitectura**: 8 microservicios Spring Boot independientes, cada uno dueño de su base de datos, comunicados por REST (vía Gateway) y eventos asíncronos (RabbitMQ). Organización interna hexagonal (puertos y adaptadores) en cada servicio.
 
@@ -312,7 +312,7 @@ M10→M1/M8: SuscripcionActivada | SuscripcionCancelada | PagoFallido
 
 <div align="center">
 
-**Soltech** · Acciones UD · 2026
+**Team3DS** · Acciones UD · 2026
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:7aa2f7,100:bb9af7&height=120&section=footer" width="100%" alt=""/>
 

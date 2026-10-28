@@ -12,7 +12,7 @@
 
 > ### `Objetivo`
 
-Establecer las reglas de contribucion al backend de Acciones UD: 8 microservicios Spring Boot, cada uno dueño de su base de datos, comunicados por REST y eventos asincronos por RabbitMQ.
+Establecer las reglas de contribucion al backend de Acciones UD: 8 microservicios Spring Boot, cada uno dueno de su base de datos, comunicados por REST y eventos asincronos por RabbitMQ.
 
 > ### `Los 8 microservicios`
 
@@ -44,9 +44,9 @@ Gateway (puerto 8080): punto de entrada unico /api/v1/** con enrutamiento por pr
 
 1. Rama: tipo/descripcion-kebab (feat/, fix/, chore/, docs/).
 2. Commit: tipo(scope): descripcion en espanol.
-3. Un issue = un MR.
-4. Flujo: feature/* -> MR -> dev -> MR -> main (produccion).
-5. Descripcion del MR: Qué / Por qué / Cómo probar / Checklist.
+3. Un issue = un PR.
+4. Flujo: feature/* -> PR -> dev -> PR -> main (produccion).
+5. Descripcion del PR: Que / Por que / Como probar / Checklist.
 6. CI verde obligatorio antes de merge.
 7. Merge commit siempre. Nunca squash, rebase, force-push, --amend sobre commits pusheados.
 8. Nunca commitear secretos ni archivos .env. Revisar git status/git diff antes de stagear.
@@ -96,7 +96,7 @@ Gateway (puerto 8080): punto de entrada unico /api/v1/** con enrutamiento por pr
 1. Contratos documentados y aprobados (OpenAPI/AsyncAPI).
 2. Migraciones Flyway/Liquibase versionadas.
 3. Pruebas unitarias >= 70% cobertura (JaCoCo).
-4. Pruebas de integración pasando (Testcontainers).
+4. Pruebas de integracion pasando (Testcontainers).
 5. Imagen Docker construible (docker build).
 6. Endpoints /actuator/health funcionando.
 7. Logs estructurados JSON + correlation-id.
@@ -124,14 +124,14 @@ M10 -> M1/M8: SuscripcionActivada | SuscripcionCancelada | PagoFallido
 
 > ### `Contacto`
 
-Líder backend / Procesos y Calidad: Juan Carlos Quintero Rubiano.
-Issues: GitHub Projects (Kanban Soltech: To Do -> Doing -> Blocked).
+Lider backend / Procesos y Calidad: Juan Carlos Quintero Rubiano.
+Issues: GitHub Projects (Kanban Team3DS: To Do -> Doing -> Blocked).
 
 ---
 
 <div align="center">
 
-**Soltech** · Universidad Distrital Francisco José de Caldas · 2026
+**Team3DS** · Universidad Distrital Francisco José de Caldas · 2026
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:7aa2f7,100:bb9af7&height=120&section=footer" width="100%" alt=""/>
 
