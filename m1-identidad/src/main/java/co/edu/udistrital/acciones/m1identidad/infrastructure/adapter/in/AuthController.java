@@ -1,5 +1,6 @@
 package co.edu.udistrital.acciones.m1identidad.infrastructure.adapter.in;
 
+import co.edu.udistrital.acciones.m1identidad.application.dto.LoginRequest;
 import co.edu.udistrital.acciones.m1identidad.application.dto.RegisterUserRequest;
 import co.edu.udistrital.acciones.m1identidad.application.service.UserApplicationService;
 import org.springframework.http.ResponseEntity;
@@ -15,5 +16,11 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody RegisterUserRequest req) {
         var user = service.register(req);
         return ResponseEntity.ok().body(java.util.Map.of("id", user.getId(), "correo", user.getCorreo()));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+        var tokens = service.login(req);
+        return ResponseEntity.ok(tokens);
     }
 }
