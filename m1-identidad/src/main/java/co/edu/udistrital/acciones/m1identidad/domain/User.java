@@ -63,4 +63,10 @@ public class User {
     public Long getId() { return id; }
     public String getCorreo() { return correo; }
     public String getEstadoUsuario() { return estadoUsuario; }
+
+    public void setNombres(String nombres) { this.nombres = nombres; }
+    public void setApellidos(String apellidos) { this.apellidos = apellidos; }
+    public void setTipoDocumento(String tipoDocumento) { this.tipoDocumento = tipoDocumento; }
+    public void setCorreo(String correo) { this.correo = correo; }
+    public void setNivelInversionista(String nivelInversionista) { this.nivelInversionista = nivelInversionista; }
 }
