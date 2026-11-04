@@ -32,15 +32,18 @@ public class UserApplicationService {
         User user = new User();
         user.setNombres(req.nombres());
         user.setApellidos(req.apellidos());
-        // password hash simplificado
-        // user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setCorreo(req.correo());
+        user.setNivelInversionista(req.nivelInversionista());
+        user.setPasswordHash(passwordEncoder.encode(req.password()));
         return registerUserUseCase.execute(user);
     }
 
     public Map<String, String> login(LoginRequest req) {
         User user = userRepository.findByCorreo(req.correo())
                 .orElseThrow(() -> new IllegalArgumentException("Credenciales inválidas"));
-        // validación de password omitida por simplificación
+        if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Credenciales inválidas");
+        }
         String token = jwtService.generateAccessToken(user.getId());
         return Map.of("accessToken", token, "userId", String.valueOf(user.getId()));
     }

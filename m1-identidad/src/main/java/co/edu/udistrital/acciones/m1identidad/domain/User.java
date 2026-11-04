@@ -69,4 +69,6 @@ public class User {
     public void setTipoDocumento(String tipoDocumento) { this.tipoDocumento = tipoDocumento; }
     public void setCorreo(String correo) { this.correo = correo; }
     public void setNivelInversionista(String nivelInversionista) { this.nivelInversionista = nivelInversionista; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public String getPasswordHash() { return passwordHash; }
 }
