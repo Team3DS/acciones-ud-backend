@@ -1,0 +1,19 @@
+package co.edu.udistrital.acciones.m1identidad.infrastructure.adapter.in;
+
+import co.edu.udistrital.acciones.m1identidad.application.dto.RegisterUserRequest;
+import co.edu.udistrital.acciones.m1identidad.application.service.UserApplicationService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+public class AuthController {
+    private final UserApplicationService service;
+    public AuthController(UserApplicationService service) { this.service = service; }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody RegisterUserRequest req) {
+        var user = service.register(req);
+        return ResponseEntity.ok().body(java.util.Map.of("id", user.getId(), "correo", user.getCorreo()));
+    }
+}
