@@ -6,12 +6,14 @@ import co.edu.udistrital.acciones.m1identidad.application.port.out.UserRepositor
 import co.edu.udistrital.acciones.m1identidad.application.usecase.RegisterUserUseCase;
 import co.edu.udistrital.acciones.m1identidad.domain.User;
 import co.edu.udistrital.acciones.m1identidad.infrastructure.service.JwtService;
+import co.edu.udistrital.acciones.m1identidad.infrastructure.service.RefreshTokenService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -20,12 +22,14 @@ public class UserApplicationService {
     private final RegisterUserUseCase registerUserUseCase;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
-    public UserApplicationService(UserRepositoryPort userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public UserApplicationService(UserRepositoryPort userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.registerUserUseCase = new RegisterUserUseCase(userRepository);
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     public User register(RegisterUserRequest req) {
@@ -44,7 +48,9 @@ public class UserApplicationService {
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Credenciales inválidas");
         }
-        String token = jwtService.generateAccessToken(user.getId());
-        return Map.of("accessToken", token, "userId", String.valueOf(user.getId()));
+        String accessToken = jwtService.generateAccessToken(user.getId());
+        String refreshToken = UUID.randomUUID().toString();
+        refreshTokenService.store(user.getId(), refreshToken);
+        return Map.of("accessToken", accessToken, "refreshToken", refreshToken, "userId", String.valueOf(user.getId()));
     }
 }
