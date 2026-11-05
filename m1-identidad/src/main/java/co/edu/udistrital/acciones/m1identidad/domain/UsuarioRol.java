@@ -9,7 +9,7 @@ public class UsuarioRol {
     @EmbeddedId
     private UsuarioRolId id;
 
-    @Column(nullable = false)
+    @Column(name = "rol", nullable = false, insertable = false, updatable = false)
     @Enumerated(EnumType.STRING)
     private Rol rol;
 
