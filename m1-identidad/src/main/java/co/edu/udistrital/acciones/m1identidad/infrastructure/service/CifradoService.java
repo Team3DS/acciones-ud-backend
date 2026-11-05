@@ -21,6 +21,7 @@ public class CifradoService {
 
     private final SecretKey encryptionKey;
     private final SecretKey hmacKey;
+    private final SecureRandom random = new SecureRandom();
 
     public CifradoService(@Value("${CIFRADO_KEY}") String cifradoKey) {
         byte[] keyBytes = Base64.getDecoder().decode(cifradoKey);
@@ -31,7 +32,7 @@ public class CifradoService {
     public byte[] encrypt(String plaintext) {
         try {
             byte[] iv = new byte[IV_LENGTH];
-            new SecureRandom().nextBytes(iv);
+            random.nextBytes(iv);
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH * 8, iv);
             cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, spec);
