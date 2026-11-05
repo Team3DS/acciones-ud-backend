@@ -24,7 +24,7 @@ server:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-me}
+    secret: ${JWT_SECRET}
     access-ttl-seconds: 900
     refresh-ttl-seconds: 604800
 

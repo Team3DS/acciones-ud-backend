@@ -1,33 +1,43 @@
 package co.edu.udistrital.acciones.m1identidad.infrastructure.service;
 
 import co.edu.udistrital.acciones.m1identidad.infrastructure.config.JwtProperties;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
+import java.util.Date;
 
 @Service
 public class JwtService {
-    private final JwtProperties props;
-    public JwtService(JwtProperties props) { this.props = props; }
+    private final SecretKey key;
+    private final long accessTtlSeconds;
 
-    public String generateAccessToken(Long userId) {
-        long exp = Instant.now().getEpochSecond() + props.getAccessTtlSeconds();
-        String payload = userId + ":" + exp;
-        String sig = hmac(payload);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString((payload + "." + sig).getBytes(StandardCharsets.UTF_8));
+    public JwtService(JwtProperties props) {
+        this.key = Keys.hmacShaKeyFor(props.getSecret().getBytes(StandardCharsets.UTF_8));
+        this.accessTtlSeconds = props.getAccessTtlSeconds();
     }
 
-    private String hmac(String data) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec key = new SecretKeySpec(props.getSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            mac.init(key);
-            byte[] raw = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-        } catch (Exception e) { throw new RuntimeException(e); }
+    public String generateAccessToken(Long userId) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(accessTtlSeconds);
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(exp))
+                .signWith(key)
+                .compact();
+    }
+
+    public Long parseUserId(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        return Long.valueOf(claims.getSubject());
     }
 }

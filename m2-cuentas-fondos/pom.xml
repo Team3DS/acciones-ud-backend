@@ -7,7 +7,6 @@
     <description>Saldo contable/disponible, reservas, movimientos, cargos, liberaciones</description>
     <packaging>jar</packaging>
     <dependencies>
-        <dependency><groupId>co.edu.udistrital.acciones</groupId><artifactId>acciones-common</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-amqp</artifactId></dependency>
     </dependencies>
 </project>

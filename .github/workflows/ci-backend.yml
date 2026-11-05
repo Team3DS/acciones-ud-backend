@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  packages: write
 
 jobs:
   test-and-sonar:
@@ -52,3 +53,25 @@ jobs:
             -Dsonar.java.coveragePlugin=jacoco
             -Dsonar.jacoco.reportPaths=*/target/site/jacoco/jacoco.xml
             -Dsonar.java.binaries=*/target/classes
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: test-and-sonar
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build M1 Identidad image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: m1-identidad/Dockerfile
+          load: true
+          tags: team3ds/m1-identidad:ci-${{ github.sha }}

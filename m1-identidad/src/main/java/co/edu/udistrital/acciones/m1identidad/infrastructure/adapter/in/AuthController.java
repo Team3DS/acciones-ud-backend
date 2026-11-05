@@ -10,14 +10,17 @@ import co.edu.udistrital.acciones.m1identidad.infrastructure.service.RefreshToke
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
     private final UserApplicationService service;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
-    public AuthController(UserApplicationService service, JwtService jwtService, RefreshTokenService refreshTokenService) { 
-        this.service = service; 
+
+    public AuthController(UserApplicationService service, JwtService jwtService, RefreshTokenService refreshTokenService) {
+        this.service = service;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
     }
@@ -25,7 +28,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterUserRequest req) {
         var user = service.register(req);
-        return ResponseEntity.ok().body(java.util.Map.of("id", user.getId(), "correo", user.getCorreo()));
+        return ResponseEntity.ok().body(Map.of("id", user.getId(), "correo", user.getCorreo()));
     }
 
     @PostMapping("/login")
@@ -36,17 +39,23 @@ public class AuthController {
 
     @PostMapping("/mfa/verify")
     public ResponseEntity<?> mfaVerify(@RequestBody MfaVerifyRequest req) {
-        boolean ok = "123456".equals(req.code());
-        return ResponseEntity.ok().body(java.util.Map.of("verified", ok));
+        boolean ok = service.verifyMfa(req.userId(), req.code());
+        return ResponseEntity.ok().body(Map.of("verified", ok));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@RequestBody RefreshRequest req) {
         String stored = refreshTokenService.get(req.userId());
         if (stored == null || !stored.equals(req.refreshToken())) {
-            return ResponseEntity.status(401).body(java.util.Map.of("error", "invalid refresh"));
+            return ResponseEntity.status(401).body(Map.of("error", "invalid refresh"));
         }
         String newAccess = jwtService.generateAccessToken(req.userId());
-        return ResponseEntity.ok().body(java.util.Map.of("accessToken", newAccess));
+        return ResponseEntity.ok().body(Map.of("accessToken", newAccess));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody RefreshRequest req) {
+        service.logout(req.userId());
+        return ResponseEntity.ok().body(Map.of("message", "Logged out"));
     }
 }

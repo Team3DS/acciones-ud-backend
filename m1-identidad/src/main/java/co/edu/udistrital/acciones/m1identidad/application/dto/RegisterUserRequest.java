@@ -10,5 +10,6 @@ public record RegisterUserRequest(
     @NotBlank String numeroDocumento,
     @Email @NotBlank String correo,
     @NotBlank String password,
-    @NotBlank String nivelInversionista
+    @NotBlank String nivelInversionista,
+    @NotBlank String celular
 ) {}

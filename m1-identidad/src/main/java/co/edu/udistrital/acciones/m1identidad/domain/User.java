@@ -58,7 +58,11 @@ public class User {
 
     private OffsetDateTime actualizadoEn;
 
-    protected User() {}
+    public User() {}
+
+    public static User create() {
+        return new User();
+    }
 
     public Long getId() { return id; }
     public String getCorreo() { return correo; }
@@ -71,4 +75,12 @@ public class User {
     public void setNivelInversionista(String nivelInversionista) { this.nivelInversionista = nivelInversionista; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getPasswordHash() { return passwordHash; }
+
+    public void setNumeroDocumentoCifrado(byte[] numeroDocumentoCifrado) { this.numeroDocumentoCifrado = numeroDocumentoCifrado; }
+    public void setNumeroDocumentoHash(byte[] numeroDocumentoHash) { this.numeroDocumentoHash = numeroDocumentoHash; }
+    public void setCelularCifrado(byte[] celularCifrado) { this.celularCifrado = celularCifrado; }
+    public void setIpRegistro(String ipRegistro) { this.ipRegistro = ipRegistro; }
+    public void setCreadoEn(OffsetDateTime creadoEn) { this.creadoEn = creadoEn; }
+    public void setActualizadoEn(OffsetDateTime actualizadoEn) { this.actualizadoEn = actualizadoEn; }
+    public void setPoliticaAceptadaEn(OffsetDateTime politicaAceptadaEn) { this.politicaAceptadaEn = politicaAceptadaEn; }
 }

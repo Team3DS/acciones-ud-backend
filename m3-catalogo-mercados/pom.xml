@@ -7,6 +7,5 @@
     <description>Instrumentos, mercados, símbolos habilitados, metadatos, reglas de elegibilidad</description>
     <packaging>jar</packaging>
     <dependencies>
-        <dependency><groupId>co.edu.udistrital.acciones</groupId><artifactId>acciones-common</artifactId><version>${project.version}</version></dependency>
     </dependencies>
 </project>
