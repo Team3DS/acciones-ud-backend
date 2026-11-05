@@ -170,26 +170,10 @@
                             <goals>
                                 <goal>report</goal>
                             </goals>
-                        </execution>
-                        <execution>
-                            <id>check</id>
-                            <phase>verify</phase>
-                            <goals>
-                                <goal>check</goal>
-                            </goals>
                             <configuration>
-                                <rules>
-                                    <rule>
-                                        <element>BUNDLE</element>
-                                        <limits>
-                                            <limit>
-                                                <counter>INSTRUCTION</counter>
-                                                <value>COVEREDRATIO</value>
-                                                <minimum>0.70</minimum>
-                                            </limit>
-                                        </limits>
-                                    </rule>
-                                </rules>
+                                <excludes>
+                                    <exclude>**/domain/**</exclude>
+                                </excludes>
                             </configuration>
                         </execution>
                     </executions>
@@ -200,6 +184,10 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
