@@ -28,7 +28,7 @@
         <testcontainers.version>1.20.3</testcontainers.version>
         <wiremock.version>3.12.0</wiremock.version>
         <junit-jupiter.version>5.11.4</junit-jupiter.version>
-        <mockito.version>5.15.2</mockito.version>
+        <mockito.version>5.18.0</mockito.version>
         <jacoco.version>0.8.12</jacoco.version>
     </properties>
 
@@ -52,7 +52,6 @@
     </dependencyManagement>
 
     <modules>
-        <module>acciones-common</module>
         <module>gateway</module>
         <module>m1-identidad</module>
         <module>m2-cuentas-fondos</module>
@@ -116,6 +115,17 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>rabbitmq</artifactId>
             <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
