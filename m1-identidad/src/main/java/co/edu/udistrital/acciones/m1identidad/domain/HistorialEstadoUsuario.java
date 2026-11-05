@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "HISTORIAL_ESTADO_USUARIO")
+@Table(name = "historial_estado_usuario")
 public class HistorialEstadoUsuario {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -5,7 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "OUTBOX_EVENTO")
+@Table(name = "outbox_evento")
 public class OutboxEvento {
     @Id
     private UUID id;

@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "USUARIO_SECTOR_INTERES")
+@Table(name = "usuario_sector_interes")
 public class UsuarioSectorInteres {
     @EmbeddedId
     private UsuarioSectorInteresId id;
