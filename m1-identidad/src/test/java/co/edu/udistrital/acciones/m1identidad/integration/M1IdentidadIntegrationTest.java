@@ -50,6 +50,7 @@ class M1IdentidadIntegrationTest {
         registry.add("spring.redis.host", () -> "localhost");
         registry.add("spring.redis.port", () -> "6379");
         registry.add("CIFRADO_KEY", () -> "Y2l0cmFkby1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2VzLW9ubHk=");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
     }
 
     @Autowired
