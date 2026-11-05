@@ -53,7 +53,7 @@ class M1IdentidadIntegrationTest {
         registry.add("spring.rabbitmq.password", rabbit::getAdminPassword);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> String.valueOf(redis.getMappedPort(6379)));
-        registry.add("CIFRADO_KEY", () -> "Y2l0cmFkby1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2VzLW9ubHk=");
+        registry.add("CIFRADO_KEY", () -> "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
         registry.add("app.jwt.secret", () -> "test-jwt-secret-0123456789abcdef0123456789abcdef-for-integration");
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
     }
