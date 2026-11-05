@@ -13,6 +13,7 @@ interface SpringDataUserRepository extends JpaRepository<User, Long> {
     boolean existsByCorreo(String correo);
 }
 
+@Repository
 public class JpaUserRepository implements UserRepositoryPort {
     private final SpringDataUserRepository repo;
 
