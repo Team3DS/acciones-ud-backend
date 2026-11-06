@@ -4,7 +4,6 @@ WORKDIR /app
 
 # Copy parent POM and ALL module POMs first (for reactor resolution)
 COPY pom.xml .
-COPY acciones-common/pom.xml ./acciones-common/
 COPY gateway/pom.xml ./gateway/
 COPY m1-identidad/pom.xml ./m1-identidad/
 COPY m2-cuentas-fondos/pom.xml ./m2-cuentas-fondos/
@@ -16,8 +15,6 @@ COPY m8-notificaciones/pom.xml ./m8-notificaciones/
 COPY m10-suscripciones-pagos/pom.xml ./m10-suscripciones-pagos/
 
 # Copy common module source and install
-COPY acciones-common/src ./acciones-common/src
-RUN mvn -q -pl acciones-common -am install -DskipTests
 
 # Copy the specific service source and build
 COPY m8-notificaciones/src ./m8-notificaciones/src
