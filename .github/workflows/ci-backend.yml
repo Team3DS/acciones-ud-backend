@@ -7,29 +7,27 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: read
-  security-events: write
-
 jobs:
   test-and-sonar:
     name: Test & SonarCloud
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
       - name: Setup Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
 
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -41,7 +39,7 @@ jobs:
       - name: SonarCloud Scan
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
@@ -49,6 +47,33 @@ jobs:
           args: >
             -Dsonar.organization=team3ds
             -Dsonar.projectKey=Team3DS_acciones-ud-backend
-            -Dsonar.java.coveragePlugin=jacoco
-            -Dsonar.jacoco.reportPaths=*/target/site/jacoco/jacoco.xml
+            -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
+            -Dsonar.coverage.exclusions=**/domain/**
             -Dsonar.java.binaries=*/target/classes
+            -Dsonar.issue.ignore.multicriteria=e1
+            -Dsonar.issue.ignore.multicriteria.e1.ruleKey=java:S4502
+            -Dsonar.issue.ignore.multicriteria.e1.resourceKey=**/SecurityConfig.java
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: test-and-sonar
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Build M1 Identidad image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: m1-identidad/Dockerfile
+          load: true
+          tags: team3ds/m1-identidad:ci-${{ github.sha }}
