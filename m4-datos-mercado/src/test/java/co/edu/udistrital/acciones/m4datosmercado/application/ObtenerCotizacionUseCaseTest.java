@@ -8,6 +8,7 @@ import co.edu.udistrital.acciones.m4datosmercado.domain.Cotizacion;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -55,5 +56,37 @@ class ObtenerCotizacionUseCaseTest {
 
         ObtenerCotizacionUseCase uc = new ObtenerCotizacionUseCase(alpaca, cache, catalogo);
         assertThrows(IllegalArgumentException.class, () -> uc.execute("XXX"));
+    }
+
+    @Test
+    void execute_nullSymbol_throws() {
+        AlpacaMarketDataPort alpaca = mock(AlpacaMarketDataPort.class);
+        CacheCotizacionesPort cache = mock(CacheCotizacionesPort.class);
+        CatalogoClientPort catalogo = mock(CatalogoClientPort.class);
+        ObtenerCotizacionUseCase uc = new ObtenerCotizacionUseCase(alpaca, cache, catalogo);
+        assertThrows(IllegalArgumentException.class, () -> uc.execute(null));
+    }
+
+    @Test
+    void executeEmptySymbols_returnsEmpty() {
+        AlpacaMarketDataPort alpaca = mock(AlpacaMarketDataPort.class);
+        CacheCotizacionesPort cache = mock(CacheCotizacionesPort.class);
+        CatalogoClientPort catalogo = mock(CatalogoClientPort.class);
+        ObtenerCotizacionUseCase uc = new ObtenerCotizacionUseCase(alpaca, cache, catalogo);
+        assertTrue(uc.executeMultiple(List.of()).isEmpty());
+        verify(alpaca, never()).obtenerCotizaciones(anyList());
+    }
+
+    @Test
+    void executeInvalidPrice_throws() {
+        AlpacaMarketDataPort alpaca = mock(AlpacaMarketDataPort.class);
+        CacheCotizacionesPort cache = mock(CacheCotizacionesPort.class);
+        CatalogoClientPort catalogo = mock(CatalogoClientPort.class);
+        when(catalogo.simboloExiste("BAD")).thenReturn(true);
+        when(cache.get("BAD")).thenReturn(Optional.empty());
+        Cotizacion bad = new Cotizacion("BAD", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE);
+        when(alpaca.obtenerCotizacion("BAD")).thenReturn(bad);
+        ObtenerCotizacionUseCase uc = new ObtenerCotizacionUseCase(alpaca, cache, catalogo);
+        assertThrows(IllegalStateException.class, () -> uc.execute("BAD"));
     }
 }

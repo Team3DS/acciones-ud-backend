@@ -23,18 +23,28 @@ public class ObtenerCotizacionUseCase {
     }
 
     public Cotizacion execute(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            throw new IllegalArgumentException("Simbolo requerido");
+        }
         if (!catalogo.simboloExiste(symbol)) {
             throw new IllegalArgumentException("Simbolo no valido: " + symbol);
         }
         Optional<Cotizacion> cached = cache.get(symbol);
         if (cached.isPresent()) return cached.get();
         Cotizacion cot = alpaca.obtenerCotizacion(symbol);
+        if (cot == null || cot.price() == null || cot.price().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Cotizacion invalida para simbolo: " + symbol);
+        }
         cache.put(symbol, cot, Duration.ofSeconds(1));
         return cot;
     }
 
     public List<Cotizacion> executeMultiple(List<String> symbols) {
+        if (symbols == null || symbols.isEmpty()) {
+            return List.of();
+        }
         List<String> validos = catalogo.validarSimbolos(symbols);
+        if (validos.isEmpty()) return List.of();
         return alpaca.obtenerCotizaciones(validos);
     }
 }
