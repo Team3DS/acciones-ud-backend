@@ -2,10 +2,12 @@ spring:
   application:
     name: m4-datos-mercado
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mercado_db}
+    url: jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE:mercado_db}
     username: ${DB_USER:acciones_ud}
     password: ${DB_PASSWORD:acciones_ud}
+    driver-class-name: oracle.jdbc.OracleDriver
   jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
     hibernate:
       ddl-auto: validate
     open-in-view: false
