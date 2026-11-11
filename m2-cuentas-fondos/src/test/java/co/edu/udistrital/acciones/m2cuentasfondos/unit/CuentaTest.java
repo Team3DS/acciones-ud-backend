@@ -3,6 +3,7 @@ package co.edu.udistrital.acciones.m2cuentasfondos.unit;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Cuenta;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.EstadoCuenta;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.CuentaNoOperableException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.MontoInvalidoException;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -71,5 +72,64 @@ class CuentaTest {
         assertThatThrownBy(cuenta::verificarOperable)
                 .isInstanceOf(CuentaNoOperableException.class)
                 .hasMessageContaining("CERRADA");
+    }
+
+    @Test
+    void cargarReduceElContableYElDisponible() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("1000.00"), AHORA);
+
+        cuenta.cargar(new BigDecimal("200.00"), AHORA.plusSeconds(5));
+
+        assertThat(cuenta.getSaldoContable()).isEqualByComparingTo("800.00");
+        assertThat(cuenta.getSaldoDisponible()).isEqualByComparingTo("800.00");
+        assertThat(cuenta.getSaldoReservado()).isEqualByComparingTo("0.00");
+        assertThat(cuenta.getActualizadoEn()).isEqualTo(AHORA.plusSeconds(5));
+    }
+
+    @Test
+    void permiteCargarTodoElDisponible() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("150.00"), AHORA);
+
+        cuenta.cargar(new BigDecimal("150.00"), AHORA);
+
+        assertThat(cuenta.getSaldoDisponible()).isEqualByComparingTo("0.00");
+        assertThat(cuenta.getSaldoContable()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void noPermiteCargarMasQueElDisponible() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("100.00"), AHORA);
+
+        assertThatThrownBy(() -> cuenta.cargar(new BigDecimal("100.01"), AHORA))
+                .isInstanceOf(FondosInsuficientesException.class)
+                .hasMessageContaining("100.00");
+
+        assertThat(cuenta.getSaldoDisponible()).isEqualByComparingTo("100.00");
+        assertThat(cuenta.getSaldoContable()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void noPermiteCargarMontosInvalidos() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("100.00"), AHORA);
+
+        assertThatThrownBy(() -> cuenta.cargar(null, AHORA)).isInstanceOf(MontoInvalidoException.class);
+        assertThatThrownBy(() -> cuenta.cargar(BigDecimal.ZERO, AHORA)).isInstanceOf(MontoInvalidoException.class);
+        assertThatThrownBy(() -> cuenta.cargar(new BigDecimal("-1.00"), AHORA))
+                .isInstanceOf(MontoInvalidoException.class);
+    }
+
+    @Test
+    void noPermiteCargarSiLaCuentaNoEstaActiva() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("100.00"), AHORA);
+        ReflectionTestUtils.setField(cuenta, "estado", EstadoCuenta.BLOQUEADA);
+
+        assertThatThrownBy(() -> cuenta.cargar(new BigDecimal("10.00"), AHORA))
+                .isInstanceOf(CuentaNoOperableException.class)
+                .hasMessageContaining("BLOQUEADA");
     }
 }

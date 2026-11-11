@@ -1,6 +1,7 @@
 package co.edu.udistrital.acciones.m2cuentasfondos.domain;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.CuentaNoOperableException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -64,6 +65,18 @@ public class Cuenta {
         BigDecimal normalizado = MonetaryUtil.validarPositivo(monto);
         this.saldoContable = this.saldoContable.add(normalizado);
         this.saldoDisponible = this.saldoDisponible.add(normalizado);
+        this.actualizadoEn = ahora;
+    }
+
+    public void cargar(BigDecimal monto, Instant ahora) {
+        verificarOperable();
+        BigDecimal normalizado = MonetaryUtil.validarPositivo(monto);
+        if (this.saldoDisponible.compareTo(normalizado) < 0) {
+            throw new FondosInsuficientesException("Fondos insuficientes: disponible " + this.saldoDisponible
+                    + ", solicitado " + normalizado);
+        }
+        this.saldoContable = this.saldoContable.subtract(normalizado);
+        this.saldoDisponible = this.saldoDisponible.subtract(normalizado);
         this.actualizadoEn = ahora;
     }
 

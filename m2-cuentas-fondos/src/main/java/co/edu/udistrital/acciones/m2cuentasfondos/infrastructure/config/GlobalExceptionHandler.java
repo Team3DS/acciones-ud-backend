@@ -2,6 +2,7 @@ package co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoIdempotenciaException;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.OrdenInvalidoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.CuentaNoOperableException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
@@ -92,6 +93,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ConflictoIdempotenciaException.class)
     public ResponseEntity<Object> handleConflictoIdempotencia(ConflictoIdempotenciaException ex, WebRequest request) {
         return responder(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(OrdenInvalidoException.class)
+    public ResponseEntity<Object> handleOrdenInvalido(OrdenInvalidoException ex, WebRequest request) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
     @ExceptionHandler(CuentaNoOperableException.class)

@@ -3,7 +3,10 @@ package co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.adapter.in.res
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.Actor;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.DepositoRequest;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.DepositoResponse;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.RetiroRequest;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.RetiroResponse;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.RegistrarDepositoUseCase;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.SolicitarRetiroUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -24,9 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class FondosController {
 
     private final RegistrarDepositoUseCase registrarDeposito;
+    private final SolicitarRetiroUseCase solicitarRetiro;
 
-    public FondosController(RegistrarDepositoUseCase registrarDeposito) {
+    public FondosController(RegistrarDepositoUseCase registrarDeposito, SolicitarRetiroUseCase solicitarRetiro) {
         this.registrarDeposito = registrarDeposito;
+        this.solicitarRetiro = solicitarRetiro;
     }
 
     @PostMapping("/deposits")
@@ -36,6 +41,16 @@ public class FondosController {
             @Valid @RequestBody DepositoRequest request,
             @AuthenticationPrincipal AuthenticatedUser usuario) {
         return registrarDeposito.ejecutar(request, idempotencyKey,
+                new Actor(usuario.userId(), usuario.esAdministrador()));
+    }
+
+    @PostMapping("/withdrawals")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RetiroResponse retirar(
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 64) String idempotencyKey,
+            @Valid @RequestBody RetiroRequest request,
+            @AuthenticationPrincipal AuthenticatedUser usuario) {
+        return solicitarRetiro.ejecutar(request, idempotencyKey,
                 new Actor(usuario.userId(), usuario.esAdministrador()));
     }
 }
