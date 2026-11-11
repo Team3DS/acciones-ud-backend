@@ -80,6 +80,18 @@ public class Cuenta {
         this.actualizadoEn = ahora;
     }
 
+    public void reservar(BigDecimal monto, Instant ahora) {
+        verificarOperable();
+        BigDecimal normalizado = MonetaryUtil.validarPositivo(monto);
+        if (this.saldoDisponible.compareTo(normalizado) < 0) {
+            throw new FondosInsuficientesException("Fondos insuficientes para reservar: disponible "
+                    + this.saldoDisponible + ", solicitado " + normalizado);
+        }
+        this.saldoDisponible = this.saldoDisponible.subtract(normalizado);
+        this.saldoReservado = this.saldoReservado.add(normalizado);
+        this.actualizadoEn = ahora;
+    }
+
     public void verificarOperable() {
         if (estado != EstadoCuenta.ACTIVA) {
             throw new CuentaNoOperableException("La cuenta no está operativa: " + estado);

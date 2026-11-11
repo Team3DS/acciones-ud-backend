@@ -2,8 +2,10 @@ package co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoIdempotenciaException;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoReservaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.OrdenInvalidoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.SolicitudInvalidaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.CuentaNoOperableException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.MontoInvalidoException;
@@ -98,6 +100,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(OrdenInvalidoException.class)
     public ResponseEntity<Object> handleOrdenInvalido(OrdenInvalidoException ex, WebRequest request) {
         return responder(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(SolicitudInvalidaException.class)
+    public ResponseEntity<Object> handleSolicitudInvalida(SolicitudInvalidaException ex, WebRequest request) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ConflictoReservaException.class)
+    public ResponseEntity<Object> handleConflictoReserva(ConflictoReservaException ex, WebRequest request) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
     @ExceptionHandler(CuentaNoOperableException.class)

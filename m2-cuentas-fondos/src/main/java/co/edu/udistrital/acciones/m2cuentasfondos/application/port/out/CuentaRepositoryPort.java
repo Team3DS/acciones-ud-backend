@@ -7,6 +7,8 @@ import java.util.Optional;
 
 public interface CuentaRepositoryPort {
 
+    Optional<Cuenta> findById(Long id);
+
     Optional<Cuenta> findByUserId(Long userId);
 
     Optional<Cuenta> findByUserIdForUpdate(Long userId);

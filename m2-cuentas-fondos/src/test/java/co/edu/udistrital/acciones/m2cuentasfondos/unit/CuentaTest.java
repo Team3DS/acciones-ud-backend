@@ -132,4 +132,65 @@ class CuentaTest {
                 .isInstanceOf(CuentaNoOperableException.class)
                 .hasMessageContaining("BLOQUEADA");
     }
+
+    @Test
+    void reservarMueveElDisponibleAlReservadoSinTocarElContable() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("1000.00"), AHORA);
+
+        cuenta.reservar(new BigDecimal("300.00"), AHORA.plusSeconds(10));
+
+        assertThat(cuenta.getSaldoDisponible()).isEqualByComparingTo("700.00");
+        assertThat(cuenta.getSaldoReservado()).isEqualByComparingTo("300.00");
+        assertThat(cuenta.getSaldoContable()).isEqualByComparingTo("1000.00");
+        assertThat(cuenta.getActualizadoEn()).isEqualTo(AHORA.plusSeconds(10));
+    }
+
+    @Test
+    void permiteReservarTodoElDisponible() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("500.00"), AHORA);
+
+        cuenta.reservar(new BigDecimal("500.00"), AHORA);
+
+        assertThat(cuenta.getSaldoDisponible()).isEqualByComparingTo("0.00");
+        assertThat(cuenta.getSaldoReservado()).isEqualByComparingTo("500.00");
+        assertThat(cuenta.getSaldoContable()).isEqualByComparingTo("500.00");
+    }
+
+    @Test
+    void noPermiteReservarMasQueElDisponible() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("500.00"), AHORA);
+
+        assertThatThrownBy(() -> cuenta.reservar(new BigDecimal("500.01"), AHORA))
+                .isInstanceOf(FondosInsuficientesException.class)
+                .hasMessageContaining("500.00");
+
+        assertThat(cuenta.getSaldoDisponible()).isEqualByComparingTo("500.00");
+        assertThat(cuenta.getSaldoReservado()).isEqualByComparingTo("0.00");
+        assertThat(cuenta.getSaldoContable()).isEqualByComparingTo("500.00");
+    }
+
+    @Test
+    void noPermiteReservarMontosInvalidos() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("100.00"), AHORA);
+
+        assertThatThrownBy(() -> cuenta.reservar(null, AHORA)).isInstanceOf(MontoInvalidoException.class);
+        assertThatThrownBy(() -> cuenta.reservar(BigDecimal.ZERO, AHORA)).isInstanceOf(MontoInvalidoException.class);
+        assertThatThrownBy(() -> cuenta.reservar(new BigDecimal("-1.00"), AHORA))
+                .isInstanceOf(MontoInvalidoException.class);
+    }
+
+    @Test
+    void noPermiteReservarSiLaCuentaNoEstaActiva() {
+        Cuenta cuenta = Cuenta.crear(7L, AHORA);
+        cuenta.abonar(new BigDecimal("100.00"), AHORA);
+        ReflectionTestUtils.setField(cuenta, "estado", EstadoCuenta.BLOQUEADA);
+
+        assertThatThrownBy(() -> cuenta.reservar(new BigDecimal("10.00"), AHORA))
+                .isInstanceOf(CuentaNoOperableException.class)
+                .hasMessageContaining("BLOQUEADA");
+    }
 }

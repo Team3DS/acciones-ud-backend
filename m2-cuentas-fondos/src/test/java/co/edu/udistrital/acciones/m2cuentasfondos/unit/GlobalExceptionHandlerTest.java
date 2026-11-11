@@ -2,7 +2,9 @@ package co.edu.udistrital.acciones.m2cuentasfondos.unit;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoIdempotenciaException;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoReservaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.SolicitudInvalidaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config.CorrelationIdFilter;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config.GlobalExceptionHandler;
@@ -116,6 +118,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void respondeBadRequestCuandoLaSolicitudEsInvalida() throws Exception {
+        mockMvc.perform(get("/prueba/solicitud-invalida"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("clave obligatoria"))
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+    }
+
+    @Test
+    void respondeConflictCuandoLaReservaYaExiste() throws Exception {
+        mockMvc.perform(get("/prueba/reserva-duplicada"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("orden duplicada"))
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+    }
+
+    @Test
     void respondeUnprocessableCuandoNoHayFondos() throws Exception {
         mockMvc.perform(get("/prueba/fondos"))
                 .andExpect(status().isUnprocessableEntity())
@@ -164,6 +184,16 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/prueba/conflicto")
         void conflicto() {
             throw new ConflictoIdempotenciaException("clave repetida");
+        }
+
+        @GetMapping("/prueba/solicitud-invalida")
+        void solicitudInvalida() {
+            throw new SolicitudInvalidaException("clave obligatoria");
+        }
+
+        @GetMapping("/prueba/reserva-duplicada")
+        void reservaDuplicada() {
+            throw new ConflictoReservaException("orden duplicada");
         }
 
         @GetMapping("/prueba/fondos")

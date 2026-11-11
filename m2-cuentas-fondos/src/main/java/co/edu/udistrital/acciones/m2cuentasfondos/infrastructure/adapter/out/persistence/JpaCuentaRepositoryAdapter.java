@@ -41,6 +41,11 @@ public class JpaCuentaRepositoryAdapter implements CuentaRepositoryPort {
     }
 
     @Override
+    public Optional<Cuenta> findById(Long id) {
+        return repositorio.findById(id);
+    }
+
+    @Override
     public Optional<Cuenta> findByUserId(Long userId) {
         return repositorio.findByUserId(userId);
     }
