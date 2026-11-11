@@ -3,11 +3,15 @@ package co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoIdempotenciaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.CuentaNoOperableException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.MontoInvalidoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.security.ProblemDetailsFactory;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -88,6 +92,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ConflictoIdempotenciaException.class)
     public ResponseEntity<Object> handleConflictoIdempotencia(ConflictoIdempotenciaException ex, WebRequest request) {
         return responder(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(CuentaNoOperableException.class)
+    public ResponseEntity<Object> handleCuentaNoOperable(CuentaNoOperableException ex, WebRequest request) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(MontoInvalidoException.class)
+    public ResponseEntity<Object> handleMontoInvalido(MontoInvalidoException ex, WebRequest request) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleIntegridad(DataIntegrityViolationException ex, WebRequest request) {
+        log.warn("Conflicto de integridad al procesar la petición", ex);
+        return responder(HttpStatus.CONFLICT, "La operación entra en conflicto con datos existentes", request);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex, WebRequest request) {
+        String mensaje = ex.getConstraintViolations().stream()
+                .map(violacion -> violacion.getPropertyPath() + ": " + violacion.getMessage())
+                .collect(Collectors.joining(", "));
+        return responder(HttpStatus.BAD_REQUEST, mensaje, request);
     }
 
     @ExceptionHandler(FondosInsuficientesException.class)

@@ -41,12 +41,12 @@ class SeguridadIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void conTokenValidoSinControladorResponde404EnProblemDetail() {
+    void conTokenValidoEnUnaRutaInexistenteResponde404EnProblemDetail() {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(TokenTestFactory.token(1, "INVERSIONISTA"));
 
         ResponseEntity<String> respuesta = rest.exchange(
-                "/api/v1/accounts/1/balance", HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                "/api/v1/ruta-inexistente", HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
         assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(respuesta.getHeaders().getContentType())
@@ -54,7 +54,7 @@ class SeguridadIntegrationTest extends AbstractIntegrationTest {
                 .matches(tipo -> tipo.isCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
         assertThat(respuesta.getBody())
                 .contains("\"status\":404")
-                .contains("\"path\":\"/api/v1/accounts/1/balance\"");
+                .contains("\"path\":\"/api/v1/ruta-inexistente\"");
     }
 
     @Test
