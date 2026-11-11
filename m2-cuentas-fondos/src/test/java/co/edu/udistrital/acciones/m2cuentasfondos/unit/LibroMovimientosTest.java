@@ -1,6 +1,9 @@
 package co.edu.udistrital.acciones.m2cuentasfondos.unit;
 
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.MovimientoCreadoPayload;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.MovimientoRepositoryPort;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.service.LibroMovimientos;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Cuenta;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Movimiento;
@@ -26,10 +29,15 @@ class LibroMovimientosTest {
     private static final Clock CLOCK = Clock.fixed(AHORA, ZoneOffset.UTC);
 
     @Test
-    void registraElMovimientoConElSaldoDisponibleActual() {
+    void registraElMovimientoYPublicaElEventoEnElOutbox() {
         MovimientoRepositoryPort movimientos = mock(MovimientoRepositoryPort.class);
-        when(movimientos.save(any(Movimiento.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
-        LibroMovimientos libro = new LibroMovimientos(movimientos, CLOCK);
+        OutboxPort outbox = mock(OutboxPort.class);
+        when(movimientos.save(any(Movimiento.class))).thenAnswer(invocacion -> {
+            Movimiento movimiento = invocacion.getArgument(0);
+            ReflectionTestUtils.setField(movimiento, "id", 55L);
+            return movimiento;
+        });
+        LibroMovimientos libro = new LibroMovimientos(movimientos, outbox, CLOCK);
         Cuenta cuenta = Cuenta.crear(5L, AHORA);
         ReflectionTestUtils.setField(cuenta, "id", 10L);
         cuenta.abonar(new BigDecimal("80.00"), AHORA);
@@ -37,10 +45,22 @@ class LibroMovimientosTest {
         libro.registrar(cuenta, TipoMovimiento.DEPOSITO, new BigDecimal("20.00"),
                 "DEPOSITO", "DEP:x", "descripción");
 
-        ArgumentCaptor<Movimiento> captor = ArgumentCaptor.forClass(Movimiento.class);
-        verify(movimientos).save(captor.capture());
-        assertThat(captor.getValue().getCuentaId()).isEqualTo(10L);
-        assertThat(captor.getValue().getSaldoPosterior()).isEqualByComparingTo("80.00");
-        assertThat(captor.getValue().getCreadoEn()).isEqualTo(AHORA);
+        ArgumentCaptor<Movimiento> movimientoCaptor = ArgumentCaptor.forClass(Movimiento.class);
+        verify(movimientos).save(movimientoCaptor.capture());
+        assertThat(movimientoCaptor.getValue().getCuentaId()).isEqualTo(10L);
+        assertThat(movimientoCaptor.getValue().getSaldoPosterior()).isEqualByComparingTo("80.00");
+        assertThat(movimientoCaptor.getValue().getCreadoEn()).isEqualTo(AHORA);
+
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(outbox).registrar(org.mockito.ArgumentMatchers.eq("Movimiento"),
+                org.mockito.ArgumentMatchers.eq("55"),
+                org.mockito.ArgumentMatchers.eq(RoutingKeys.MOVIMIENTO_CREADO),
+                payloadCaptor.capture());
+        MovimientoCreadoPayload payload = (MovimientoCreadoPayload) payloadCaptor.getValue();
+        assertThat(payload.movementId()).isEqualTo(55L);
+        assertThat(payload.userId()).isEqualTo(5L);
+        assertThat(payload.type()).isEqualTo("DEPOSITO");
+        assertThat(payload.amount()).isEqualByComparingTo("20.00");
+        assertThat(payload.balance()).isEqualByComparingTo("80.00");
     }
 }

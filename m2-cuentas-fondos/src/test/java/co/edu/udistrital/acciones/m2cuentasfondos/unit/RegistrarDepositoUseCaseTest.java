@@ -7,6 +7,7 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDe
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoIdempotenciaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.CuentaRepositoryPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.MovimientoRepositoryPort;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.service.LibroMovimientos;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.RegistrarDepositoUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Cuenta;
@@ -48,12 +49,15 @@ class RegistrarDepositoUseCaseTest {
     @Mock
     private MovimientoRepositoryPort movimientos;
 
+    @Mock
+    private OutboxPort outbox;
+
     private RegistrarDepositoUseCase casoDeUso;
 
     @BeforeEach
     void preparar() {
         casoDeUso = new RegistrarDepositoUseCase(cuentas, movimientos,
-                new LibroMovimientos(movimientos, CLOCK), CLOCK);
+                new LibroMovimientos(movimientos, outbox, CLOCK), CLOCK);
     }
 
     @Test
