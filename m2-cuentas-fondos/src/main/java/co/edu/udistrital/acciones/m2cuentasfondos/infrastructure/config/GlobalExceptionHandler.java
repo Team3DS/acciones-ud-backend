@@ -9,6 +9,7 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.Solicitu
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.CuentaNoOperableException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.MontoInvalidoException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.TransicionReservaInvalidaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.security.ProblemDetailsFactory;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -109,6 +110,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ConflictoReservaException.class)
     public ResponseEntity<Object> handleConflictoReserva(ConflictoReservaException ex, WebRequest request) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(TransicionReservaInvalidaException.class)
+    public ResponseEntity<Object> handleTransicionReservaInvalida(TransicionReservaInvalidaException ex,
+                                                                  WebRequest request) {
         return responder(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 

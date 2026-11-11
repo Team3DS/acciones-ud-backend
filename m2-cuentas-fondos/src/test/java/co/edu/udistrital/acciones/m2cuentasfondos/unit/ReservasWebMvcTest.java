@@ -1,14 +1,19 @@
 package co.edu.udistrital.acciones.m2cuentasfondos.unit;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.Actor;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.ConfirmarReservaRequest;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.LiberarReservaRequest;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.ReservaRequest;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.ReservaResponse;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.ConflictoReservaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.ConfirmarReservaUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.ConsultarReservaUseCase;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.LiberarReservaUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.ReservarFondosUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.TransicionReservaInvalidaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.adapter.in.rest.ReservasController;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config.SecurityConfig;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config.WebConfig;
@@ -63,6 +68,12 @@ class ReservasWebMvcTest {
 
     @MockBean
     private ConsultarReservaUseCase consultarReserva;
+
+    @MockBean
+    private ConfirmarReservaUseCase confirmarReserva;
+
+    @MockBean
+    private LiberarReservaUseCase liberarReserva;
 
     @MockBean
     private JwtTokenValidator jwtTokenValidator;
@@ -230,9 +241,177 @@ class ReservasWebMvcTest {
                 .andExpect(jsonPath("$.status").value(401));
     }
 
+    @Test
+    void elDuenoConfirmaSuReserva() throws Exception {
+        when(confirmarReserva.ejecutar(eq(77L), any(ConfirmarReservaRequest.class), any(Actor.class)))
+                .thenReturn(respuesta("CONFIRMED", "709.50", "0.00", "709.50"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"executionId\":\"ejecucion-1\",\"amount\":290.50}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservationId").value(77))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.available").value(709.50))
+                .andExpect(jsonPath("$.reserved").value(0.00))
+                .andExpect(jsonPath("$.total").value(709.50));
+
+        ArgumentCaptor<ConfirmarReservaRequest> captor = ArgumentCaptor.forClass(ConfirmarReservaRequest.class);
+        verify(confirmarReserva).ejecutar(eq(77L), captor.capture(), any(Actor.class));
+        assertThat(captor.getValue().executionId()).isEqualTo("ejecucion-1");
+        assertThat(captor.getValue().amount()).isEqualByComparingTo("290.50");
+    }
+
+    @Test
+    void confirmarSinExecutionIdResponde400() throws Exception {
+        mockMvc.perform(post("/api/v1/funds/reservations/77/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"executionId\":\"\",\"amount\":290.50}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void confirmarConMontoInvalidoResponde400() throws Exception {
+        mockMvc.perform(post("/api/v1/funds/reservations/77/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"executionId\":\"ejecucion-1\",\"amount\":0}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void confirmarUnaReservaAjenaResponde403() throws Exception {
+        when(confirmarReserva.ejecutar(eq(77L), any(ConfirmarReservaRequest.class), any(Actor.class)))
+                .thenThrow(new AccesoDenegadoException("Solo el dueño puede confirmar esta reserva"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"executionId\":\"ejecucion-1\",\"amount\":290.50}")
+                        .with(autenticado(9L, "INVERSIONISTA")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void confirmarUnaReservaInexistenteResponde404() throws Exception {
+        when(confirmarReserva.ejecutar(eq(77L), any(ConfirmarReservaRequest.class), any(Actor.class)))
+                .thenThrow(new RecursoNoEncontradoException("No existe la reserva 77"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"executionId\":\"ejecucion-1\",\"amount\":290.50}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void confirmarUnaReservaEnEstadoInvalidoResponde409() throws Exception {
+        when(confirmarReserva.ejecutar(eq(77L), any(ConfirmarReservaRequest.class), any(Actor.class)))
+                .thenThrow(new TransicionReservaInvalidaException("No se puede confirmar una reserva en estado RELEASED"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"executionId\":\"ejecucion-1\",\"amount\":290.50}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void confirmarSinFondosParaLaDiferenciaResponde422() throws Exception {
+        when(confirmarReserva.ejecutar(eq(77L), any(ConfirmarReservaRequest.class), any(Actor.class)))
+                .thenThrow(new FondosInsuficientesException("Fondos insuficientes para cubrir la ejecución"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"executionId\":\"ejecucion-1\",\"amount\":400.00}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.status").value(422));
+    }
+
+    @Test
+    void elDuenoLiberaSuReserva() throws Exception {
+        when(liberarReserva.ejecutar(eq(77L), any(LiberarReservaRequest.class), any(Actor.class)))
+                .thenReturn(respuesta("RELEASED", "1000.00", "0.00", "1000.00"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/release")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"OrdenCancelada\"}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservationId").value(77))
+                .andExpect(jsonPath("$.status").value("RELEASED"))
+                .andExpect(jsonPath("$.available").value(1000.00))
+                .andExpect(jsonPath("$.reserved").value(0.00));
+
+        ArgumentCaptor<LiberarReservaRequest> captor = ArgumentCaptor.forClass(LiberarReservaRequest.class);
+        verify(liberarReserva).ejecutar(eq(77L), captor.capture(), any(Actor.class));
+        assertThat(captor.getValue().reason()).isEqualTo("OrdenCancelada");
+    }
+
+    @Test
+    void liberarSinMotivoResponde400() throws Exception {
+        mockMvc.perform(post("/api/v1/funds/reservations/77/release")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"  \"}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void liberarUnaReservaConfirmadaResponde409() throws Exception {
+        when(liberarReserva.ejecutar(eq(77L), any(LiberarReservaRequest.class), any(Actor.class)))
+                .thenThrow(new TransicionReservaInvalidaException("No se puede liberar una reserva en estado CONFIRMED"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/release")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"OrdenCancelada\"}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void liberarUnaReservaInexistenteResponde404() throws Exception {
+        when(liberarReserva.ejecutar(eq(77L), any(LiberarReservaRequest.class), any(Actor.class)))
+                .thenThrow(new RecursoNoEncontradoException("No existe la reserva 77"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/release")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"OrdenCancelada\"}")
+                        .with(autenticado(5L, "INVERSIONISTA")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void liberarUnaReservaAjenaResponde403() throws Exception {
+        when(liberarReserva.ejecutar(eq(77L), any(LiberarReservaRequest.class), any(Actor.class)))
+                .thenThrow(new AccesoDenegadoException("Solo el dueño puede liberar esta reserva"));
+
+        mockMvc.perform(post("/api/v1/funds/reservations/77/release")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"OrdenCancelada\"}")
+                        .with(autenticado(9L, "INVERSIONISTA")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
     private ReservaResponse respuesta() {
-        return new ReservaResponse(77L, "orden-1", 5L, new BigDecimal("300.00"), "PENDING",
-                new BigDecimal("700.00"), new BigDecimal("300.00"), new BigDecimal("1000.00"), "USD", AHORA);
+        return respuesta("PENDING", "700.00", "300.00", "1000.00");
+    }
+
+    private ReservaResponse respuesta(String estado, String disponible, String reservado, String total) {
+        return new ReservaResponse(77L, "orden-1", 5L, new BigDecimal("300.00"), estado,
+                new BigDecimal(disponible), new BigDecimal(reservado), new BigDecimal(total), "USD", AHORA);
     }
 
     private String cuerpo(String orden, String monto) {

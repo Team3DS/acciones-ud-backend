@@ -19,6 +19,10 @@ interface SpringDataCuentaRepository extends JpaRepository<Cuenta, Long> {
     Optional<Cuenta> findByUserId(Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Cuenta c where c.id = :id")
+    Optional<Cuenta> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Cuenta c where c.userId = :userId")
     Optional<Cuenta> findByUserIdForUpdate(@Param("userId") Long userId);
 
@@ -43,6 +47,11 @@ public class JpaCuentaRepositoryAdapter implements CuentaRepositoryPort {
     @Override
     public Optional<Cuenta> findById(Long id) {
         return repositorio.findById(id);
+    }
+
+    @Override
+    public Optional<Cuenta> findByIdForUpdate(Long id) {
+        return repositorio.findByIdForUpdate(id);
     }
 
     @Override

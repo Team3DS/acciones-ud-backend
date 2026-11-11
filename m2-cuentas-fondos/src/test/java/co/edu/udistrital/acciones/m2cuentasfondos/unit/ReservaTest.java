@@ -3,6 +3,7 @@ package co.edu.udistrital.acciones.m2cuentasfondos.unit;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.EstadoReserva;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Reserva;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.MontoInvalidoException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.TransicionReservaInvalidaException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -53,6 +54,82 @@ class ReservaTest {
         assertThatThrownBy(() -> Reserva.crear(10L, "orden-1", monto, null, AHORA))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> Reserva.crear(10L, "orden-1", monto, "RES:clave-1", null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void confirmarMarcaLaReservaComoConfirmadaConLaEjecucion() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+
+        reserva.confirmar("ejecucion-1", AHORA.plusSeconds(60));
+
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReserva.CONFIRMED);
+        assertThat(reserva.getExecutionId()).isEqualTo("ejecucion-1");
+        assertThat(reserva.getConfirmadoEn()).isEqualTo(AHORA.plusSeconds(60));
+        assertThat(reserva.getLiberadoEn()).isNull();
+        assertThat(reserva.getMotivoLiberacion()).isNull();
+    }
+
+    @Test
+    void liberarMarcaLaReservaComoLiberadaConElMotivo() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+
+        reserva.liberar("OrdenCancelada", AHORA.plusSeconds(60));
+
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReserva.RELEASED);
+        assertThat(reserva.getMotivoLiberacion()).isEqualTo("OrdenCancelada");
+        assertThat(reserva.getLiberadoEn()).isEqualTo(AHORA.plusSeconds(60));
+        assertThat(reserva.getConfirmadoEn()).isNull();
+        assertThat(reserva.getExecutionId()).isNull();
+    }
+
+    @Test
+    void noConfirmaUnaReservaLiberada() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+        reserva.liberar("OrdenCancelada", AHORA);
+
+        assertThatThrownBy(() -> reserva.confirmar("ejecucion-1", AHORA.plusSeconds(60)))
+                .isInstanceOf(TransicionReservaInvalidaException.class)
+                .hasMessageContaining("RELEASED");
+    }
+
+    @Test
+    void noConfirmaUnaReservaYaConfirmada() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+        reserva.confirmar("ejecucion-1", AHORA);
+
+        assertThatThrownBy(() -> reserva.confirmar("ejecucion-1", AHORA.plusSeconds(60)))
+                .isInstanceOf(TransicionReservaInvalidaException.class)
+                .hasMessageContaining("CONFIRMED");
+    }
+
+    @Test
+    void noLiberaUnaReservaConfirmada() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+        reserva.confirmar("ejecucion-1", AHORA);
+
+        assertThatThrownBy(() -> reserva.liberar("OrdenCancelada", AHORA.plusSeconds(60)))
+                .isInstanceOf(TransicionReservaInvalidaException.class)
+                .hasMessageContaining("CONFIRMED");
+    }
+
+    @Test
+    void noLiberaUnaReservaLiberada() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+        reserva.liberar("OrdenCancelada", AHORA);
+
+        assertThatThrownBy(() -> reserva.liberar("OtraVez", AHORA.plusSeconds(60)))
+                .isInstanceOf(TransicionReservaInvalidaException.class)
+                .hasMessageContaining("RELEASED");
+    }
+
+    @Test
+    void noConfirmaNiLiberaSinEjecucionOMotivo() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+
+        assertThatThrownBy(() -> reserva.confirmar(null, AHORA)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> reserva.confirmar("ejecucion-1", null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> reserva.liberar("OrdenCancelada", null))
                 .isInstanceOf(NullPointerException.class);
     }
 }

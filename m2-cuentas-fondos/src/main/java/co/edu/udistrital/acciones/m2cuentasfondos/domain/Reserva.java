@@ -1,5 +1,6 @@
 package co.edu.udistrital.acciones.m2cuentasfondos.domain;
 
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.TransicionReservaInvalidaException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -65,6 +66,29 @@ public class Reserva {
         reserva.idempotencyKey = Objects.requireNonNull(idempotencyKey, "La clave de idempotencia es obligatoria");
         reserva.creadoEn = Objects.requireNonNull(creadoEn, "El instante de creación es obligatorio");
         return reserva;
+    }
+
+    public void confirmar(String executionId, Instant ahora) {
+        if (estado != EstadoReserva.PENDING) {
+            throw new TransicionReservaInvalidaException(
+                    "No se puede confirmar una reserva en estado " + estado);
+        }
+        String ejecucion = Objects.requireNonNull(executionId, "El executionId es obligatorio");
+        Instant instante = Objects.requireNonNull(ahora, "El instante de confirmación es obligatorio");
+        this.executionId = ejecucion;
+        this.estado = EstadoReserva.CONFIRMED;
+        this.confirmadoEn = instante;
+    }
+
+    public void liberar(String motivo, Instant ahora) {
+        if (estado != EstadoReserva.PENDING) {
+            throw new TransicionReservaInvalidaException(
+                    "No se puede liberar una reserva en estado " + estado);
+        }
+        Instant instante = Objects.requireNonNull(ahora, "El instante de liberación es obligatorio");
+        this.estado = EstadoReserva.RELEASED;
+        this.motivoLiberacion = motivo;
+        this.liberadoEn = instante;
     }
 
     public Long getId() {

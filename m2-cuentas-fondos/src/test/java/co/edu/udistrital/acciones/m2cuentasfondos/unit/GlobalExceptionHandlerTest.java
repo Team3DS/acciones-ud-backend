@@ -6,6 +6,7 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.Conflict
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.SolicitudInvalidaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.TransicionReservaInvalidaException;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config.CorrelationIdFilter;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.config.GlobalExceptionHandler;
 import jakarta.validation.Valid;
@@ -118,6 +119,15 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void respondeConflictCuandoLaTransicionDeReservaEsInvalida() throws Exception {
+        mockMvc.perform(get("/prueba/transicion-invalida"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("reserva ya confirmada"))
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+    }
+
+    @Test
     void respondeBadRequestCuandoLaSolicitudEsInvalida() throws Exception {
         mockMvc.perform(get("/prueba/solicitud-invalida"))
                 .andExpect(status().isBadRequest())
@@ -194,6 +204,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/prueba/reserva-duplicada")
         void reservaDuplicada() {
             throw new ConflictoReservaException("orden duplicada");
+        }
+
+        @GetMapping("/prueba/transicion-invalida")
+        void transicionInvalida() {
+            throw new TransicionReservaInvalidaException("reserva ya confirmada");
         }
 
         @GetMapping("/prueba/fondos")

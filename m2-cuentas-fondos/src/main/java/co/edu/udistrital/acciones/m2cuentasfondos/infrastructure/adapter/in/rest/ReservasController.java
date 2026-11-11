@@ -1,10 +1,14 @@
 package co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.adapter.in.rest;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.Actor;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.ConfirmarReservaRequest;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.LiberarReservaRequest;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.ReservaRequest;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.ReservaResponse;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.SolicitudInvalidaException;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.ConfirmarReservaUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.ConsultarReservaUseCase;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.LiberarReservaUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.ReservarFondosUseCase;
 import co.edu.udistrital.acciones.m2cuentasfondos.infrastructure.security.AuthenticatedUser;
 import jakarta.validation.Valid;
@@ -28,10 +32,15 @@ public class ReservasController {
 
     private final ReservarFondosUseCase reservarFondos;
     private final ConsultarReservaUseCase consultarReserva;
+    private final ConfirmarReservaUseCase confirmarReserva;
+    private final LiberarReservaUseCase liberarReserva;
 
-    public ReservasController(ReservarFondosUseCase reservarFondos, ConsultarReservaUseCase consultarReserva) {
+    public ReservasController(ReservarFondosUseCase reservarFondos, ConsultarReservaUseCase consultarReserva,
+                              ConfirmarReservaUseCase confirmarReserva, LiberarReservaUseCase liberarReserva) {
         this.reservarFondos = reservarFondos;
         this.consultarReserva = consultarReserva;
+        this.confirmarReserva = confirmarReserva;
+        this.liberarReserva = liberarReserva;
     }
 
     @PostMapping
@@ -49,6 +58,22 @@ public class ReservasController {
     public ReservaResponse consultar(@PathVariable Long id,
                                      @AuthenticationPrincipal AuthenticatedUser usuario) {
         return consultarReserva.ejecutar(id, new Actor(usuario.userId(), usuario.esAdministrador()));
+    }
+
+    @PostMapping("/{id}/confirm")
+    public ReservaResponse confirmar(@PathVariable Long id,
+                                     @Valid @RequestBody ConfirmarReservaRequest request,
+                                     @AuthenticationPrincipal AuthenticatedUser usuario) {
+        return confirmarReserva.ejecutar(id, request,
+                new Actor(usuario.userId(), usuario.esAdministrador()));
+    }
+
+    @PostMapping("/{id}/release")
+    public ReservaResponse liberar(@PathVariable Long id,
+                                   @Valid @RequestBody LiberarReservaRequest request,
+                                   @AuthenticationPrincipal AuthenticatedUser usuario) {
+        return liberarReserva.ejecutar(id, request,
+                new Actor(usuario.userId(), usuario.esAdministrador()));
     }
 
     private static String resolverClave(String claveCuerpo, String claveCabecera) {

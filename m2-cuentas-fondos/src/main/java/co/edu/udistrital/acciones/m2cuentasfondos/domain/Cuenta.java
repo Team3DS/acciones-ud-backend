@@ -2,6 +2,7 @@ package co.edu.udistrital.acciones.m2cuentasfondos.domain;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.CuentaNoOperableException;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.FondosInsuficientesException;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.excepcion.TransicionReservaInvalidaException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -96,6 +97,43 @@ public class Cuenta {
         if (estado != EstadoCuenta.ACTIVA) {
             throw new CuentaNoOperableException("La cuenta no está operativa: " + estado);
         }
+    }
+
+    public void confirmarReserva(BigDecimal montoReservado, BigDecimal montoEjecutado, Instant ahora) {
+        verificarOperable();
+        BigDecimal reservado = MonetaryUtil.validarPositivo(montoReservado);
+        BigDecimal ejecutado = MonetaryUtil.validarPositivo(montoEjecutado);
+        if (this.saldoReservado.compareTo(reservado) < 0) {
+            throw new TransicionReservaInvalidaException("La cuenta no tiene reservado " + reservado
+                    + ", tiene " + this.saldoReservado);
+        }
+        BigDecimal sobrante = reservado.subtract(ejecutado);
+        if (sobrante.signum() >= 0) {
+            this.saldoReservado = this.saldoReservado.subtract(reservado);
+            this.saldoDisponible = this.saldoDisponible.add(sobrante);
+        } else {
+            BigDecimal faltante = ejecutado.subtract(reservado);
+            if (this.saldoDisponible.compareTo(faltante) < 0) {
+                throw new FondosInsuficientesException("Fondos insuficientes para cubrir la ejecución: disponible "
+                        + this.saldoDisponible + ", faltante " + faltante);
+            }
+            this.saldoReservado = this.saldoReservado.subtract(reservado);
+            this.saldoDisponible = this.saldoDisponible.subtract(faltante);
+        }
+        this.saldoContable = this.saldoContable.subtract(ejecutado);
+        this.actualizadoEn = ahora;
+    }
+
+    public void liberarReserva(BigDecimal monto, Instant ahora) {
+        verificarOperable();
+        BigDecimal normalizado = MonetaryUtil.validarPositivo(monto);
+        if (this.saldoReservado.compareTo(normalizado) < 0) {
+            throw new TransicionReservaInvalidaException("La cuenta no tiene reservado " + normalizado
+                    + ", tiene " + this.saldoReservado);
+        }
+        this.saldoReservado = this.saldoReservado.subtract(normalizado);
+        this.saldoDisponible = this.saldoDisponible.add(normalizado);
+        this.actualizadoEn = ahora;
     }
 
     public Long getId() {
