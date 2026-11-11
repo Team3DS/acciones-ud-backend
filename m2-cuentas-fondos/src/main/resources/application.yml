@@ -58,6 +58,8 @@ management:
         enabled: true
 
 app:
+  jwt:
+    secret: ${JWT_SECRET}
   reservas:
     ttl: PT24H
     expiracion:
