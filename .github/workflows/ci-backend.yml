@@ -77,3 +77,11 @@ jobs:
           file: m1-identidad/Dockerfile
           load: true
           tags: team3ds/m1-identidad:ci-${{ github.sha }}
+
+      - name: Build M2 Cuentas Fondos image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: m2-cuentas-fondos/Dockerfile
+          load: true
+          tags: team3ds/m2-cuentas-fondos:ci-${{ github.sha }}

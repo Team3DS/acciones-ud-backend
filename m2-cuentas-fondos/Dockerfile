@@ -1,8 +1,6 @@
-# Multi-stage build for SERVICE_NAME
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy parent POM and ALL module POMs first (for reactor resolution)
 COPY pom.xml .
 COPY gateway/pom.xml ./gateway/
 COPY m1-identidad/pom.xml ./m1-identidad/
@@ -14,15 +12,15 @@ COPY m6-portafolio/pom.xml ./m6-portafolio/
 COPY m8-notificaciones/pom.xml ./m8-notificaciones/
 COPY m10-suscripciones-pagos/pom.xml ./m10-suscripciones-pagos/
 
-# Copy common module source and install
-
-# Copy the specific service source and build
 COPY m2-cuentas-fondos/src ./m2-cuentas-fondos/src
-RUN mvn -q -pl m2-cuentas-fondos -am package -DskipTests
+RUN mvn -B -q -pl m2-cuentas-fondos -am package -DskipTests
 
-# Runtime stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/m2-cuentas-fondos/target/*.jar app.jar
+RUN addgroup -S -g 1001 appgroup \
+    && adduser -S -u 1001 -G appgroup appuser
+COPY --from=build /app/m2-cuentas-fondos/target/*.jar /app/app.jar
+RUN chown appuser:appgroup /app/app.jar
+USER appuser
 EXPOSE 8082
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-jar","/app/app.jar"]
