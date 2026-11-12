@@ -219,6 +219,23 @@ class EventosEntrantesIntegrationTest extends AbstractIntegrationTest {
         assertThat(new String(recibido.get().getBody(), StandardCharsets.UTF_8)).isEqualTo("esto no es json");
     }
 
+    @Test
+    void unEventoSinOrderIdTerminaEnLaColaDeMensajesMuertos() {
+        String eventoId = UUID.randomUUID().toString();
+        publicar(RoutingKeys.M5_ORDEN_CANCELADA, eventoId, "trace-evt-dlq-sin-order", "orden-sin-order",
+                Map.of("reason", "SinOrderId"));
+
+        AtomicReference<Message> recibido = new AtomicReference<>();
+        await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofMillis(100)).untilAsserted(() -> {
+            Message enDlq = rabbitTemplate.receive(RoutingKeys.COLA_MOVIMIENTOS_DLQ, 200);
+            if (enDlq != null) {
+                recibido.set(enDlq);
+            }
+            assertThat(recibido.get()).isNotNull();
+        });
+        assertThat(new String(recibido.get().getBody(), StandardCharsets.UTF_8)).contains(eventoId);
+    }
+
     private void publicar(String routingKey, String eventoId, String correlacion, String aggregateId,
                           Map<String, Object> payload) {
         Map<String, Object> sobre = new LinkedHashMap<>();

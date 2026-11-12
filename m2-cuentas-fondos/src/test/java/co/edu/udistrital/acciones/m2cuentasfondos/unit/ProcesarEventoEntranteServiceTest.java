@@ -9,6 +9,7 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.OrdenEjecutada
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.OrdenRechazadaPayload;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.SuscripcionActivadaPayload;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.EventoInvalidoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.EventoProcesadoPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.ReservaRepositoryPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.service.ProcesarEventoEntranteService;
@@ -243,6 +244,19 @@ class ProcesarEventoEntranteServiceTest {
         verify(transactionManager, never()).commit(any());
         verify(eventosProcesados, times(1)).registrarSiNuevo(eq(EVENTO_ID),
                 eq(RoutingKeys.M5_ORDEN_EJECUTADA), any(Instant.class));
+    }
+
+    @Test
+    void unEventoEjecutadoSinPayloadRelanzaUnEventoInvalido() {
+        cuandoEsNuevo(true);
+
+        assertThatThrownBy(() -> servicio.procesar(evento(RoutingKeys.M5_ORDEN_EJECUTADA, null)))
+                .isInstanceOf(EventoInvalidoException.class)
+                .hasMessageContaining("no trae payload");
+
+        verify(transactionManager).rollback(any());
+        verify(transactionManager, never()).commit(any());
+        verifyNoInteractions(reservas, confirmarReserva, liberarReserva, acreditarVenta);
     }
 
     private void cuandoEsNuevo(boolean nuevo) {

@@ -9,6 +9,7 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.OrdenEjecutada
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.OrdenRechazadaPayload;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.SuscripcionActivadaPayload;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.EventoInvalidoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.EventoProcesadoPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.ReservaRepositoryPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.AcreditarVentaUseCase;
@@ -118,7 +119,7 @@ public class ProcesarEventoEntranteService {
             return;
         }
         if (payload.executionId() == null || payload.executionId().isBlank() || payload.totalAmount() == null) {
-            throw new IllegalArgumentException("El evento " + evento.eventId()
+            throw new EventoInvalidoException("El evento " + evento.eventId()
                     + " no trae executionId o totalAmount para confirmar la orden " + orderId);
         }
         confirmarReserva.ejecutar(reserva.get().getId(),
@@ -152,14 +153,14 @@ public class ProcesarEventoEntranteService {
 
     private String orderIdObligatorio(String orderId, EventoEntrante evento) {
         if (orderId == null || orderId.isBlank()) {
-            throw new IllegalArgumentException("El evento " + evento.eventId() + " no trae orderId");
+            throw new EventoInvalidoException("El evento " + evento.eventId() + " no trae orderId");
         }
         return orderId;
     }
 
     private <T> T obligatorio(T payload, EventoEntrante evento) {
         if (payload == null) {
-            throw new IllegalArgumentException("El evento " + evento.eventId() + " no trae payload");
+            throw new EventoInvalidoException("El evento " + evento.eventId() + " no trae payload");
         }
         return payload;
     }
@@ -171,7 +172,7 @@ public class ProcesarEventoEntranteService {
         try {
             return objectMapper.treeToValue(payload, tipo);
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("El payload del evento no tiene el formato esperado", ex);
+            throw new EventoInvalidoException("El payload del evento no tiene el formato esperado", ex);
         }
     }
 }
