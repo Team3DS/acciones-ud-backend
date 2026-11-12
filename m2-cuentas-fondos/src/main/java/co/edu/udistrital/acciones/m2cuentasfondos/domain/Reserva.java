@@ -91,6 +91,22 @@ public class Reserva {
         this.liberadoEn = instante;
     }
 
+    public void expirar(Instant ahora) {
+        if (estado != EstadoReserva.PENDING) {
+            throw new TransicionReservaInvalidaException(
+                    "No se puede expirar una reserva en estado " + estado);
+        }
+        Instant instante = Objects.requireNonNull(ahora, "El instante de expiración es obligatorio");
+        this.estado = EstadoReserva.EXPIRED;
+        this.motivoLiberacion = "EXPIRADA";
+        this.liberadoEn = instante;
+    }
+
+    public boolean estaVencida(Instant limite) {
+        Instant instante = Objects.requireNonNull(limite, "El límite de expiración es obligatorio");
+        return estado == EstadoReserva.PENDING && creadoEn.isBefore(instante);
+    }
+
     public Long getId() {
         return id;
     }

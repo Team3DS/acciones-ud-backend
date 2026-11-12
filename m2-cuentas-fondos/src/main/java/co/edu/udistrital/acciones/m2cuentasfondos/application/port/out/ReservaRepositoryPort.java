@@ -2,6 +2,8 @@ package co.edu.udistrital.acciones.m2cuentasfondos.application.port.out;
 
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Reserva;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface ReservaRepositoryPort {
@@ -15,4 +17,6 @@ public interface ReservaRepositoryPort {
     Optional<Reserva> findByOrderId(String orderId);
 
     Optional<Reserva> findByIdempotencyKey(String idempotencyKey);
+
+    List<Reserva> findVencidas(Instant limite, int lote);
 }

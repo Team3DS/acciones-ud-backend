@@ -132,4 +132,66 @@ class ReservaTest {
         assertThatThrownBy(() -> reserva.liberar("OrdenCancelada", null))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void unaReservaPendienteAnteriorAlLimiteEstaVencida() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+
+        assertThat(reserva.estaVencida(AHORA.plusSeconds(1))).isTrue();
+        assertThat(reserva.estaVencida(AHORA)).isFalse();
+        assertThat(reserva.estaVencida(AHORA.minusSeconds(1))).isFalse();
+    }
+
+    @Test
+    void unaReservaResueltaNoEstaVencida() {
+        Reserva confirmada = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+        confirmada.confirmar("ejecucion-1", AHORA);
+
+        Reserva liberada = Reserva.crear(10L, "orden-2", new BigDecimal("300.00"), "RES:clave-2", AHORA);
+        liberada.liberar("OrdenCancelada", AHORA);
+
+        Reserva expirada = Reserva.crear(10L, "orden-3", new BigDecimal("300.00"), "RES:clave-3", AHORA);
+        expirada.expirar(AHORA);
+
+        assertThat(confirmada.estaVencida(AHORA.plusSeconds(60))).isFalse();
+        assertThat(liberada.estaVencida(AHORA.plusSeconds(60))).isFalse();
+        assertThat(expirada.estaVencida(AHORA.plusSeconds(60))).isFalse();
+    }
+
+    @Test
+    void expirarMarcaLaReservaComoExpirada() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+
+        reserva.expirar(AHORA.plusSeconds(60));
+
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReserva.EXPIRED);
+        assertThat(reserva.getMotivoLiberacion()).isEqualTo("EXPIRADA");
+        assertThat(reserva.getLiberadoEn()).isEqualTo(AHORA.plusSeconds(60));
+        assertThat(reserva.getConfirmadoEn()).isNull();
+        assertThat(reserva.getExecutionId()).isNull();
+    }
+
+    @Test
+    void noExpiraUnaReservaResuelta() {
+        Reserva confirmada = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+        confirmada.confirmar("ejecucion-1", AHORA);
+
+        Reserva liberada = Reserva.crear(10L, "orden-2", new BigDecimal("300.00"), "RES:clave-2", AHORA);
+        liberada.liberar("OrdenCancelada", AHORA);
+
+        assertThatThrownBy(() -> confirmada.expirar(AHORA.plusSeconds(60)))
+                .isInstanceOf(TransicionReservaInvalidaException.class)
+                .hasMessageContaining("CONFIRMED");
+        assertThatThrownBy(() -> liberada.expirar(AHORA.plusSeconds(60)))
+                .isInstanceOf(TransicionReservaInvalidaException.class)
+                .hasMessageContaining("RELEASED");
+    }
+
+    @Test
+    void expirarExigeElInstante() {
+        Reserva reserva = Reserva.crear(10L, "orden-1", new BigDecimal("300.00"), "RES:clave-1", AHORA);
+
+        assertThatThrownBy(() -> reserva.expirar(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> reserva.estaVencida(null)).isInstanceOf(NullPointerException.class);
+    }
 }
