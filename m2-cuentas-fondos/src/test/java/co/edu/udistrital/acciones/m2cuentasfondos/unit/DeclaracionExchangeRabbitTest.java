@@ -18,13 +18,15 @@ class DeclaracionExchangeRabbitTest {
 
     private final AmqpAdmin amqpAdmin = mock(AmqpAdmin.class);
     private final TopicExchange exchange = new TopicExchange(RoutingKeys.EXCHANGE, true, false);
-    private final DeclaracionExchangeRabbit declaracion = new DeclaracionExchangeRabbit(amqpAdmin, exchange);
+    private final TopicExchange dlx = new TopicExchange(RoutingKeys.EXCHANGE_DLX, true, false);
+    private final DeclaracionExchangeRabbit declaracion = new DeclaracionExchangeRabbit(amqpAdmin, exchange, dlx);
 
     @Test
-    void declaraElExchangeAlArrancar() {
+    void declaraLosExchangesAlArrancar() {
         declaracion.run(null);
 
         verify(amqpAdmin).declareExchange(exchange);
+        verify(amqpAdmin).declareExchange(dlx);
     }
 
     @Test
@@ -34,5 +36,6 @@ class DeclaracionExchangeRabbitTest {
 
         assertThatCode(() -> declaracion.run(null)).doesNotThrowAnyException();
         verify(amqpAdmin).declareExchange(exchange);
+        verify(amqpAdmin).declareExchange(dlx);
     }
 }
