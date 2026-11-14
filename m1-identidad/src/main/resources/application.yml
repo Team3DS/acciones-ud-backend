@@ -9,6 +9,15 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    user: ${M1_MIGRATION_USER:${DB_USER:acciones_ud}}
+    password: ${M1_MIGRATION_PASSWORD:${DB_PASSWORD:acciones_ud}}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
