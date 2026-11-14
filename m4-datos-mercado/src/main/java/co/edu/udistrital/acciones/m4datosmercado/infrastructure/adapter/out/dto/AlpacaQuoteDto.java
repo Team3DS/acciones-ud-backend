@@ -5,14 +5,19 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class AlpacaQuoteDto {
     @JsonProperty("symbol")
     public String symbol;
-    @JsonProperty("bidprice")
+
+    @JsonProperty("bid_price")
     public String bidPrice;
-    @JsonProperty("askprice")
+
+    @JsonProperty("ask_price")
     public String askPrice;
-    @JsonProperty("bidsize")
+
+    @JsonProperty("bid_size")
     public String bidSize;
-    @JsonProperty("asksize")
+
+    @JsonProperty("ask_size")
     public String askSize;
+
     @JsonProperty("timestamp")
     public String timestamp;
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class ObtenerCotizacionUseCase {
@@ -46,5 +47,12 @@ public class ObtenerCotizacionUseCase {
         List<String> validos = catalogo.validarSimbolos(symbols);
         if (validos.isEmpty()) return List.of();
         return alpaca.obtenerCotizaciones(validos);
+    }
+
+    public Set<String> obtenerSimbolosValidos() {
+        if (catalogo instanceof co.edu.udistrital.acciones.m4datosmercado.infrastructure.adapter.out.CatalogoRestClient) {
+            return Set.of();
+        }
+        return Set.of();
     }
 }

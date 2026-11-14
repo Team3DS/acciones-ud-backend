@@ -30,6 +30,16 @@ public class HorarioMercado {
 
     public HorarioMercado() {}
 
+    public HorarioMercado(Long id, String mercadoMic, int diaSemana, LocalTime apertura, LocalTime cierre, LocalTime preMarket, LocalTime afterHours) {
+        this.id = id;
+        this.mercadoMic = mercadoMic;
+        this.diaSemana = diaSemana;
+        this.apertura = apertura;
+        this.cierre = cierre;
+        this.preMarket = preMarket;
+        this.afterHours = afterHours;
+    }
+
     public Long getId() { return id; }
     public String getMercadoMic() { return mercadoMic; }
     public int getDiaSemana() { return diaSemana; }
