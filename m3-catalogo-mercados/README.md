@@ -129,6 +129,10 @@ Sobre una base vacía, Flyway aplica V1, V2 y V3. Si existe el esquema original 
 
 ## Pruebas y calidad
 
+Las pruebas se ejecutan en CI con JDK 21 y JDK 25; el bytecode de la aplicación sigue siendo Java 21, como las imágenes Docker actuales. El POM padre fija Mockito 5.20.0, Byte Buddy y su agente 1.17.7, y JaCoCo 0.8.14. Surefire y Failsafe cargan Mockito con `-javaagent` y conservan el agente de cobertura. El perfil `quality` usa SpotBugs Maven Plugin 4.9.8.1 para analizar también las clases del JDK 25.
+
+Maven Enforcer rechaza dependencias directas o transitivas de Mockito anteriores a 5.20.0 y de Byte Buddy anteriores a 1.17.7 durante `validate`. Actualizar estas versiones en el POM padre y comprobar ambos JDK; no usar `net.bytebuddy.experimental` para eludir incompatibilidades.
+
 Unitarias, sin PostgreSQL o Docker:
 
 ```powershell
