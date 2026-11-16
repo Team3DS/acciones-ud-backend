@@ -38,4 +38,23 @@ Se ejecutó `mvn -B -pl m3-catalogo-mercados -am '-Pintegration,quality' clean v
 
 Ejecutar en CI la integración con RabbitMQ real y Docker Build; revisar SonarCloud remoto; conectar la emisión del claim de roles en M1; validar los consumidores M4/M5 y el Gateway desplegado; aplicar permisos con psql por un administrador y ratificar la evolución del SAD/ADR por el revisor. M3 no modifica el código de M1, M2, M4, M5 u otros servicios; fuera del módulo solo hay ajustes mínimos de rutas, entorno, workflow y nota de documentación.
 
-El PR debe permanecer abierto y sin auto-merge hasta recibir aprobación y cumplir los checks exigidos. No se ha publicado un PR ni se ha recibido una aprobación remota durante esta sesión.
+El PR debe permanecer abierto y sin auto-merge hasta recibir aprobación y cumplir los checks exigidos. El PR [#17](https://github.com/Team3DS/acciones-ud-backend/pull/17) se abrió desde el fork `JamysonRolon/acciones-ud-backend`; trasladar el trabajo a una rama de `Team3DS` requiere un PR nuevo porque GitHub no permite cambiar el repositorio de origen de un PR existente.
+
+## Corrección de CI del 16 de noviembre de 2026
+
+Se revisó la ejecución [43729803089](https://github.com/Team3DS/acciones-ud-backend/actions/runs/43729803089), correspondiente al commit `1010d1b95f90a9bab2fb3a5c7af4d0702e7c06c9`. Las unitarias pasaban; las 45 pruebas de integración fallaban al iniciar el contexto porque Testcontainers 1.20.3 enviaba peticiones con Docker API 1.32 y el daemon exigía como mínimo 1.40. Los avisos de Node.js y setup-java eran independientes de ese fallo.
+
+Se añadió `src/test/resources/docker-java.properties` con `api.version=1.44`, igual que en M1 y M2. Es configuración exclusiva de las pruebas. Las acciones checkout, setup-java y cache se actualizaron a v5, fijadas por SHA y con runtime Node.js 24 verificado. Los workflows usan Ubuntu 24.04 y M3 también se ejecuta al subir `feat/m3-catalogo-mercados`.
+
+La comprobación del transporte HTTP de Testcontainers reprodujo `/v1.32/info` sin el recurso y `/v1.44/info` con el recurso copiado a `target/test-classes`, tanto en Java 21 como en Java 25. Esta comprobación usa un servidor HTTP de prueba; no representa una ejecución de contenedores.
+
+Los dos workflows pasaron actionlint 1.7.12. La verificación local usa bases PostgreSQL 16.4 separadas por JDK. Este equipo no tiene Docker: el caso de RabbitMQ real y la construcción de la imagen siguen pendientes de la ejecución remota después del push. Se conservan activados en CI; no se omiten ni se convierten sus fallos en éxitos.
+
+| JDK local | Unitarias | Integración PostgreSQL | Fallos / errores | Calidad |
+| --- | --- | --- | --- | --- |
+| Temurin 21.0.13+9 | 36 | 44 | 0 / 0 | Checkstyle, SpotBugs y JaCoCo correctos |
+| Temurin 25.0.5+8 | 36 | 44 | 0 / 0 | Checkstyle, SpotBugs y JaCoCo correctos |
+
+Ambos recorridos ejecutaron `mvn -B -pl m3-catalogo-mercados -am '-Pintegration,quality' clean verify` con `m3.test.jdbc-url` apuntando a su base exclusiva. El caso `broker` se excluye por defecto en este recorrido local, tal como está definido en el POM. CI activa explícitamente `-Dm3.test.rabbit=true -Dm3.excluded-groups=` para incluirlo.
+
+Los registros de esta revisión se guardan fuera del repositorio, en `output/m3-java21-verify-2026-11-16.log`, `output/m3-java25-verify-2026-11-16.log` y `output/m3-docker-api-probe-2026-11-16.log`, en la carpeta padre del checkout.
