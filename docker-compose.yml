@@ -277,6 +277,11 @@ services:
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
       - EUREKA_URL=http://eureka:8761/eureka
       - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM=${RESEND_FROM:-Acciones UD <noreply@accionesud.com>}
+      - JWT_SECRET=${JWT_SECRET}
+      - M8_MAIL_KEY=${M8_MAIL_KEY}
+      - M8_SERVICE_TOKEN=${M8_SERVICE_TOKEN:-}
+      - M8_MONTHLY_ENABLED=${M8_MONTHLY_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
