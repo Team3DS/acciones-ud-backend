@@ -1,6 +1,8 @@
 # Subida manual de M3 y espera de aprobación
 
-El código está en una rama local. Todavía no existe un PR remoto de esta entrega. Estas instrucciones permiten publicarlo para revisión sin fusionarlo a `main`.
+Actualizado el 16 de noviembre de 2026. El código y la corrección de CI ya están guardados en commits locales en `feat/m3-catalogo-mercados`. La corrección de Docker está en `6081249`. Estas instrucciones publican el trabajo en una rama del repositorio del equipo.
+
+El PR [#17](https://github.com/Team3DS/acciones-ud-backend/pull/17) se abrió desde el fork `JamysonRolon/acciones-ud-backend`. Para usar una rama dentro de `Team3DS/acciones-ud-backend` hay que abrir un PR nuevo después de la subida indicada aquí.
 
 ## 1 Revisar la copia local
 
@@ -8,16 +10,19 @@ Abrir PowerShell en el repositorio:
 
 ```powershell
 Set-Location -LiteralPath 'C:\Users\user\Documents\Proyecto Instrumento Financiero-20261023T101507Z-1-001\acciones-ud-backend'
+git switch feat/m3-catalogo-mercados
 git status
-git branch --show-current
-git diff --check
+git remote get-url origin
+git log -5 --oneline
 ```
 
-La rama debe ser `feat/m3-catalogo-mercados`. Leer `m3-catalogo-mercados/docs/VALIDACION.md`, `REVISION_REGLAS_Y_WIKI.md` y `ADR-M3-001.md`. La ampliación incluye edición administrativa y nuevos tipos por solicitud de Jamyson; su integración y aceptación siguen pendientes del equipo.
+La rama debe ser `feat/m3-catalogo-mercados`, sin cambios pendientes. `origin` debe mostrar `https://github.com/Team3DS/acciones-ud-backend.git`. La rama aún puede mostrar seguimiento de `mi-fork`; el comando del paso 4 lo cambia a `origin`. Leer `m3-catalogo-mercados/docs/VALIDACION.md`, `REVISION_REGLAS_Y_WIKI.md` y `ADR-M3-001.md`. La integración y aceptación del alcance ampliado siguen pendientes del equipo.
 
 La carpeta ya contiene los cambios; no hace falta descomprimir el ZIP encima. El ZIP sirve para entregar una copia a otra persona. Si se utiliza en otra copia del repositorio, conservar su estructura y revisar el manifiesto antes de incorporar archivos.
 
-## 2 Ejecutar la verificación
+## 2 Verificación realizada y cómo repetirla
+
+El 16 de noviembre pasaron 36 unitarias y 44 integraciones PostgreSQL por JDK, tanto en Java 21 como en Java 25, con cero fallos y errores. Checkstyle, SpotBugs, JaCoCo y la revisión de los workflows con actionlint también fueron correctos. Los registros están indicados en `VALIDACION.md`. No es necesario repetir estas pruebas para subir los commits ya preparados.
 
 Con Java 21 y Maven disponibles, cerrar cualquier M3 que esté usando el JAR antes de `clean` y ejecutar:
 
@@ -36,21 +41,9 @@ mvn -B -pl m3-catalogo-mercados -am clean verify
 
 Para repetir todas las integraciones y los análisis de calidad, usar los comandos del README de M3. El recorrido con RabbitMQ real necesita Docker y activa el grupo `broker`. No se debe marcar ese recorrido o Docker Build como aprobado por el mero hecho de que las pruebas locales pasen.
 
-## 3 Preparar el commit local
+## 3 Commits preparados
 
-```powershell
-git add -- README.md docker-compose.yml gateway/src/main/resources/application.yml .github/workflows/m3-catalogo.yml m3-catalogo-mercados
-git diff --cached --stat
-git diff --cached --check
-```
-
-Revisar que la lista incluya únicamente M3, su workflow, los ajustes de rutas/configuración y la documentación. `target/`, `.env`, herramientas, tokens y bases temporales quedan fuera.
-
-Crear el commit manualmente:
-
-```powershell
-git commit -m "feat(m3): implementar catalogo administrable y eventos"
-```
+La implementación, los ajustes anteriores de Java 25 y la corrección de Docker ya tienen commits locales. No volver a aplicar el patch anterior ni crear de nuevo el commit de implementación. `target/`, `.env`, herramientas, tokens y bases temporales quedan fuera de los commits.
 
 ## 4 Comprobar la base y publicar la rama
 
@@ -59,15 +52,18 @@ git fetch origin
 git log --oneline HEAD..origin/main
 ```
 
-Si aparecen cambios nuevos de `main`, incorporarlos y resolver sus conflictos antes de continuar, conservando los cambios del resto del equipo. Volver a ejecutar las pruebas si hay cambios o conflictos en el código. No usar force push.
+Al preparar esta entrega, `origin/main` estaba actualizado y era antecesor de la rama. Si posteriormente aparecen commits nuevos, incorporarlos con `git merge origin/main`, resolver sus conflictos y repetir las pruebas antes de continuar. No usar force push.
 
 Cuando la rama esté revisada:
 
 ```powershell
 git push -u origin feat/m3-catalogo-mercados
+git branch -vv
 ```
 
-Esto publica la rama, no fusiona el código a `main`. Si tu cuenta no tiene permisos de escritura, crear un fork en GitHub, añadirlo como remoto y subir allí la misma rama; el PR se abre desde ese fork hacia `Team3DS/acciones-ud-backend:main`.
+Esto crea la rama dentro del repositorio del equipo y sube también sus commits anteriores. Después debe aparecer `[origin/feat/m3-catalogo-mercados]` como seguimiento. No usar simplemente `git push` antes de este paso: el seguimiento anterior apunta al fork. No subir directamente a `main`.
+
+Si GitHub solicita iniciar sesión, usar la cuenta `JamysonRolon` con acceso al equipo. Si devuelve un error, conservar su mensaje y resolverlo antes de continuar; no cambiar el destino al fork como alternativa automática.
 
 ## 5 Abrir el PR y solicitar revisión
 
@@ -77,14 +73,19 @@ Comprobar:
 
 - **Base repository:** `Team3DS/acciones-ud-backend`.
 - **Base:** `main`.
-- **Compare:** `feat/m3-catalogo-mercados`, en la organización o en tu fork.
+- **Head repository:** `Team3DS/acciones-ud-backend`.
+- **Compare:** `feat/m3-catalogo-mercados`, dentro del repositorio del equipo.
 - **Título:** `feat(m3): implementar catalogo administrable y eventos`.
 
 Copiar como descripción el contenido de `docs/PROPUESTA_PR_M3.md`. Seleccionar en **Reviewers** a Juan Carlos o al revisor que el equipo haya designado; seleccionarlo solo si aparece su cuenta correcta. Crear un PR normal listo para revisión para que puedan aprobarlo. Un Draft se utiliza si el equipo decide que todavía no debe solicitarse una aprobación formal.
 
+El repositorio usa actualmente `main` como destino y no tiene rama `dev`. Después de crear y verificar el PR nuevo, cerrar el #17 como reemplazado, incluyendo el enlace al nuevo PR. Subir a `origin` no actualiza el #17 porque su origen sigue siendo el fork.
+
 ## 6 Mantenerlo pendiente de aprobación
 
 Dejar el PR abierto, con la revisión solicitada. No pulsar **Merge pull request** ni activar **Auto-merge**. Esperar los checks y la respuesta del revisor.
+
+La subida de esta rama activa `M3 Catalogo`; el PR activa además `CI Backend - Trunk Based`. Comprobar que `verify-m3 (21)` y `verify-m3 (25)` terminan correctamente, incluida la integración con PostgreSQL/RabbitMQ y la construcción de la imagen M3. Este equipo no tiene Docker: RabbitMQ real y Docker Build siguen pendientes del recorrido remoto. Esperar también los demás checks exigidos del PR.
 
 Pedir que revisen expresamente V3, la ampliación frente al SAD, la compatibilidad con M4/M5, los eventos y la emisión del claim `roles` por M1. El M1 actual no incluye roles en sus tokens; esa integración es necesaria para la administración real. Si el revisor pide cambios, realizarlos en la misma rama, ejecutar sus comprobaciones y subir otro commit; el PR se actualiza automáticamente.
 
