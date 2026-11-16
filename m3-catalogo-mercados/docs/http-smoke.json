@@ -1,0 +1,483 @@
+{
+  "environment": "PostgreSQL real; relay y health de Rabbit desactivados para esta prueba HTTP; JWT de fixtures",
+  "passed": true,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/actuator/health",
+      "status": 200,
+      "body": {
+        "status": "UP",
+        "groups": [
+          "liveness",
+          "readiness"
+        ]
+      },
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/catalog/markets",
+      "status": 200,
+      "body": [
+        {
+          "id": 2,
+          "code": "NASDAQ",
+          "name": "Nasdaq Stock Market",
+          "mic": "XNAS",
+          "timeZone": "America/New_York",
+          "currency": "USD",
+          "enabled": true,
+          "country": "Estados Unidos",
+          "tradingHours": {
+            "open": "09:30:00",
+            "close": "16:00:00"
+          }
+        },
+        {
+          "id": 1,
+          "code": "NYSE",
+          "name": "New York Stock Exchange",
+          "mic": "XNYS",
+          "timeZone": "America/New_York",
+          "currency": "USD",
+          "enabled": true,
+          "country": "Estados Unidos",
+          "tradingHours": {
+            "open": "09:30:00",
+            "close": "16:00:00"
+          }
+        }
+      ],
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/instruments?filter%5Bmarket%5D=NASDAQ&filter%5Bsector%5D=TECNOLOGIA&sort=symbol,asc",
+      "status": 200,
+      "body": {
+        "content": [
+          {
+            "id": 8,
+            "symbol": "AAPL",
+            "companyName": "Apple Inc.",
+            "enabled": true,
+            "market": {
+              "id": 2,
+              "code": "NASDAQ",
+              "name": "Nasdaq Stock Market",
+              "mic": "XNAS",
+              "timeZone": "America/New_York",
+              "currency": "USD",
+              "enabled": true,
+              "country": "Estados Unidos",
+              "tradingHours": {
+                "open": "09:30:00",
+                "close": "16:00:00"
+              }
+            },
+            "sector": {
+              "id": 1,
+              "code": "TECNOLOGIA",
+              "name": "Tecnología",
+              "description": "Software, hardware y semiconductores."
+            },
+            "type": "ACCION",
+            "lotSize": 1.0,
+            "tickSize": 0.01,
+            "state": "ACTIVO",
+            "createdAt": "2026-11-13T11:07:17.332525Z",
+            "updatedAt": "2026-11-13T11:07:17.332525Z"
+          },
+          {
+            "id": 9,
+            "symbol": "MSFT",
+            "companyName": "Microsoft Corporation",
+            "enabled": true,
+            "market": {
+              "id": 2,
+              "code": "NASDAQ",
+              "name": "Nasdaq Stock Market",
+              "mic": "XNAS",
+              "timeZone": "America/New_York",
+              "currency": "USD",
+              "enabled": true,
+              "country": "Estados Unidos",
+              "tradingHours": {
+                "open": "09:30:00",
+                "close": "16:00:00"
+              }
+            },
+            "sector": {
+              "id": 1,
+              "code": "TECNOLOGIA",
+              "name": "Tecnología",
+              "description": "Software, hardware y semiconductores."
+            },
+            "type": "ACCION",
+            "lotSize": 1.0,
+            "tickSize": 0.01,
+            "state": "ACTIVO",
+            "createdAt": "2026-11-13T11:07:17.332525Z",
+            "updatedAt": "2026-11-13T11:07:17.332525Z"
+          },
+          {
+            "id": 10,
+            "symbol": "NVDA",
+            "companyName": "NVIDIA Corporation",
+            "enabled": true,
+            "market": {
+              "id": 2,
+              "code": "NASDAQ",
+              "name": "Nasdaq Stock Market",
+              "mic": "XNAS",
+              "timeZone": "America/New_York",
+              "currency": "USD",
+              "enabled": true,
+              "country": "Estados Unidos",
+              "tradingHours": {
+                "open": "09:30:00",
+                "close": "16:00:00"
+              }
+            },
+            "sector": {
+              "id": 1,
+              "code": "TECNOLOGIA",
+              "name": "Tecnología",
+              "description": "Software, hardware y semiconductores."
+            },
+            "type": "ACCION",
+            "lotSize": 1.0,
+            "tickSize": 0.01,
+            "state": "ACTIVO",
+            "createdAt": "2026-11-13T11:07:17.332525Z",
+            "updatedAt": "2026-11-13T11:07:17.332525Z"
+          }
+        ],
+        "page": 0,
+        "size": 20,
+        "totalElements": 3,
+        "totalPages": 1,
+        "empty": false,
+        "number": 0,
+        "first": true,
+        "last": true,
+        "numberOfElements": 3
+      },
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/instruments/AAPL/tradable",
+      "status": 200,
+      "body": {
+        "symbol": "AAPL",
+        "valid": true,
+        "reason": "HABILITADO",
+        "instrument": {
+          "id": 8,
+          "symbol": "AAPL",
+          "companyName": "Apple Inc.",
+          "enabled": true,
+          "market": {
+            "id": 2,
+            "code": "NASDAQ",
+            "name": "Nasdaq Stock Market",
+            "mic": "XNAS",
+            "timeZone": "America/New_York",
+            "currency": "USD",
+            "enabled": true,
+            "country": "Estados Unidos",
+            "tradingHours": {
+              "open": "09:30:00",
+              "close": "16:00:00"
+            }
+          },
+          "sector": {
+            "id": 1,
+            "code": "TECNOLOGIA",
+            "name": "Tecnología",
+            "description": "Software, hardware y semiconductores."
+          },
+          "type": "ACCION",
+          "lotSize": 1.0,
+          "tickSize": 0.01,
+          "state": "ACTIVO",
+          "createdAt": "2026-11-13T11:07:17.332525Z",
+          "updatedAt": "2026-11-13T11:07:17.332525Z"
+        }
+      },
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/instruments/ZZZZ/tradable",
+      "status": 200,
+      "body": {
+        "symbol": "ZZZZ",
+        "valid": false,
+        "reason": "NO_ENCONTRADO",
+        "instrument": null
+      },
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/instruments/validate",
+      "status": 200,
+      "body": [
+        {
+          "symbol": "AAPL",
+          "valid": true,
+          "reason": "HABILITADO",
+          "instrument": {
+            "id": 8,
+            "symbol": "AAPL",
+            "companyName": "Apple Inc.",
+            "enabled": true,
+            "market": {
+              "id": 2,
+              "code": "NASDAQ",
+              "name": "Nasdaq Stock Market",
+              "mic": "XNAS",
+              "timeZone": "America/New_York",
+              "currency": "USD",
+              "enabled": true,
+              "country": "Estados Unidos",
+              "tradingHours": {
+                "open": "09:30:00",
+                "close": "16:00:00"
+              }
+            },
+            "sector": {
+              "id": 1,
+              "code": "TECNOLOGIA",
+              "name": "Tecnología",
+              "description": "Software, hardware y semiconductores."
+            },
+            "type": "ACCION",
+            "lotSize": 1.0,
+            "tickSize": 0.01,
+            "state": "ACTIVO",
+            "createdAt": "2026-11-13T11:07:17.332525Z",
+            "updatedAt": "2026-11-13T11:07:17.332525Z"
+          }
+        },
+        {
+          "symbol": "ZZZZ",
+          "valid": false,
+          "reason": "NO_ENCONTRADO",
+          "instrument": null
+        }
+      ],
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/instruments",
+      "status": 401,
+      "body": {
+        "type": "about:blank",
+        "title": "Unauthorized",
+        "status": 401,
+        "detail": "Envíe un token Bearer de M1.",
+        "instance": "/api/v1/instruments",
+        "code": "AUTENTICACION_REQUERIDA",
+        "timestamp": "2026-11-13T11:07:51.776543900Z",
+        "error": "Unauthorized",
+        "message": "Envíe un token Bearer de M1.",
+        "path": "/api/v1/instruments",
+        "traceId": "m3-final-review"
+      },
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/instruments",
+      "status": 403,
+      "body": {
+        "type": "about:blank",
+        "title": "Forbidden",
+        "status": 403,
+        "detail": "Se requiere el rol ADMINISTRADOR para modificar el catálogo.",
+        "instance": "/api/v1/instruments",
+        "code": "ACCESO_DENEGADO",
+        "timestamp": "2026-11-13T11:07:51.802407400Z",
+        "error": "Forbidden",
+        "message": "Se requiere el rol ADMINISTRADOR para modificar el catálogo.",
+        "path": "/api/v1/instruments",
+        "traceId": "m3-final-review"
+      },
+      "correlationId": "m3-final-review",
+      "replayed": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/instruments",
+      "status": 201,
+      "body": {
+        "id": 21,
+        "symbol": "SMKCE45AA1E",
+        "companyName": "ETF de prueba HTTP",
+        "enabled": true,
+        "market": {
+          "id": 2,
+          "code": "NASDAQ",
+          "name": "Nasdaq Stock Market",
+          "mic": "XNAS",
+          "timeZone": "America/New_York",
+          "currency": "USD",
+          "enabled": true,
+          "country": "Estados Unidos",
+          "tradingHours": {
+            "open": "09:30:00",
+            "close": "16:00:00"
+          }
+        },
+        "sector": {
+          "id": 1,
+          "code": "TECNOLOGIA",
+          "name": "Tecnología",
+          "description": "Software, hardware y semiconductores."
+        },
+        "type": "ETF",
+        "lotSize": 1.0,
+        "tickSize": 0.01,
+        "state": "ACTIVO",
+        "createdAt": "2026-11-13T11:07:51.859557Z",
+        "updatedAt": "2026-11-13T11:07:51.859557Z"
+      },
+      "correlationId": "m3-final-review",
+      "replayed": "false"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/instruments",
+      "status": 201,
+      "body": {
+        "id": 21,
+        "symbol": "SMKCE45AA1E",
+        "companyName": "ETF de prueba HTTP",
+        "enabled": true,
+        "market": {
+          "id": 2,
+          "code": "NASDAQ",
+          "name": "Nasdaq Stock Market",
+          "mic": "XNAS",
+          "timeZone": "America/New_York",
+          "currency": "USD",
+          "enabled": true,
+          "country": "Estados Unidos",
+          "tradingHours": {
+            "open": "09:30:00",
+            "close": "16:00:00"
+          }
+        },
+        "sector": {
+          "id": 1,
+          "code": "TECNOLOGIA",
+          "name": "Tecnología",
+          "description": "Software, hardware y semiconductores."
+        },
+        "type": "ETF",
+        "lotSize": 1.0,
+        "tickSize": 0.01,
+        "state": "ACTIVO",
+        "createdAt": "2026-11-13T11:07:51.859557Z",
+        "updatedAt": "2026-11-13T11:07:51.859557Z"
+      },
+      "correlationId": "m3-final-review",
+      "replayed": "true"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/instruments/SMKCE45AA1E",
+      "status": 200,
+      "body": {
+        "id": 21,
+        "symbol": "SMKCE45AA1E",
+        "companyName": "ETF de prueba HTTP",
+        "enabled": false,
+        "market": {
+          "id": 2,
+          "code": "NASDAQ",
+          "name": "Nasdaq Stock Market",
+          "mic": "XNAS",
+          "timeZone": "America/New_York",
+          "currency": "USD",
+          "enabled": true,
+          "country": "Estados Unidos",
+          "tradingHours": {
+            "open": "09:30:00",
+            "close": "16:00:00"
+          }
+        },
+        "sector": {
+          "id": 1,
+          "code": "TECNOLOGIA",
+          "name": "Tecnología",
+          "description": "Software, hardware y semiconductores."
+        },
+        "type": "ETF",
+        "lotSize": 1.0,
+        "tickSize": 0.01,
+        "state": "SUSPENDIDO",
+        "createdAt": "2026-11-13T11:07:51.859557Z",
+        "updatedAt": "2026-11-13T11:07:51.936648Z"
+      },
+      "correlationId": "m3-final-review",
+      "replayed": "false"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/instruments/SMKCE45AA1E/tradable",
+      "status": 200,
+      "body": {
+        "symbol": "SMKCE45AA1E",
+        "valid": false,
+        "reason": "ACCION_DESHABILITADA",
+        "instrument": {
+          "id": 21,
+          "symbol": "SMKCE45AA1E",
+          "companyName": "ETF de prueba HTTP",
+          "enabled": false,
+          "market": {
+            "id": 2,
+            "code": "NASDAQ",
+            "name": "Nasdaq Stock Market",
+            "mic": "XNAS",
+            "timeZone": "America/New_York",
+            "currency": "USD",
+            "enabled": true,
+            "country": "Estados Unidos",
+            "tradingHours": {
+              "open": "09:30:00",
+              "close": "16:00:00"
+            }
+          },
+          "sector": {
+            "id": 1,
+            "code": "TECNOLOGIA",
+            "name": "Tecnología",
+            "description": "Software, hardware y semiconductores."
+          },
+          "type": "ETF",
+          "lotSize": 1.0,
+          "tickSize": 0.01,
+          "state": "SUSPENDIDO",
+          "createdAt": "2026-11-13T11:07:51.859557Z",
+          "updatedAt": "2026-11-13T11:07:51.936648Z"
+        }
+      },
+      "correlationId": "m3-final-review",
+      "replayed": null
+    }
+  ]
+}

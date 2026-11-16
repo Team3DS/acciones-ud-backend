@@ -1,0 +1,18 @@
+spring:
+  flyway:
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+management:
+  health:
+    rabbit:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+app:
+  outbox:
+    enabled: false
+  jwt:
+    secret: m3-test-only-key-not-for-deployment-1234567890123456789012345678901234

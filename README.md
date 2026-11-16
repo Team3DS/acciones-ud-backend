@@ -36,6 +36,10 @@ Backend de **Acciones UD**, la plataforma web de Day Trading para el mercado col
 8. **Docker Compose** (levanta TODO: 8 servicios + Gateway + infraestructura).
 9. **Maven multi-módulo** (parent POM + 10 submódulos: common, gateway, 8 microservicios).
 
+> ### `Entregable M3 de Jamyson`
+
+Jamyson confirmó su responsabilidad sobre M3 el 13/11/2026. Su entrega local incorpora catálogo, edición administrativa, tipos de instrumentos, JWT, idempotencia, eventos, migraciones y pruebas. La guía y los resultados están en [m3-catalogo-mercados/README.md](m3-catalogo-mercados/README.md). La versión efectiva de M3 la determina el POM (Spring Boot 3.3.5). La subida y la revisión del PR se realizan manualmente, sin fusionar a main hasta recibir aprobación.
+
 > ### `Los 8 Microservicios`
 
 | Servicio | Puerto | Base de datos | Dominio (dueño de datos) |
@@ -247,7 +251,7 @@ docker compose logs -f m5-ordenes-ejecucion
 
 **Asignación sugerida (equipo 5 personas)**:
 - **Juan Carlos** (Líder backend): M5 coordinación + prueba integrada compra/venta.
-- **Jamyson** (Backend/QA): M1 + M8 mínimo; apoyo ejecución/mercado.
+- **Jamyson** (Backend/QA): **M3 Catálogo de Mercados**, asignación confirmada el 13/11/2026. Ver la guía de M3.
 - **Sebastián** (DB): Separación BDs, migraciones M2/M6, contratos.
 - **Andrés** (Frontend): Catálogo, cotizaciones, formulario/seguimiento órdenes.
 - **Paula** (Frontend/QA): Acceso, portafolio, avisos; evidencias y docs.
