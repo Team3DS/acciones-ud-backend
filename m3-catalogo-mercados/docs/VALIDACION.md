@@ -58,3 +58,29 @@ Los dos workflows pasaron actionlint 1.7.12. La verificación local usa bases Po
 Ambos recorridos ejecutaron `mvn -B -pl m3-catalogo-mercados -am '-Pintegration,quality' clean verify` con `m3.test.jdbc-url` apuntando a su base exclusiva. El caso `broker` se excluye por defecto en este recorrido local, tal como está definido en el POM. CI activa explícitamente `-Dm3.test.rabbit=true -Dm3.excluded-groups=` para incluirlo.
 
 Los registros de esta revisión se guardan fuera del repositorio, en `output/m3-java21-verify-2026-11-16.log`, `output/m3-java25-verify-2026-11-16.log` y `output/m3-docker-api-probe-2026-11-16.log`, en la carpeta padre del checkout.
+
+## Corrección del Quality Gate de Sonar del 16 de noviembre de 2026
+
+El análisis del PR #18 mostraba 32.1 % de cobertura nueva, cuatro hallazgos `java:S2077` en `JdbcCatalogoRepository` y un `plsql:CharVarchar` sobre V3. El workflow que enviaba el análisis solo ejecutaba unitarias; el recorrido de integración generaba un informe distinto en otro runner. El informe completo de ese runner no llegaba al analizador.
+
+El job de análisis ahora ejecuta las integraciones de M3 con PostgreSQL y RabbitMQ antes de enviar JaCoCo a Sonar. Espera el resultado del Quality Gate y propaga su fallo. El perfil `quality` comprueba además un mínimo del 80 % tanto en líneas como en ramas del módulo. No se reduce el umbral remoto ni se añaden exclusiones de cobertura.
+
+Las cuatro consultas señaladas se sustituyeron por SQL estático. Los valores de filtros, el criterio de orden y la dirección se enlazan como parámetros; las columnas de ordenación están fijadas en expresiones CASE del SQL. Se verifican los cuatro criterios, ambas direcciones, los desempates por ID y entradas con sintaxis de inyección, sin cambiar los contratos de consulta.
+
+El proyecto usa PostgreSQL. `sonar-project.properties` reserva el analizador de Oracle PL/SQL para extensiones `pls`, `plsql`, `pks` y `pkb`; las migraciones `.sql` de PostgreSQL no se interpretan como Oracle. V3 y su checksum permanecen intactos. Las migraciones se verifican ejecutándolas contra PostgreSQL, no convirtiendo su sintaxis a VARCHAR2 ni silenciando una línea con NOSONAR.
+
+El validador JWT conserva la compatibilidad con tokens de lectura sin roles de M1 y rechaza claims de roles malformados. Se añadieron pruebas de caducidad, firma distinta, ausencia de firma, nbf futuro, identidad fuera de rango, roles normalizados, duplicados y formatos no válidos.
+
+| Comprobación local | Resultado |
+| --- | --- |
+| Java 21 | 56 unitarias + 53 integraciones PostgreSQL; cero fallos y errores |
+| Java 25 | 56 unitarias + 53 integraciones PostgreSQL; cero fallos y errores |
+| JaCoCo del módulo | 642/659 líneas (97.4 %), 186/218 ramas (85.3 %) |
+| JwtTokenValidator | 23/23 líneas y 20/20 ramas cubiertas |
+| JdbcCatalogoRepository | 76/77 líneas y 7/8 ramas cubiertas |
+| Umbral local 80 % líneas/ramas | Correcto |
+| Checkstyle, SpotBugs y sintaxis de workflows | Correctos |
+
+Los recorridos locales usan bases exclusivas indicadas mediante `m3.test.jdbc-url` y mantienen excluido el grupo `broker`, porque este equipo no tiene Docker. El workflow de análisis y el de M3 incluyen explícitamente RabbitMQ real. Estos resultados locales no acreditan todavía un nuevo Quality Gate remoto: el usuario debe subir el commit y comprobar el análisis actualizado del PR #18.
+
+Registros en la carpeta padre del checkout: `output/m3-sonar-java21-verify.log`, `output/m3-sonar-java25-verify.log` y `output/m3-sonar-coverage-threshold.log`.

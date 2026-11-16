@@ -11,13 +11,14 @@ import co.edu.udistrital.acciones.m3catalogomercados.domain.Sector;
 import co.edu.udistrital.acciones.m3catalogomercados.domain.TipoInstrumento;
 
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +42,41 @@ public class JdbcCatalogoRepository implements CatalogoRepositoryPort {
     private static final String FROM =
             " FROM accion a JOIN mercado m ON m.id = a.mercado_id JOIN sector s ON s.id ="
                     + " a.sector_id";
+    private static final String FILTROS =
+            """
+ WHERE (:type IS NULL OR a.tipo = :type)
+   AND (:symbol IS NULL OR a.ticker = :symbol)
+   AND (:query IS NULL OR a.ticker ILIKE :query ESCAPE '!' OR a.nombre_empresa ILIKE :query ESCAPE '!')
+   AND (:market IS NULL OR m.codigo = :market OR m.codigo_mic = :market)
+   AND (:sector IS NULL OR s.codigo = :sector)
+   AND (:enabled IS NULL OR (a.habilitada AND m.habilitado AND a.estado = 'ACTIVO') = :enabled)
+""";
+    private static final String ORDEN =
+            """
+             ORDER BY
+               CASE WHEN NOT :descending THEN
+                 CASE :sort WHEN 'SYMBOL' THEN a.ticker WHEN 'COMPANY_NAME' THEN a.nombre_empresa
+                            WHEN 'MARKET' THEN m.codigo WHEN 'SECTOR' THEN s.codigo END
+               END ASC,
+               CASE WHEN :descending THEN
+                 CASE :sort WHEN 'SYMBOL' THEN a.ticker WHEN 'COMPANY_NAME' THEN a.nombre_empresa
+                            WHEN 'MARKET' THEN m.codigo WHEN 'SECTOR' THEN s.codigo END
+               END DESC,
+               a.id ASC LIMIT :limit OFFSET :offset
+            """;
+    private static final String LISTAR_MERCADOS =
+            "SELECT "
+                    + MERCADO
+                    + " FROM mercado m WHERE (:enabled IS NULL OR m.habilitado = :enabled) ORDER BY"
+                    + " m.codigo";
+    private static final String CONTAR_INSTRUMENTOS = "SELECT COUNT(*)" + FROM + FILTROS;
+    private static final String LISTAR_INSTRUMENTOS = "SELECT " + COLUMNAS + FROM + FILTROS + ORDEN;
+    private static final String BUSCAR_SIMBOLOS =
+            "SELECT "
+                    + COLUMNAS
+                    + FROM
+                    + " WHERE a.ticker IN (:symbols) AND (:market IS NULL OR m.codigo = :market OR"
+                    + " m.codigo_mic = :market) ORDER BY a.ticker, m.codigo";
     private static final RowMapper<Mercado> MERCADO_MAPPER = (rs, row) -> mercado(rs);
     private static final RowMapper<Sector> SECTOR_MAPPER = (rs, row) -> sector(rs);
     private static final RowMapper<Instrumento> INSTRUMENTO_MAPPER =
@@ -66,10 +102,9 @@ public class JdbcCatalogoRepository implements CatalogoRepositoryPort {
 
     @Override
     public List<Mercado> listarMercados(Boolean enabled) {
-        String where = enabled == null ? "" : " WHERE m.habilitado = :enabled";
         return jdbc.query(
-                "SELECT " + MERCADO + " FROM mercado m" + where + " ORDER BY m.codigo",
-                enabled == null ? Map.of() : Map.of("enabled", enabled),
+                LISTAR_MERCADOS,
+                new MapSqlParameterSource().addValue("enabled", enabled, Types.BOOLEAN),
                 MERCADO_MAPPER);
     }
 
@@ -93,80 +128,40 @@ public class JdbcCatalogoRepository implements CatalogoRepositoryPort {
 
     @Override
     public Pagina<Instrumento> buscar(FiltroInstrumentos filtro) {
-        StringBuilder where = new StringBuilder(" WHERE 1 = 1");
-        Map<String, Object> params = new HashMap<>();
-        if (filtro.type() != null) {
-            where.append(" AND a.tipo=:type");
-            params.put("type", filtro.type());
-        }
-        if (filtro.symbol() != null) {
-            where.append(" AND a.ticker = :symbol");
-            params.put("symbol", filtro.symbol());
-        }
-        if (filtro.query() != null && !filtro.query().isBlank()) {
-            where.append(
-                    " AND (a.ticker ILIKE :query ESCAPE '!' OR a.nombre_empresa ILIKE :query ESCAPE"
-                            + " '!')");
-            params.put(
-                    "query",
-                    "%"
-                            + filtro.query()
-                                    .replace("!", "!!")
-                                    .replace("%", "!%")
-                                    .replace("_", "!_")
-                            + "%");
-        }
-        if (filtro.market() != null) {
-            where.append(" AND (m.codigo = :market OR m.codigo_mic = :market)");
-            params.put("market", filtro.market());
-        }
-        if (filtro.sector() != null) {
-            where.append(" AND s.codigo = :sector");
-            params.put("sector", filtro.sector());
-        }
-        if (filtro.enabled() != null) {
-            where.append(" AND (a.habilitada AND m.habilitado AND a.estado='ACTIVO') = :enabled");
-            params.put("enabled", filtro.enabled());
-        }
-        Long total = jdbc.queryForObject("SELECT COUNT(*)" + FROM + where, params, Long.class);
-        String sort =
-                switch (filtro.sort()) {
-                    case SYMBOL -> "a.ticker";
-                    case COMPANY_NAME -> "a.nombre_empresa";
-                    case MARKET -> "m.codigo";
-                    case SECTOR -> "s.codigo";
-                };
-        params.put("limit", filtro.size());
-        params.put("offset", (long) filtro.page() * filtro.size());
-        List<Instrumento> rows =
-                jdbc.query(
-                        "SELECT "
-                                + COLUMNAS
-                                + FROM
-                                + where
-                                + " ORDER BY "
-                                + sort
-                                + (filtro.descending() ? " DESC" : " ASC")
-                                + ", a.id ASC LIMIT :limit OFFSET :offset",
-                        params,
-                        INSTRUMENTO_MAPPER);
+        String query =
+                filtro.query() == null || filtro.query().isBlank()
+                        ? null
+                        : "%"
+                                + filtro.query()
+                                        .replace("!", "!!")
+                                        .replace("%", "!%")
+                                        .replace("_", "!_")
+                                + "%";
+        MapSqlParameterSource params =
+                new MapSqlParameterSource()
+                        .addValue("type", filtro.type(), Types.VARCHAR)
+                        .addValue("symbol", filtro.symbol(), Types.VARCHAR)
+                        .addValue("query", query, Types.VARCHAR)
+                        .addValue("market", filtro.market(), Types.VARCHAR)
+                        .addValue("sector", filtro.sector(), Types.VARCHAR)
+                        .addValue("enabled", filtro.enabled(), Types.BOOLEAN)
+                        .addValue("sort", filtro.sort().name(), Types.VARCHAR)
+                        .addValue("descending", filtro.descending(), Types.BOOLEAN)
+                        .addValue("limit", filtro.size(), Types.INTEGER)
+                        .addValue("offset", (long) filtro.page() * filtro.size(), Types.BIGINT);
+        Long total = jdbc.queryForObject(CONTAR_INSTRUMENTOS, params, Long.class);
+        List<Instrumento> rows = jdbc.query(LISTAR_INSTRUMENTOS, params, INSTRUMENTO_MAPPER);
         return Pagina.of(rows, filtro.page(), filtro.size(), Objects.requireNonNull(total));
     }
 
     @Override
     public List<Instrumento> buscarPorSimbolos(Collection<String> symbols, String market) {
         if (symbols.isEmpty()) return List.of();
-        Map<String, Object> params = new HashMap<>();
-        params.put("symbols", symbols);
-        String where = " WHERE a.ticker IN (:symbols)";
-        if (market != null) {
-            where += " AND (m.codigo = :market OR m.codigo_mic = :market)";
-            params.put("market", market);
-        }
-        return jdbc.query(
-                "SELECT " + COLUMNAS + FROM + where + " ORDER BY a.ticker, m.codigo",
-                params,
-                INSTRUMENTO_MAPPER);
+        MapSqlParameterSource params =
+                new MapSqlParameterSource()
+                        .addValue("symbols", symbols)
+                        .addValue("market", market, Types.VARCHAR);
+        return jdbc.query(BUSCAR_SIMBOLOS, params, INSTRUMENTO_MAPPER);
     }
 
     @Override

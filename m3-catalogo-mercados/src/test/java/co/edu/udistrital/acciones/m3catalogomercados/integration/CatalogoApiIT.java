@@ -100,6 +100,123 @@ class CatalogoApiIT extends CatalogoIntegrationSupport {
                 .andExpect(jsonPath("$.totalElements").value(10));
     }
 
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "SYMBOL,false",
+        "SYMBOL,true",
+        "COMPANY_NAME,false",
+        "COMPANY_NAME,true",
+        "MARKET,false",
+        "MARKET,true",
+        "SECTOR,false",
+        "SECTOR,true"
+    })
+    void ordenacionEstaticaRespetaTodosLosCriteriosYLosEmpates(
+            OrdenCatalogo sort, boolean descending) {
+        List<Instrumento> baseline =
+                repository
+                        .buscar(
+                                new FiltroInstrumentos(
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        0,
+                                        100,
+                                        OrdenCatalogo.SYMBOL,
+                                        false))
+                        .content();
+        java.util.function.Function<Instrumento, String> property =
+                switch (sort) {
+                    case SYMBOL -> Instrumento::symbol;
+                    case COMPANY_NAME -> Instrumento::companyName;
+                    case MARKET -> instrument -> instrument.market().code();
+                    case SECTOR -> instrument -> instrument.sector().code();
+                };
+        java.util.Comparator<Instrumento> comparator = java.util.Comparator.comparing(property);
+        if (descending) comparator = comparator.reversed();
+        comparator = comparator.thenComparingLong(Instrumento::id);
+        List<Long> expected = baseline.stream().sorted(comparator).map(Instrumento::id).toList();
+        List<Long> actual =
+                repository
+                        .buscar(
+                                new FiltroInstrumentos(
+                                        null, null, null, null, 0, 100, sort, descending))
+                        .content()
+                        .stream()
+                        .map(Instrumento::id)
+                        .toList();
+        assertThat(actual).containsExactlyElementsOf(expected);
+    }
+
+    @Test
+    void filtrosDelRepositorioNoInterpretanEntradasComoSql() {
+        String injection = "' OR 1=1 --";
+        assertThat(
+                        repository
+                                .buscar(
+                                        new FiltroInstrumentos(
+                                                null,
+                                                injection,
+                                                null,
+                                                null,
+                                                0,
+                                                20,
+                                                OrdenCatalogo.SYMBOL,
+                                                false))
+                                .totalElements())
+                .isZero();
+        assertThat(
+                        repository
+                                .buscar(
+                                        new FiltroInstrumentos(
+                                                null,
+                                                null,
+                                                injection,
+                                                null,
+                                                0,
+                                                20,
+                                                OrdenCatalogo.SYMBOL,
+                                                false))
+                                .totalElements())
+                .isZero();
+        assertThat(
+                        repository
+                                .buscar(
+                                        new FiltroInstrumentos(
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                0,
+                                                20,
+                                                OrdenCatalogo.SYMBOL,
+                                                false,
+                                                injection,
+                                                null))
+                                .totalElements())
+                .isZero();
+        assertThat(
+                        repository
+                                .buscar(
+                                        new FiltroInstrumentos(
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                0,
+                                                20,
+                                                OrdenCatalogo.SYMBOL,
+                                                false,
+                                                null,
+                                                injection))
+                                .totalElements())
+                .isZero();
+        assertThat(repository.buscarPorSimbolos(List.of(injection), null)).isEmpty();
+        assertThat(repository.buscarPorSimbolos(List.of("AAPL"), injection)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM accion", Integer.class)).isEqualTo(10);
+    }
+
     @Test
     void escapaComodinesYNoInterpretaLaBusquedaComoSql() throws Exception {
         for (String query : List.of("%", "_", "!", "' OR 1=1 --")) {
