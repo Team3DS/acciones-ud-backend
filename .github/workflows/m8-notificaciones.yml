@@ -1,0 +1,36 @@
+name: M8 Notificaciones
+
+on:
+  push:
+    branches: [main, feat/m8-notificaciones]
+    paths: ['pom.xml', 'm8-notificaciones/**', '.github/workflows/m8-notificaciones.yml']
+  pull_request:
+    branches: [main]
+    paths: ['pom.xml', 'm8-notificaciones/**', '.github/workflows/m8-notificaciones.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-m8:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['21', '25']
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - name: Verificar Docker
+        run: docker version
+      - name: Unitarias, integracion PostgreSQL, RabbitMQ y Resend simulado
+        run: mvn -B -pl m8-notificaciones -am -Pintegration,quality clean verify
+      - name: Construir imagen M8
+        if: matrix.java == '21'
+        run: docker build -f m8-notificaciones/Dockerfile -t acciones-ud/m8:ci .
