@@ -34,10 +34,11 @@ public class MercadoDatosController {
     }
 
     @GetMapping("/status")
-    public ResponseEntity<EstadoMercadoResponse> obtenerEstado(@RequestParam String market) {
+    public ResponseEntity<EstadoMercadoResponse> obtenerEstado(@RequestParam(required = false) String market) {
         Instant now = Instant.now();
-        EstadoMercado estado = horariosUseCase.obtenerEstado(market, now);
-        EstadoMercadoResponse response = EstadoMercadoResponse.from(market, estado, now);
+        String marketToUse = market != null ? market : "ALL";
+        EstadoMercado estado = horariosUseCase.obtenerEstado(marketToUse, now);
+        EstadoMercadoResponse response = EstadoMercadoResponse.from(marketToUse, estado, now);
         return ResponseEntity.ok(response);
     }
 }
