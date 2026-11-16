@@ -2,6 +2,7 @@ package co.edu.udistrital.acciones.m8notificaciones.infrastructure.adapter.out;
 
 import co.edu.udistrital.acciones.m8notificaciones.application.port.out.ServiciosPort;
 import co.edu.udistrital.acciones.m8notificaciones.domain.AvisoException;
+import co.edu.udistrital.acciones.m8notificaciones.domain.DireccionCorreo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -113,7 +114,7 @@ public class ServiciosHttpAdapter implements ServiciosPort {
     public String correoUsuario(long user) {
         String email =
                 required(get(m1, "/internal/users/{id}/notification-contact", user), "email");
-        if (!email.matches("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+") || email.length() > 254) {
+        if (!DireccionCorreo.valida(email)) {
             throw unavailable();
         }
         return email;
@@ -131,7 +132,7 @@ public class ServiciosHttpAdapter implements ServiciosPort {
         for (JsonNode user : content) {
             long id = user.path("userId").asLong();
             String email = required(user, "email");
-            if (id <= 0 || !email.matches("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+")) {
+            if (id <= 0 || !DireccionCorreo.valida(email)) {
                 throw unavailable();
             }
             users.add(new Destinatario(id, email));

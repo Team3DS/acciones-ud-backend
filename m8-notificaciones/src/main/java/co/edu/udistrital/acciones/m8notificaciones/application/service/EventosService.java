@@ -3,6 +3,7 @@ package co.edu.udistrital.acciones.m8notificaciones.application.service;
 import co.edu.udistrital.acciones.m8notificaciones.application.port.out.AvisosRepositoryPort;
 import co.edu.udistrital.acciones.m8notificaciones.domain.AvisoException;
 import co.edu.udistrital.acciones.m8notificaciones.domain.Correo;
+import co.edu.udistrital.acciones.m8notificaciones.domain.DireccionCorreo;
 import co.edu.udistrital.acciones.m8notificaciones.domain.EventoAviso;
 import co.edu.udistrital.acciones.m8notificaciones.domain.TipoAviso;
 
@@ -67,7 +68,7 @@ public class EventosService {
     private void autenticacion(EventoAviso event) {
         long user = usuario(event.payload());
         String email = texto(event.payload(), "email");
-        if (!email.matches("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+") || email.length() > 254) {
+        if (!DireccionCorreo.valida(email)) {
             throw invalid();
         }
         String title;

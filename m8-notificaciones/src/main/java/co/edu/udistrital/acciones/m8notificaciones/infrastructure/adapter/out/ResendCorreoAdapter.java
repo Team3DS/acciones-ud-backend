@@ -3,6 +3,7 @@ package co.edu.udistrital.acciones.m8notificaciones.infrastructure.adapter.out;
 import co.edu.udistrital.acciones.m8notificaciones.application.port.out.CorreoException;
 import co.edu.udistrital.acciones.m8notificaciones.application.port.out.CorreoPort;
 import co.edu.udistrital.acciones.m8notificaciones.domain.Correo;
+import co.edu.udistrital.acciones.m8notificaciones.domain.DireccionCorreo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -46,7 +47,7 @@ public class ResendCorreoAdapter implements CorreoPort {
         if (apiKey.isBlank() || from.isBlank()) {
             throw new CorreoException("RESEND_NO_CONFIGURADO", true);
         }
-        if (mail.to() == null || !mail.to().matches("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+")) {
+        if (!DireccionCorreo.valida(mail.to())) {
             throw new CorreoException("DESTINATARIO_INVALIDO", false);
         }
         try {
