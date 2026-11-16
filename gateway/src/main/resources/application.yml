@@ -17,7 +17,7 @@ spring:
         - id: m3-catalogo-mercados
           uri: http://m3-catalogo-mercados:8083
           predicates:
-            - Path=/api/v1/markets/**,/api/v1/instruments/**
+            - Path=/api/v1/markets/**,/api/v1/catalog/**,/api/v1/instruments/**
         - id: m4-datos-mercado
           uri: http://m4-datos-mercado:8084
           predicates:

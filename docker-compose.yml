@@ -142,6 +142,7 @@ services:
     ports:
       - "8083:8083"
     environment:
+      - JWT_SECRET=${JWT_SECRET}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=catalogo_db
