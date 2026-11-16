@@ -27,7 +27,7 @@ class CatalogoBrokerIT extends CatalogoIntegrationSupport {
     void confirmaEntregaRealAntesDeMarcarOutboxPublicado() {
         RabbitAdmin admin = new RabbitAdmin(rabbitTemplate.getConnectionFactory());
         TopicExchange exchange = new TopicExchange("acciones.ud", true, false);
-        Queue queue = new Queue("m3-test-" + UUID.randomUUID(), false, false, true);
+        Queue queue = new Queue("m3-test-" + UUID.randomUUID(), false, true, true);
         admin.declareExchange(exchange);
         admin.declareQueue(queue);
         admin.declareBinding(BindingBuilder.bind(queue).to(exchange).with("m3.instrumento.creado"));
