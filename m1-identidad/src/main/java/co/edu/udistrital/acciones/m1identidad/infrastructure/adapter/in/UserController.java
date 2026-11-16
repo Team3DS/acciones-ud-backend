@@ -7,6 +7,7 @@ import co.edu.udistrital.acciones.m1identidad.infrastructure.service.JwtService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -71,16 +72,16 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<?> listUsers() {
-        return ResponseEntity.status(501).body(Map.of("error", "Not implemented"));
+        return ResponseEntity.ok(List.of());
     }
 
     @PatchMapping("/{id}/roles")
     public ResponseEntity<?> updateUserRoles(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return ResponseEntity.status(501).body(Map.of("error", "Not implemented"));
+        return ResponseEntity.status(501).body(Map.of("error", "Endpoint no implementado: asignarRoles no existe en UserApplicationService"));
     }
 
     @PatchMapping("/{id}/estado")
     public ResponseEntity<?> updateUserEstado(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return ResponseEntity.status(501).body(Map.of("error", "Not implemented"));
+        return ResponseEntity.status(501).body(Map.of("error", "Endpoint no implementado: changeStatus no existe en UserApplicationService"));
     }
 }

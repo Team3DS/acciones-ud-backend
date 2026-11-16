@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.junit.jupiter.api.Assertions.fail;
+
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.function.Supplier;
@@ -38,7 +40,10 @@ class CatalogoAdminServiceTest {
     void setup() {
         service = new CatalogoAdminService(port);
         lenient()
-                .doAnswer(invocation -> ((Supplier<?>) invocation.getArgument(5)).get())
+                .doAnswer(invocation -> {
+                    Supplier<?> supplier = invocation.getArgument(5);
+                    return supplier != null ? supplier.get() : null;
+                })
                 .when(port)
                 .ejecutar(anyString(), anyString(), anyLong(), any(), any(), any());
     }
@@ -178,5 +183,60 @@ class CatalogoAdminServiceTest {
                                         "key",
                                         1))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void idempotenciaConflictoCuandoHashDifiere() {
+        when(port.ejecutar(anyString(), anyString(), anyLong(), any(), any(), any()))
+                .thenThrow(new co.edu.udistrital.acciones.m3catalogomercados.domain.CatalogoException(
+                        "IDEMPOTENCIA_CONFLICTO", 409, "La clave ya se usó con otro contenido."));
+        var command = new CrearMercadoCommand("TEST", "Test", "XTST", "UTC", "USD", null, null);
+        try {
+            service.crearMercado(command, "key", 1);
+            fail("Expected CatalogoException");
+        } catch (co.edu.udistrital.acciones.m3catalogomercados.domain.CatalogoException ex) {
+            assertThat(ex.code()).isEqualTo("IDEMPOTENCIA_CONFLICTO");
+        }
+    }
+
+    @Test
+    void comandoPendienteCuandoEjecucionEnProceso() {
+        when(port.ejecutar(anyString(), anyString(), anyLong(), any(), any(), any()))
+                .thenThrow(new co.edu.udistrital.acciones.m3catalogomercados.domain.CatalogoException(
+                        "COMANDO_PENDIENTE", 409, "El comando todavía está en proceso."));
+        var command = new CrearMercadoCommand("TEST", "Test", "XTST", "UTC", "USD", null, null);
+        try {
+            service.crearMercado(command, "key", 1);
+            fail("Expected CatalogoException");
+        } catch (co.edu.udistrital.acciones.m3catalogomercados.domain.CatalogoException ex) {
+            assertThat(ex.code()).isEqualTo("COMANDO_PENDIENTE");
+        }
+    }
+
+    @Test
+    void validaKeyIdempotenciaFormatoInvalido() {
+        when(port.ejecutar(anyString(), anyString(), anyLong(), any(), any(), any()))
+                .thenThrow(new IllegalArgumentException(
+                        "Idempotency-Key requiere de 1 a 100 letras, números, puntos, guiones o guiones bajos."));
+        var command = new CrearMercadoCommand("TEST", "Test", "XTST", "UTC", "USD", null, null);
+        assertThatThrownBy(() -> service.crearMercado(command, "invalid key!", 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Idempotency-Key");
+    }
+
+    @Test
+    void actualizaMercadoConSoloPais() {
+        var command = new ActualizarMercadoCommand(null, null, "CO", null);
+        when(port.actualizarMercado("NASDAQ", command)).thenReturn(market);
+        assertThat(service.actualizarMercado("NASDAQ", command, "key", 1).status()).isEqualTo(200);
+        verify(port).registrarEvento(eq("m3.mercado.actualizado"), eq("NASDAQ"), any());
+    }
+
+    @Test
+    void actualizaInstrumentoCambiaEstadoYSuspende() {
+        var command = new ActualizarInstrumentoCommand(null, null, null, EstadoInstrumento.SUSPENDIDO);
+        when(port.actualizarInstrumento("AAPL", "NASDAQ", command)).thenReturn(instrument);
+        assertThat(service.actualizarInstrumento("AAPL", "NASDAQ", command, "key", 1).status()).isEqualTo(200);
+        verify(port).registrarEvento(eq("m3.instrumento.actualizado"), eq("1"), any());
     }
 }
