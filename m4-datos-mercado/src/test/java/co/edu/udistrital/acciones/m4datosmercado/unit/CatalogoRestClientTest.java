@@ -1,8 +1,6 @@
 package co.edu.udistrital.acciones.m4datosmercado.unit;
 
 import co.edu.udistrital.acciones.m4datosmercado.application.port.out.CatalogoClientPort;
-import co.edu.udistrital.acciones.m4datosmercado.domain.EstadoMercado;
-import co.edu.udistrital.acciones.m4datosmercado.domain.HorarioMercado;
 import co.edu.udistrital.acciones.m4datosmercado.infrastructure.adapter.out.rest.CatalogoRestClient;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -15,20 +13,14 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import reactor.core.publisher.Mono;
 
-import java.time.Instant;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CatalogoRestClientTest {
-
-    @Mock
-    WebClient.Builder webClientBuilder;
 
     @Mock
     WebClient webClient;
@@ -46,15 +38,17 @@ class CatalogoRestClientTest {
 
     @BeforeEach
     void setUp() {
-        client = new CatalogoRestClient(webClientBuilder, "http://m3:8083", 5000);
-        when(webClientBuilder.baseUrl(anyString())).thenReturn(webClientBuilder);
-        when(webClientBuilder.build()).thenReturn(webClient);
+        WebClient.Builder realBuilder = WebClient.builder();
+        WebClient.Builder builderSpy = spy(realBuilder);
+        lenient().when(builderSpy.baseUrl(anyString())).thenReturn(builderSpy);
+        lenient().when(builderSpy.build()).thenReturn(webClient);
+        client = new CatalogoRestClient(builderSpy, "http://m3:8083", 5000);
     }
 
     @Test
     void validarSimboloRetornaTrueSiValido() {
         when(webClient.get()).thenReturn(uriSpec);
-        when(uriSpec.uri(any(java.util.function.Function.class))).thenReturn(headersSpec);
+        when(uriSpec.uri(anyString(), any(java.util.function.Function.class))).thenReturn(headersSpec);
         when(headersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Map.class)).thenReturn(Mono.just(Map.of("validos", List.of("AAPL"))));
 
@@ -66,7 +60,7 @@ class CatalogoRestClientTest {
     @Test
     void validarSimboloRetornaFalseSiInvalido() {
         when(webClient.get()).thenReturn(uriSpec);
-        when(uriSpec.uri(any(java.util.function.Function.class))).thenReturn(headersSpec);
+        when(uriSpec.uri(anyString(), any(java.util.function.Function.class))).thenReturn(headersSpec);
         when(headersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(Map.class)).thenReturn(Mono.just(Map.of("validos", List.of("TSLA"))));
 
@@ -78,9 +72,9 @@ class CatalogoRestClientTest {
     @Test
     void validarSimboloRetornaFalseSiError() {
         when(webClient.get()).thenReturn(uriSpec);
-        when(uriSpec.uri(any(java.util.function.Function.class))).thenReturn(headersSpec);
+        when(uriSpec.uri(anyString(), any(java.util.function.Function.class))).thenReturn(headersSpec);
         when(headersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(Map.class)).thenReturn(Mono.error(new WebClientResponseException(500, "Error", null, null, null)));
+        when(responseSpec.bodyToMono(Map.class)).thenReturn(Mono.error(WebClientResponseException.create(500, "Error", null, null, null)));
 
         boolean result = client.validarSimbolo("AAPL");
 

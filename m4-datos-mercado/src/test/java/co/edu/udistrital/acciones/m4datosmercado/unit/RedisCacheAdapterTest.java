@@ -18,6 +18,8 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Optional;
 
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -35,12 +37,13 @@ class RedisCacheAdapterTest {
 
     @BeforeEach
     void setUp() {
+        objectMapper.registerModule(new JavaTimeModule());
         adapter = new RedisCacheAdapter(redisTemplate, objectMapper);
-        when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 
     @Test
     void getRetornaEmptySiNoExiste() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.get("quote:AAPL")).thenReturn(null);
 
         Optional<Cotizacion> result = adapter.get("AAPL");
@@ -50,6 +53,7 @@ class RedisCacheAdapterTest {
 
     @Test
     void getRetornaCotizacionSiExiste() throws Exception {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
         Cotizacion cotizacion = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, java.time.Instant.now(), null, null, null, null, null, null);
         String json = objectMapper.writeValueAsString(cotizacion);
         when(valueOps.get("quote:AAPL")).thenReturn(json);
@@ -62,6 +66,7 @@ class RedisCacheAdapterTest {
 
     @Test
     void putSerializaYGuarda() throws Exception {
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
         Cotizacion cotizacion = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, java.time.Instant.now(), null, null, null, null, null, null);
 
         adapter.put("AAPL", cotizacion, Duration.ofSeconds(60));

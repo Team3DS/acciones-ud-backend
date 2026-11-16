@@ -85,7 +85,7 @@ class ObtenerCotizacionUseCaseImplTest {
 
         when(catalogoPort.validarSimbolo("AAPL")).thenReturn(true);
         when(catalogoPort.validarSimbolo("TSLA")).thenReturn(true);
-        when(cachePort.get("AAPL")).thenReturn(Optional.empty());
+        when(cachePort.get("AAPL")).thenReturn(Optional.empty()).thenReturn(Optional.of(aapl));
         when(cachePort.get("TSLA")).thenReturn(Optional.of(tsla));
         when(alpacaPort.obtenerCotizaciones(List.of("AAPL"))).thenReturn(List.of(aapl));
 

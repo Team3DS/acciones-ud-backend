@@ -14,9 +14,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.lang.reflect.Method;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +27,9 @@ class GlobalExceptionHandlerTest {
 
     @Mock
     HttpServletRequest request;
+
+    @Mock
+    BindingResult bindingResult;
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler(new ObjectMapper());
 
@@ -57,9 +60,11 @@ class GlobalExceptionHandlerTest {
     void handleValidation() throws Exception {
         when(request.getRequestURI()).thenReturn("/api/test");
 
-        Method method = getClass().getMethod("dummy");
-        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, null);
-        // No podemos construir fácilmente MethodArgumentNotValidException, saltamos test detallado
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, bindingResult);
+
+        ResponseEntity<Map<String, Object>> response = handler.handleValidation(ex, request);
+
+        assertEquals(400, response.getStatusCode().value());
     }
 
     @Test
@@ -73,5 +78,4 @@ class GlobalExceptionHandlerTest {
         assertEquals("ERROR_INTERNO", response.getBody().get("error"));
     }
 
-    public void dummy() {}
 }

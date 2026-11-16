@@ -35,8 +35,6 @@ class CorrelationIdFilterTest {
     @Test
     void generaCorrelationIdSiNoExiste() throws ServletException, IOException {
         when(request.getHeader(CorrelationIdFilter.HEADER_NAME)).thenReturn(null);
-        when(request.getContextPath()).thenReturn("");
-        when(request.getRequestURI()).thenReturn("/api/test");
 
         filter.doFilter(request, response, chain);
 
@@ -49,8 +47,6 @@ class CorrelationIdFilterTest {
     void usaCorrelationIdExistente() throws ServletException, IOException {
         String existingId = "existing-correlation-id";
         when(request.getHeader(CorrelationIdFilter.HEADER_NAME)).thenReturn(existingId);
-        when(request.getContextPath()).thenReturn("");
-        when(request.getRequestURI()).thenReturn("/api/test");
 
         filter.doFilter(request, response, chain);
 
@@ -62,8 +58,6 @@ class CorrelationIdFilterTest {
     @Test
     void limpiaMdcDespuesDeExcepcion() throws ServletException, IOException {
         when(request.getHeader(CorrelationIdFilter.HEADER_NAME)).thenReturn("test-id");
-        when(request.getContextPath()).thenReturn("");
-        when(request.getRequestURI()).thenReturn("/api/test");
         doThrow(new RuntimeException("test")).when(chain).doFilter(request, response);
 
         assertThrows(RuntimeException.class, () -> filter.doFilter(request, response, chain));
