@@ -15,7 +15,9 @@ public record Cotizacion(
         BigDecimal high,
         BigDecimal low,
         BigDecimal open,
-        BigDecimal prevClose) {
+        BigDecimal prevClose,
+        BigDecimal spread,
+        BigDecimal marketCap) {
 
     public Cotizacion {
         if (symbol == null || symbol.isBlank()) {
@@ -27,10 +29,15 @@ public record Cotizacion(
         if (timestamp == null) {
             throw new IllegalArgumentException("El timestamp no puede ser nulo");
         }
+        if (bid != null && ask != null) {
+            spread = ask.subtract(bid);
+        } else {
+            spread = null;
+        }
     }
 
     public static Cotizacion basica(String symbol, BigDecimal price, Instant timestamp) {
         return new Cotizacion(symbol, price, BigDecimal.ZERO, BigDecimal.ZERO, 0L, timestamp,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 }

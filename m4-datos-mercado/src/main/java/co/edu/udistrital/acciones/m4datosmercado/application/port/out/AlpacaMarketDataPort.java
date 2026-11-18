@@ -7,8 +7,5 @@ import co.edu.udistrital.acciones.m4datosmercado.domain.Intervalo;
 import java.time.Instant;
 import java.util.List;
 
-public interface AlpacaMarketDataPort {
-    Cotizacion obtenerCotizacion(String symbol);
-    List<Cotizacion> obtenerCotizaciones(List<String> symbols);
-    List<HistoricoCotizacion> obtenerHistorico(String symbol, Instant from, Instant to, Intervalo intervalo);
+public interface AlpacaMarketDataPort extends MarketDataProvider {
 }

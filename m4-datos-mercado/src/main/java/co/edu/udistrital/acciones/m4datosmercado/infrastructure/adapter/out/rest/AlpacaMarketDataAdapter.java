@@ -144,7 +144,10 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
                 ? change.divide(prevClose, 4, java.math.RoundingMode.HALF_UP).multiply(new BigDecimal("100"))
                 : BigDecimal.ZERO;
 
-        return new Cotizacion(symbol, price, change, changePct, volume, timestamp, bid, ask, high, low, open, prevClose);
+        BigDecimal spread = ask.subtract(bid);
+        BigDecimal marketCap = volume > 0 ? price.multiply(new BigDecimal(volume)) : null;
+
+        return new Cotizacion(symbol, price, change, changePct, volume, timestamp, bid, ask, high, low, open, prevClose, spread, marketCap);
     }
 
     private List<HistoricoCotizacion> parseBars(Map<String, Object> response, String symbol, Intervalo intervalo) {
@@ -175,6 +178,10 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
             case M15 -> "15Min";
             case H1 -> "1Hour";
             case D1 -> "1Day";
+            case ONE_WEEK -> "1Week";
+            case ONE_MONTH -> "1Month";
+            case THREE_MONTH -> "3Month";
+            case ONE_YEAR -> "1Year";
         };
     }
 

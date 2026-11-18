@@ -15,8 +15,10 @@ class IntervaloTest {
         assertEquals(Intervalo.M15, Intervalo.fromString("15m"));
         assertEquals(Intervalo.H1, Intervalo.fromString("1h"));
         assertEquals(Intervalo.D1, Intervalo.fromString("1d"));
-        assertEquals(Intervalo.M1, Intervalo.fromString("1M"));
-        assertEquals(Intervalo.H1, Intervalo.fromString("1H"));
+        assertEquals(Intervalo.ONE_WEEK, Intervalo.fromString("1W"));
+        assertEquals(Intervalo.ONE_MONTH, Intervalo.fromString("1M"));
+        assertEquals(Intervalo.THREE_MONTH, Intervalo.fromString("3M"));
+        assertEquals(Intervalo.ONE_YEAR, Intervalo.fromString("1Y"));
     }
 
     @Test
@@ -32,5 +34,9 @@ class IntervaloTest {
         assertEquals("15m", Intervalo.M15.getValor());
         assertEquals("1h", Intervalo.H1.getValor());
         assertEquals("1d", Intervalo.D1.getValor());
+        assertEquals("1W", Intervalo.ONE_WEEK.getValor());
+        assertEquals("1M", Intervalo.ONE_MONTH.getValor());
+        assertEquals("3M", Intervalo.THREE_MONTH.getValor());
+        assertEquals("1Y", Intervalo.ONE_YEAR.getValor());
     }
 }

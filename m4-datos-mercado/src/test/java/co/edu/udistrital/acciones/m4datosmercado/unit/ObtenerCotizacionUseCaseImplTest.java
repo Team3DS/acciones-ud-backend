@@ -46,7 +46,7 @@ class ObtenerCotizacionUseCaseImplTest {
 
     @Test
     void obtenerCotizacionDesdeCache() {
-        Cotizacion cached = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null);
+        Cotizacion cached = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null, null, null);
         when(cachePort.get("AAPL")).thenReturn(Optional.of(cached));
         when(catalogoPort.validarSimbolo("AAPL")).thenReturn(true);
 
@@ -59,7 +59,7 @@ class ObtenerCotizacionUseCaseImplTest {
 
     @Test
     void obtenerCotizacionDesdeAlpacaSiNoEnCache() {
-        Cotizacion fresh = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null);
+        Cotizacion fresh = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null, null, null);
         when(cachePort.get("AAPL")).thenReturn(Optional.empty());
         when(catalogoPort.validarSimbolo("AAPL")).thenReturn(true);
         when(alpacaPort.obtenerCotizacion("AAPL")).thenReturn(fresh);
@@ -80,8 +80,8 @@ class ObtenerCotizacionUseCaseImplTest {
 
     @Test
     void obtenerMultiplesCotizaciones() {
-        Cotizacion aapl = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null);
-        Cotizacion tsla = new Cotizacion("TSLA", new BigDecimal("250.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null);
+        Cotizacion aapl = new Cotizacion("AAPL", new BigDecimal("150.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null, null, null);
+        Cotizacion tsla = new Cotizacion("TSLA", new BigDecimal("250.00"), BigDecimal.ZERO, BigDecimal.ZERO, 0L, Instant.now(), null, null, null, null, null, null, null, null);
 
         when(catalogoPort.validarSimbolo("AAPL")).thenReturn(true);
         when(catalogoPort.validarSimbolo("TSLA")).thenReturn(true);
