@@ -53,16 +53,41 @@ public class MovimientoPosicion {
     public static MovimientoPosicion compra(Long posicionId, BigDecimal cantidad, BigDecimal precio,
                                             String executionId, String orderId, String idempotencyKey,
                                             Instant ocurridoEn) {
+        return registrar(posicionId, TipoMovimientoPosicion.COMPRA, cantidad, precio, executionId, orderId,
+                idempotencyKey, ocurridoEn);
+    }
+
+    public static MovimientoPosicion reserva(Long posicionId, BigDecimal cantidad, BigDecimal precio,
+                                             String orderId, String idempotencyKey, Instant ocurridoEn) {
+        return registrar(posicionId, TipoMovimientoPosicion.RESERVA, cantidad, precio, null, orderId,
+                idempotencyKey, ocurridoEn);
+    }
+
+    public static MovimientoPosicion liberacion(Long posicionId, BigDecimal cantidad, BigDecimal precio,
+                                                String orderId, String idempotencyKey, Instant ocurridoEn) {
+        return registrar(posicionId, TipoMovimientoPosicion.LIBERACION, cantidad, precio, null, orderId,
+                idempotencyKey, ocurridoEn);
+    }
+
+    private static MovimientoPosicion registrar(Long posicionId, TipoMovimientoPosicion tipo,
+                                                BigDecimal cantidad, BigDecimal precio, String executionId,
+                                                String orderId, String idempotencyKey, Instant ocurridoEn) {
         MovimientoPosicion movimiento = new MovimientoPosicion();
         movimiento.posicionId = Objects.requireNonNull(posicionId, "La posicion es obligatoria");
-        movimiento.tipo = TipoMovimientoPosicion.COMPRA;
+        movimiento.tipo = Objects.requireNonNull(tipo, "El tipo de movimiento es obligatorio");
         movimiento.cantidad = Cantidades.validarPositiva(cantidad);
         movimiento.precio = Montos.validarPositivo(precio);
-        movimiento.executionId = exigirTexto(executionId, "La ejecucion es obligatoria");
+        movimiento.executionId = exigeEjecucion(tipo)
+                ? exigirTexto(executionId, "La ejecucion es obligatoria")
+                : executionId;
         movimiento.orderId = exigirTexto(orderId, "La orden es obligatoria");
         movimiento.idempotencyKey = exigirTexto(idempotencyKey, "La clave de idempotencia es obligatoria");
         movimiento.ocurridoEn = Objects.requireNonNull(ocurridoEn, "El instante del movimiento es obligatorio");
         return movimiento;
+    }
+
+    private static boolean exigeEjecucion(TipoMovimientoPosicion tipo) {
+        return tipo == TipoMovimientoPosicion.COMPRA || tipo == TipoMovimientoPosicion.VENTA;
     }
 
     private static String exigirTexto(String valor, String mensaje) {

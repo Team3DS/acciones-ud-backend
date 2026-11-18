@@ -8,6 +8,10 @@ import java.util.Optional;
 
 public interface PosicionRepositoryPort {
 
+    Optional<Posicion> findById(Long id);
+
+    Optional<Posicion> findByIdForUpdate(Long id);
+
     Optional<Posicion> findByUserIdAndSymbol(Long userId, String symbol);
 
     Optional<Posicion> findByUserIdAndSymbolForUpdate(Long userId, String symbol);

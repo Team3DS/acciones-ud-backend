@@ -20,6 +20,10 @@ interface SpringDataPosicionRepository extends JpaRepository<Posicion, Long> {
     Optional<Posicion> findByUserIdAndSymbol(Long userId, String symbol);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Posicion p where p.id = :id")
+    Optional<Posicion> buscarPorIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Posicion p where p.userId = :userId and p.symbol = :symbol")
     Optional<Posicion> findByUserIdAndSymbolForUpdate(@Param("userId") Long userId,
                                                       @Param("symbol") String symbol);
@@ -47,6 +51,16 @@ public class JpaPosicionRepositoryAdapter implements PosicionRepositoryPort {
 
     public JpaPosicionRepositoryAdapter(SpringDataPosicionRepository repositorio) {
         this.repositorio = repositorio;
+    }
+
+    @Override
+    public Optional<Posicion> findById(Long id) {
+        return repositorio.findById(id);
+    }
+
+    @Override
+    public Optional<Posicion> findByIdForUpdate(Long id) {
+        return repositorio.buscarPorIdForUpdate(id);
     }
 
     @Override

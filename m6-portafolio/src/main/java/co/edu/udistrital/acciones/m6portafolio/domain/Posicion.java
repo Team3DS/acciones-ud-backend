@@ -1,5 +1,6 @@
 package co.edu.udistrital.acciones.m6portafolio.domain;
 
+import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.ReservaNoDisponibleException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.UsuarioInvalidoException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -89,6 +90,26 @@ public class Posicion {
             this.precioActual = precio;
             this.valoradoEn = instante;
         }
+        this.actualizadoEn = instante;
+    }
+
+    public void reservar(BigDecimal cantidadReservada, Instant ahora) {
+        BigDecimal bloqueo = Cantidades.validarPositiva(cantidadReservada);
+        Instant instante = Objects.requireNonNull(ahora, "El instante de la reserva es obligatorio");
+        if (disponible().compareTo(bloqueo) < 0) {
+            throw new ReservaNoDisponibleException("No hay acciones disponibles suficientes para reservar");
+        }
+        this.cantidadReservada = this.cantidadReservada.add(bloqueo);
+        this.actualizadoEn = instante;
+    }
+
+    public void liberarReserva(BigDecimal cantidadLiberada, Instant ahora) {
+        BigDecimal liberacion = Cantidades.validarPositiva(cantidadLiberada);
+        Instant instante = Objects.requireNonNull(ahora, "El instante de la liberacion es obligatorio");
+        if (this.cantidadReservada.compareTo(liberacion) < 0) {
+            throw new ReservaNoDisponibleException("No hay acciones reservadas suficientes para liberar");
+        }
+        this.cantidadReservada = this.cantidadReservada.subtract(liberacion);
         this.actualizadoEn = instante;
     }
 

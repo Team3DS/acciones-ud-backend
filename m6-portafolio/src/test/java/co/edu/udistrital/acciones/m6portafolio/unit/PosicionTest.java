@@ -3,6 +3,7 @@ package co.edu.udistrital.acciones.m6portafolio.unit;
 import co.edu.udistrital.acciones.m6portafolio.domain.Posicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.CantidadInvalidaException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.PrecioInvalidoException;
+import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.ReservaNoDisponibleException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.SimboloInvalidoException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.UsuarioInvalidoException;
 import org.junit.jupiter.api.Test;
@@ -98,6 +99,63 @@ class PosicionTest {
                 .isInstanceOf(CantidadInvalidaException.class);
         assertThatThrownBy(() -> posicion.comprar(BigDecimal.ONE, null, T0))
                 .isInstanceOf(PrecioInvalidoException.class);
+    }
+
+    @Test
+    void reservaReduceElDisponibleYLiberarLoRestaura() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(new BigDecimal("20"), new BigDecimal("185.00"), T0);
+
+        posicion.reservar(new BigDecimal("10"), T0.plusSeconds(10));
+
+        assertThat(posicion.getCantidad()).isEqualByComparingTo("20");
+        assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("10");
+        assertThat(posicion.disponible()).isEqualByComparingTo("10");
+        assertThat(posicion.getActualizadoEn()).isEqualTo(T0.plusSeconds(10));
+
+        posicion.liberarReserva(new BigDecimal("4"), T0.plusSeconds(20));
+
+        assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("6");
+        assertThat(posicion.disponible()).isEqualByComparingTo("14");
+        assertThat(posicion.getCostoPromedio()).isEqualByComparingTo("185.0000");
+    }
+
+    @Test
+    void noReservaMasQueElDisponible() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(BigDecimal.TEN, new BigDecimal("100.00"), T0);
+        posicion.reservar(new BigDecimal("8"), T0);
+
+        assertThatThrownBy(() -> posicion.reservar(new BigDecimal("3"), T0))
+                .isInstanceOf(ReservaNoDisponibleException.class);
+        assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("8");
+        assertThat(posicion.getActualizadoEn()).isEqualTo(T0);
+    }
+
+    @Test
+    void noLiberaMasDeLoReservado() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(BigDecimal.TEN, new BigDecimal("100.00"), T0);
+        posicion.reservar(new BigDecimal("4"), T0);
+
+        assertThatThrownBy(() -> posicion.liberarReserva(new BigDecimal("5"), T0))
+                .isInstanceOf(ReservaNoDisponibleException.class);
+        assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    void validaLasCantidadesYLosInstantesDeReserva() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(BigDecimal.TEN, new BigDecimal("100.00"), T0);
+
+        assertThatThrownBy(() -> posicion.reservar(BigDecimal.ZERO, T0))
+                .isInstanceOf(CantidadInvalidaException.class);
+        assertThatThrownBy(() -> posicion.reservar(BigDecimal.ONE, null))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> posicion.liberarReserva(BigDecimal.ZERO, T0))
+                .isInstanceOf(CantidadInvalidaException.class);
+        assertThatThrownBy(() -> posicion.liberarReserva(BigDecimal.ONE, null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test

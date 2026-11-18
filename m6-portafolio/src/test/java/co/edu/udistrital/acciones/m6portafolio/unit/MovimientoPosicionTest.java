@@ -37,6 +37,31 @@ class MovimientoPosicionTest {
     }
 
     @Test
+    void registraUnaReservaSinEjecucion() {
+        MovimientoPosicion movimiento = MovimientoPosicion.reserva(7L, new BigDecimal("10"),
+                new BigDecimal("185.00"), "ORD-1", "RES:77", AHORA);
+
+        assertThat(movimiento.getTipo()).isEqualTo(TipoMovimientoPosicion.RESERVA);
+        assertThat(movimiento.getCantidad()).isEqualByComparingTo("10");
+        assertThat(movimiento.getPrecio()).isEqualByComparingTo("185.00");
+        assertThat(movimiento.getExecutionId()).isNull();
+        assertThat(movimiento.getOrderId()).isEqualTo("ORD-1");
+        assertThat(movimiento.getIdempotencyKey()).isEqualTo("RES:77");
+        assertThat(movimiento.getOcurridoEn()).isEqualTo(AHORA);
+    }
+
+    @Test
+    void registraUnaLiberacionSinEjecucion() {
+        MovimientoPosicion movimiento = MovimientoPosicion.liberacion(7L, new BigDecimal("4"),
+                new BigDecimal("185.00"), "ORD-1", "LIB:77", AHORA);
+
+        assertThat(movimiento.getTipo()).isEqualTo(TipoMovimientoPosicion.LIBERACION);
+        assertThat(movimiento.getCantidad()).isEqualByComparingTo("4");
+        assertThat(movimiento.getExecutionId()).isNull();
+        assertThat(movimiento.getIdempotencyKey()).isEqualTo("LIB:77");
+    }
+
+    @Test
     void losLadosDeEjecucionSonComprasYVentas() {
         assertThat(LadoEjecucion.values()).containsExactly(LadoEjecucion.BUY, LadoEjecucion.SELL);
         assertThat(TipoMovimientoPosicion.values())
