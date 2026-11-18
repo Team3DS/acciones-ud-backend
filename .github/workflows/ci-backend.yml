@@ -94,3 +94,11 @@ jobs:
           file: m2-cuentas-fondos/Dockerfile
           load: true
           tags: team3ds/m2-cuentas-fondos:ci-${{ github.sha }}
+
+      - name: Build M6 Portafolio image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: m6-portafolio/Dockerfile
+          load: true
+          tags: team3ds/m6-portafolio:ci-${{ github.sha }}
