@@ -4,6 +4,7 @@ import co.edu.udistrital.acciones.m6portafolio.domain.EstadoReservaPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.ReservaPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.CantidadInvalidaException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.TransicionReservaException;
+import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibleException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -55,6 +56,34 @@ class ReservaPosicionTest {
         assertThatThrownBy(() -> reserva.liberar("otra vez", T1))
                 .isInstanceOf(TransicionReservaException.class)
                 .hasMessageContaining("RELEASED");
+    }
+
+    @Test
+    void ejecucionesParcialesAcumulanHastaConfirmarLaReserva() {
+        ReservaPosicion reserva = reserva();
+
+        reserva.ejecutar(new BigDecimal("4"), T1);
+
+        assertThat(reserva.getCantidadEjecutada()).isEqualByComparingTo("4");
+        assertThat(reserva.pendiente()).isEqualByComparingTo("6");
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.PENDING);
+        reserva.ejecutar(new BigDecimal("6"), T1.plusSeconds(1));
+
+        assertThat(reserva.getCantidadEjecutada()).isEqualByComparingTo("10");
+        assertThat(reserva.pendiente()).isEqualByComparingTo("0");
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.CONFIRMED);
+        assertThat(reserva.getConfirmadoEn()).isEqualTo(T1.plusSeconds(1));
+    }
+
+    @Test
+    void noEjecutaMasDeLoPendienteNiUnaReservaLiberada() {
+        ReservaPosicion reserva = reserva();
+
+        assertThatThrownBy(() -> reserva.ejecutar(new BigDecimal("11"), T1))
+                .isInstanceOf(VentaNoDisponibleException.class);
+        reserva.liberar("cancelada", T1);
+        assertThatThrownBy(() -> reserva.ejecutar(BigDecimal.ONE, T1.plusSeconds(1)))
+                .isInstanceOf(TransicionReservaException.class);
     }
 
     @Test

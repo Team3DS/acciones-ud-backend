@@ -57,6 +57,13 @@ public class MovimientoPosicion {
                 idempotencyKey, ocurridoEn);
     }
 
+    public static MovimientoPosicion venta(Long posicionId, BigDecimal cantidad, BigDecimal precio,
+                                           String executionId, String orderId, String idempotencyKey,
+                                           Instant ocurridoEn) {
+        return registrar(posicionId, TipoMovimientoPosicion.VENTA, cantidad, precio, executionId, orderId,
+                idempotencyKey, ocurridoEn);
+    }
+
     public static MovimientoPosicion reserva(Long posicionId, BigDecimal cantidad, BigDecimal precio,
                                              String orderId, String idempotencyKey, Instant ocurridoEn) {
         return registrar(posicionId, TipoMovimientoPosicion.RESERVA, cantidad, precio, null, orderId,

@@ -113,6 +113,27 @@ class LiberarReservaUseCaseTest {
     }
 
     @Test
+    void liberarDespuesDeUnaEjecucionParcialDevuelveSoloLoPendiente() {
+        Posicion posicion = posicionReservada("10");
+        ReservaPosicion reserva = reservaPendiente();
+        reserva.ejecutar(new BigDecimal("4"), AHORA.minusSeconds(10));
+        posicion.venderReservado(new BigDecimal("4"), new BigDecimal("200.00"), AHORA.minusSeconds(10));
+        when(reservas.findById(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        when(posiciones.findByIdForUpdate(POSICION_ID)).thenReturn(Optional.of(posicion));
+        when(reservas.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+
+        ReservaPosicionResponse respuesta = caso.ejecutar(RESERVA_ID, "cancelada",
+                new Actor(USUARIO, false, false));
+
+        assertThat(respuesta.executedQuantity()).isEqualByComparingTo("4");
+        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.RELEASED.name());
+        assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("0");
+        ArgumentCaptor<MovimientoPosicion> captor = ArgumentCaptor.forClass(MovimientoPosicion.class);
+        verify(movimientos).save(captor.capture());
+        assertThat(captor.getValue().getCantidad()).isEqualByComparingTo("6");
+    }
+
+    @Test
     void unaReservaConfirmadaResponde409() {
         Posicion posicion = posicionReservada("10");
         ReservaPosicion reserva = mock(ReservaPosicion.class);

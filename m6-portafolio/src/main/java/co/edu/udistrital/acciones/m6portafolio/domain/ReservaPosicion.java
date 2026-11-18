@@ -1,6 +1,7 @@
 package co.edu.udistrital.acciones.m6portafolio.domain;
 
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.TransicionReservaException;
+import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibleException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -84,6 +85,23 @@ public class ReservaPosicion {
         this.motivoLiberacion = motivo;
         this.liberadoEn = instante;
         return pendiente;
+    }
+
+    public void ejecutar(BigDecimal cantidad, Instant ahora) {
+        if (this.estado != EstadoReservaPosicion.PENDING) {
+            throw new TransicionReservaException(
+                    "No se puede ejecutar una reserva en estado " + this.estado);
+        }
+        BigDecimal ejecucion = Cantidades.validarPositiva(cantidad);
+        if (pendiente().compareTo(ejecucion) < 0) {
+            throw new VentaNoDisponibleException("La venta supera la cantidad pendiente de la reserva");
+        }
+        Instant instante = Objects.requireNonNull(ahora, "El instante de ejecucion es obligatorio");
+        this.cantidadEjecutada = this.cantidadEjecutada.add(ejecucion);
+        if (pendiente().signum() == 0) {
+            this.estado = EstadoReservaPosicion.CONFIRMED;
+            this.confirmadoEn = instante;
+        }
     }
 
     private static String exigirTexto(String valor, String mensaje) {

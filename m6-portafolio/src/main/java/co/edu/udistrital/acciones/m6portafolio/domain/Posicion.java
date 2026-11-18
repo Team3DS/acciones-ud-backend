@@ -2,6 +2,7 @@ package co.edu.udistrital.acciones.m6portafolio.domain;
 
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.ReservaNoDisponibleException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.UsuarioInvalidoException;
+import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibleException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -110,6 +111,43 @@ public class Posicion {
             throw new ReservaNoDisponibleException("No hay acciones reservadas suficientes para liberar");
         }
         this.cantidadReservada = this.cantidadReservada.subtract(liberacion);
+        this.actualizadoEn = instante;
+    }
+
+    public void venderReservado(BigDecimal cantidadVendida, BigDecimal precioVenta, Instant ocurridoEn) {
+        BigDecimal venta = Cantidades.validarPositiva(cantidadVendida);
+        if (this.cantidadReservada.compareTo(venta) < 0) {
+            throw new VentaNoDisponibleException("La venta supera las acciones reservadas");
+        }
+        vender(venta, precioVenta, ocurridoEn);
+        this.cantidadReservada = this.cantidadReservada.subtract(venta);
+    }
+
+    public void venderDisponible(BigDecimal cantidadVendida, BigDecimal precioVenta, Instant ocurridoEn) {
+        BigDecimal venta = Cantidades.validarPositiva(cantidadVendida);
+        if (disponible().compareTo(venta) < 0) {
+            throw new VentaNoDisponibleException("No hay acciones disponibles suficientes para vender");
+        }
+        vender(venta, precioVenta, ocurridoEn);
+    }
+
+    private void vender(BigDecimal cantidadVendida, BigDecimal precioVenta, Instant ocurridoEn) {
+        BigDecimal precio = Montos.validarPositivo(precioVenta);
+        Instant instante = Objects.requireNonNull(ocurridoEn, "El instante de la venta es obligatorio");
+        if (this.cantidad.compareTo(cantidadVendida) < 0) {
+            throw new VentaNoDisponibleException("No hay acciones suficientes para vender");
+        }
+        BigDecimal pnl = precio.subtract(this.costoPromedio).multiply(cantidadVendida)
+                .setScale(Montos.ESCALA, Montos.REDONDEO);
+        this.cantidad = this.cantidad.subtract(cantidadVendida);
+        this.pnlRealizado = this.pnlRealizado.add(pnl).setScale(Montos.ESCALA, Montos.REDONDEO);
+        if (this.cantidad.signum() == 0) {
+            this.costoPromedio = Montos.cero();
+        }
+        if (this.valoradoEn == null || instante.isAfter(this.valoradoEn)) {
+            this.precioActual = precio;
+            this.valoradoEn = instante;
+        }
         this.actualizadoEn = instante;
     }
 

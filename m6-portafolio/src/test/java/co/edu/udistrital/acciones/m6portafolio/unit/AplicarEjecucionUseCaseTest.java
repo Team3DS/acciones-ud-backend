@@ -10,11 +10,13 @@ import co.edu.udistrital.acciones.m6portafolio.application.exception.ConflictoId
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.MovimientoPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.ReservaPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.service.ValoracionService;
 import co.edu.udistrital.acciones.m6portafolio.application.usecase.AplicarEjecucionUseCase;
 import co.edu.udistrital.acciones.m6portafolio.domain.LadoEjecucion;
 import co.edu.udistrital.acciones.m6portafolio.domain.MovimientoPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.Posicion;
+import co.edu.udistrital.acciones.m6portafolio.domain.ReservaPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.TipoMovimientoPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibleException;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +56,9 @@ class AplicarEjecucionUseCaseTest {
     private PosicionRepositoryPort posiciones;
 
     @Mock
+    private ReservaPosicionRepositoryPort reservas;
+
+    @Mock
     private MovimientoPosicionRepositoryPort movimientos;
 
     @Mock
@@ -63,7 +68,7 @@ class AplicarEjecucionUseCaseTest {
 
     @BeforeEach
     void prepararCaso() {
-        caso = new AplicarEjecucionUseCase(posiciones, movimientos,
+        caso = new AplicarEjecucionUseCase(posiciones, reservas, movimientos,
                 new ValoracionService(CLOCK), outbox, CLOCK);
     }
 
@@ -202,12 +207,41 @@ class AplicarEjecucionUseCaseTest {
     }
 
     @Test
-    void unaVentaRespondeVentaNoDisponible() {
+    void unaVentaReservadaActualizaElPnlYEmiteElEvento() {
+        Posicion posicion = posicionConId(USUARIO, "AAPL");
+        posicion.comprar(new BigDecimal("10"), new BigDecimal("185.00"), T0);
+        posicion.reservar(new BigDecimal("4"), T0.plusSeconds(1));
+        ReservaPosicion reserva = ReservaPosicion.crear(1L, "O-2", new BigDecimal("4"),
+                "RSV:clave-2", T0.plusSeconds(1));
         when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
-        EjecucionRequest peticion = peticion(USUARIO, "AAPL", LadoEjecucion.SELL, "1", "200.00", T0);
-        Actor actor = new Actor(USUARIO, false, false);
+        when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL")).thenReturn(Optional.of(posicion));
+        when(reservas.findByOrderIdForUpdate("O-2")).thenReturn(Optional.of(reserva));
+        when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
 
-        assertThatThrownBy(() -> caso.ejecutar(peticion, actor))
+        EjecucionResponse respuesta = caso.ejecutar(
+                peticion(USUARIO, "AAPL", LadoEjecucion.SELL, "4", "200.00", T0.plusSeconds(2)),
+                new Actor(USUARIO, false, false));
+
+        assertThat(respuesta.applied()).isTrue();
+        assertThat(respuesta.position().quantity()).isEqualByComparingTo("6");
+        assertThat(respuesta.position().reservedQuantity()).isEqualByComparingTo("0");
+        assertThat(respuesta.position().realizedPnl()).isEqualByComparingTo("60.0000");
+        assertThat(reserva.getCantidadEjecutada()).isEqualByComparingTo("4");
+        assertThat(reserva.getEstado().name()).isEqualTo("CONFIRMED");
+        verify(reservas).save(reserva);
+        verify(movimientos).save(argThat(movimiento ->
+                movimiento.getTipo() == TipoMovimientoPosicion.VENTA
+                        && movimiento.getIdempotencyKey().equals(CLAVE)));
+    }
+
+    @Test
+    void unaVentaSinPosicionRespondeVentaNoDisponible() {
+        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+        when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> caso.ejecutar(
+                peticion(USUARIO, "AAPL", LadoEjecucion.SELL, "1", "200.00", T0),
+                new Actor(USUARIO, false, false)))
                 .isInstanceOf(VentaNoDisponibleException.class)
                 .hasMessageContaining(VentaNoDisponibleException.CODIGO);
         verify(posiciones, never()).crearSiNoExiste(any(), any(), any());

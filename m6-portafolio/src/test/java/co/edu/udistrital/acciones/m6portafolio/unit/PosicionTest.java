@@ -6,6 +6,7 @@ import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.PrecioInvalidoEx
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.ReservaNoDisponibleException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.SimboloInvalidoException;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.UsuarioInvalidoException;
+import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibleException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -141,6 +142,44 @@ class PosicionTest {
         assertThatThrownBy(() -> posicion.liberarReserva(new BigDecimal("5"), T0))
                 .isInstanceOf(ReservaNoDisponibleException.class);
         assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    void venderReservadoCalculaGananciaYReduceLaReserva() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(new BigDecimal("10"), new BigDecimal("185.00"), T0);
+        posicion.reservar(new BigDecimal("6"), T0.plusSeconds(1));
+
+        posicion.venderReservado(new BigDecimal("6"), new BigDecimal("200.00"), T0.plusSeconds(2));
+
+        assertThat(posicion.getCantidad()).isEqualByComparingTo("4");
+        assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("0");
+        assertThat(posicion.getCostoPromedio()).isEqualByComparingTo("185.0000");
+        assertThat(posicion.getPnlRealizado()).isEqualByComparingTo("90.0000");
+    }
+
+    @Test
+    void venderDisponibleCalculaPerdidaYReiniciaElCostoAlCerrarLaPosicion() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(new BigDecimal("3"), new BigDecimal("10.0000"), T0);
+
+        posicion.venderDisponible(new BigDecimal("3"), new BigDecimal("9.3333"), T0.plusSeconds(1));
+
+        assertThat(posicion.getCantidad()).isEqualByComparingTo("0");
+        assertThat(posicion.getCostoPromedio()).isEqualByComparingTo("0");
+        assertThat(posicion.getPnlRealizado()).isEqualByComparingTo("-2.0001");
+    }
+
+    @Test
+    void noVendeMasDeLoReservadoONoDisponible() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(new BigDecimal("10"), new BigDecimal("100.00"), T0);
+        posicion.reservar(new BigDecimal("6"), T0);
+
+        assertThatThrownBy(() -> posicion.venderReservado(new BigDecimal("7"), BigDecimal.ONE, T0))
+                .isInstanceOf(VentaNoDisponibleException.class);
+        assertThatThrownBy(() -> posicion.venderDisponible(new BigDecimal("5"), BigDecimal.ONE, T0))
+                .isInstanceOf(VentaNoDisponibleException.class);
     }
 
     @Test
