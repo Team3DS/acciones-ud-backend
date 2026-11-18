@@ -31,6 +31,7 @@ spring:
           multiplier: 2
   autoconfigure:
     exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
@@ -48,6 +49,8 @@ management:
         enabled: true
 
 app:
+  jwt:
+    secret: ${JWT_SECRET}
   servicio:
     usuario-id: ${M6_SERVICE_USER_ID:900000006}
     token-ttl: PT60S

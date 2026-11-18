@@ -1,5 +1,6 @@
 package co.edu.udistrital.acciones.m6portafolio.integration;
 
+import co.edu.udistrital.acciones.m6portafolio.support.TokenTestFactory;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +41,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.rabbitmq.password", RABBITMQ::getAdminPassword);
         registry.add("app.valoracion.scheduler-enabled", () -> false);
         registry.add("app.m4-client.base-url", MERCADO::baseUrl);
+        registry.add("app.jwt.secret", () -> TokenTestFactory.SECRETO);
     }
 
     @Autowired

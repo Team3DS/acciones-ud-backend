@@ -1,18 +1,30 @@
 package co.edu.udistrital.acciones.m6portafolio.infrastructure.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
 
+    public static final String ESQUEMA_BEARER = "bearerAuth";
+
     @Bean
     public OpenAPI portafolioOpenApi() {
-        return new OpenAPI().info(new Info()
-                .title("M6 Portafolio")
-                .version("v1")
-                .description("Posiciones, costo promedio, valoracion y P&L del portafolio"));
+        SecurityScheme bearer = new SecurityScheme()
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("bearer")
+                .bearerFormat("JWT");
+        return new OpenAPI()
+                .info(new Info()
+                        .title("M6 Portafolio")
+                        .version("v1")
+                        .description("Posiciones, costo promedio, valoracion y P&L del portafolio"))
+                .components(new Components().addSecuritySchemes(ESQUEMA_BEARER, bearer))
+                .addSecurityItem(new SecurityRequirement().addList(ESQUEMA_BEARER));
     }
 }
