@@ -3,9 +3,12 @@ package co.edu.udistrital.acciones.m6portafolio.application.usecase;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.Actor;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.EjecucionRequest;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.EjecucionResponse;
+import co.edu.udistrital.acciones.m6portafolio.application.dto.PosicionesActualizadasPayload;
+import co.edu.udistrital.acciones.m6portafolio.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.ConflictoIdempotenciaException;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.RecursoNoEncontradoException;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.MovimientoPosicionRepositoryPort;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.service.ValoracionService;
 import co.edu.udistrital.acciones.m6portafolio.domain.LadoEjecucion;
@@ -27,14 +30,16 @@ public class AplicarEjecucionUseCase {
     private final PosicionRepositoryPort posiciones;
     private final MovimientoPosicionRepositoryPort movimientos;
     private final ValoracionService valoracion;
+    private final OutboxPort outbox;
     private final Clock clock;
 
     public AplicarEjecucionUseCase(PosicionRepositoryPort posiciones,
                                    MovimientoPosicionRepositoryPort movimientos,
-                                   ValoracionService valoracion, Clock clock) {
+                                   ValoracionService valoracion, OutboxPort outbox, Clock clock) {
         this.posiciones = posiciones;
         this.movimientos = movimientos;
         this.valoracion = valoracion;
+        this.outbox = outbox;
         this.clock = clock;
     }
 
@@ -63,6 +68,12 @@ public class AplicarEjecucionUseCase {
         posiciones.save(posicion);
         movimientos.save(MovimientoPosicion.compra(posicion.getId(), peticion.quantity(), peticion.price(),
                 peticion.executionId(), peticion.orderId(), clave, ocurrido));
+        outbox.registrar(RoutingKeys.TIPO_AGREGADO_POSICION, String.valueOf(posicion.getId()),
+                RoutingKeys.POSICIONES_ACTUALIZADAS,
+                new PosicionesActualizadasPayload(peticion.orderId(), peticion.executionId(),
+                        peticion.userId(), symbol, peticion.side().name(), peticion.quantity(),
+                        peticion.price(), posicion.getCantidad(), posicion.getCostoPromedio(),
+                        posicion.getPnlRealizado()));
         return new EjecucionResponse(true, valoracion.valorar(posicion));
     }
 

@@ -40,6 +40,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.rabbitmq.username", RABBITMQ::getAdminUsername);
         registry.add("spring.rabbitmq.password", RABBITMQ::getAdminPassword);
         registry.add("app.valoracion.scheduler-enabled", () -> false);
+        registry.add("app.outbox.intervalo-ms", () -> 250);
         registry.add("app.m4-client.base-url", MERCADO::baseUrl);
         registry.add("app.jwt.secret", () -> TokenTestFactory.SECRETO);
     }

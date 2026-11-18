@@ -3,9 +3,12 @@ package co.edu.udistrital.acciones.m6portafolio.unit;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.Actor;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.EjecucionRequest;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.EjecucionResponse;
+import co.edu.udistrital.acciones.m6portafolio.application.dto.PosicionesActualizadasPayload;
+import co.edu.udistrital.acciones.m6portafolio.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.ConflictoIdempotenciaException;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.MovimientoPosicionRepositoryPort;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.service.ValoracionService;
 import co.edu.udistrital.acciones.m6portafolio.application.usecase.AplicarEjecucionUseCase;
@@ -17,6 +20,7 @@ import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibl
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -52,12 +56,15 @@ class AplicarEjecucionUseCaseTest {
     @Mock
     private MovimientoPosicionRepositoryPort movimientos;
 
+    @Mock
+    private OutboxPort outbox;
+
     private AplicarEjecucionUseCase caso;
 
     @BeforeEach
     void prepararCaso() {
         caso = new AplicarEjecucionUseCase(posiciones, movimientos,
-                new ValoracionService(CLOCK), CLOCK);
+                new ValoracionService(CLOCK), outbox, CLOCK);
     }
 
     @Test
@@ -99,6 +106,32 @@ class AplicarEjecucionUseCaseTest {
     }
 
     @Test
+    void emiteElEventoPosicionesActualizadasConElEstadoDeLaPosicion() {
+        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+        when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL"))
+                .thenReturn(Optional.of(posicionConId(USUARIO, "AAPL")));
+        when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        caso.ejecutar(peticion(USUARIO, "AAPL", LadoEjecucion.BUY, "10", "180.00", T0),
+                new Actor(USUARIO, false, false));
+
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(outbox).registrar(eq(RoutingKeys.TIPO_AGREGADO_POSICION), eq("1"),
+                eq(RoutingKeys.POSICIONES_ACTUALIZADAS), captor.capture());
+        PosicionesActualizadasPayload evento = (PosicionesActualizadasPayload) captor.getValue();
+        assertThat(evento.orderId()).isEqualTo("O-2");
+        assertThat(evento.executionId()).isEqualTo("E-2");
+        assertThat(evento.userId()).isEqualTo(USUARIO);
+        assertThat(evento.symbol()).isEqualTo("AAPL");
+        assertThat(evento.side()).isEqualTo("BUY");
+        assertThat(evento.quantity()).isEqualByComparingTo("10");
+        assertThat(evento.price()).isEqualByComparingTo("180.00");
+        assertThat(evento.newQuantity()).isEqualByComparingTo("10");
+        assertThat(evento.averageCost()).isEqualByComparingTo("180.0000");
+        assertThat(evento.realizedPnl()).isEqualByComparingTo("0");
+    }
+
+    @Test
     void unaCompraRepetidaDevuelveAppliedFalseSinCambios() {
         Posicion existente = Posicion.abrir(USUARIO, "AAPL", T0);
         when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(true);
@@ -112,6 +145,7 @@ class AplicarEjecucionUseCaseTest {
         assertThat(respuesta.position().quantity()).isEqualByComparingTo("0");
         verify(posiciones, never()).crearSiNoExiste(any(), any(), any());
         verify(posiciones, never()).save(any(Posicion.class));
+        verify(outbox, never()).registrar(any(), any(), any(), any());
     }
 
     @Test
@@ -177,6 +211,7 @@ class AplicarEjecucionUseCaseTest {
                 .isInstanceOf(VentaNoDisponibleException.class)
                 .hasMessageContaining(VentaNoDisponibleException.CODIGO);
         verify(posiciones, never()).crearSiNoExiste(any(), any(), any());
+        verify(outbox, never()).registrar(any(), any(), any(), any());
     }
 
     @Test
