@@ -2,6 +2,9 @@ package co.edu.udistrital.acciones.m6portafolio.application.service;
 
 import co.edu.udistrital.acciones.m6portafolio.application.dto.PortafolioResponse;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.PosicionResponse;
+import co.edu.udistrital.acciones.m6portafolio.application.dto.CotizacionMercado;
+import co.edu.udistrital.acciones.m6portafolio.application.exception.DatosMercadoNoDisponibleException;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.DatosMercadoClientPort;
 import co.edu.udistrital.acciones.m6portafolio.domain.Montos;
 import co.edu.udistrital.acciones.m6portafolio.domain.Posicion;
 import org.springframework.stereotype.Service;
@@ -9,7 +12,10 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class ValoracionService {
@@ -17,14 +23,30 @@ public class ValoracionService {
     public static final String MONEDA = "USD";
     private static final BigDecimal CIEN = BigDecimal.valueOf(100);
 
+    private final DatosMercadoClientPort datosMercado;
     private final Clock clock;
 
-    public ValoracionService(Clock clock) {
+    public ValoracionService(DatosMercadoClientPort datosMercado, Clock clock) {
+        this.datosMercado = datosMercado;
         this.clock = clock;
     }
 
     public PosicionResponse valorar(Posicion posicion) {
-        BigDecimal precio = posicion.getPrecioActual();
+        return valorar(posicion, cotizacionesVivas(Set.of(posicion.getSymbol())));
+    }
+
+    public List<PosicionResponse> valorarTodas(List<Posicion> posiciones) {
+        Map<String, CotizacionMercado> cotizaciones = cotizacionesVivas(posiciones.stream()
+                .map(Posicion::getSymbol)
+                .collect(java.util.stream.Collectors.toSet()));
+        return posiciones.stream().map(posicion -> valorar(posicion, cotizaciones)).toList();
+    }
+
+    private PosicionResponse valorar(Posicion posicion, Map<String, CotizacionMercado> cotizaciones) {
+        CotizacionMercado cotizacion = cotizaciones.get(posicion.getSymbol());
+        BigDecimal precio = cotizacion == null ? posicion.getPrecioActual() : cotizacion.price();
+        Instant valoradoEn = cotizacion == null ? posicion.getValoradoEn() : cotizacion.timestamp();
+        boolean stale = cotizacion == null;
         BigDecimal valorMercado = null;
         BigDecimal pnlNoRealizado = null;
         BigDecimal pnlPorcentual = null;
@@ -49,26 +71,33 @@ public class ValoracionService {
                 pnlNoRealizado,
                 pnlPorcentual,
                 posicion.getPnlRealizado(),
-                posicion.getValoradoEn(),
-                precio == null,
+                valoradoEn,
+                stale,
                 MONEDA);
     }
 
     public PortafolioResponse valorarPortafolio(Long userId, List<Posicion> abiertas, List<Posicion> todas) {
-        List<PosicionResponse> posiciones = abiertas.stream().map(this::valorar).toList();
+        Map<String, CotizacionMercado> cotizaciones = cotizacionesVivas(abiertas.stream()
+                .map(Posicion::getSymbol)
+                .collect(java.util.stream.Collectors.toSet()));
+        List<PosicionResponse> posiciones = abiertas.stream()
+                .map(posicion -> valorar(posicion, cotizaciones))
+                .toList();
         BigDecimal totalCosto = Montos.cero();
         BigDecimal totalValor = Montos.cero();
         BigDecimal pnlNoRealizado = Montos.cero();
         boolean stale = false;
-        for (Posicion posicion : abiertas) {
-            totalCosto = totalCosto.add(posicion.getCostoPromedio().multiply(posicion.getCantidad()));
-            if (posicion.getPrecioActual() == null) {
-                stale = true;
+        boolean sinPrecio = false;
+        for (PosicionResponse posicion : posiciones) {
+            totalCosto = totalCosto.add(posicion.averageCost().multiply(posicion.quantity()));
+            stale |= posicion.stale();
+            if (posicion.currentPrice() == null) {
+                sinPrecio = true;
             } else {
-                totalValor = totalValor.add(posicion.getPrecioActual().multiply(posicion.getCantidad()));
+                totalValor = totalValor.add(posicion.currentPrice().multiply(posicion.quantity()));
                 pnlNoRealizado = pnlNoRealizado
-                        .add(posicion.getPrecioActual().subtract(posicion.getCostoPromedio())
-                                .multiply(posicion.getCantidad()));
+                        .add(posicion.currentPrice().subtract(posicion.averageCost())
+                                .multiply(posicion.quantity()));
             }
         }
         BigDecimal realizado = todas.stream()
@@ -77,12 +106,24 @@ public class ValoracionService {
         return new PortafolioResponse(
                 userId,
                 posiciones,
-                stale ? null : totalValor.setScale(Montos.ESCALA, Montos.REDONDEO),
+                sinPrecio ? null : totalValor.setScale(Montos.ESCALA, Montos.REDONDEO),
                 totalCosto.setScale(Montos.ESCALA, Montos.REDONDEO),
-                stale ? null : pnlNoRealizado.setScale(Montos.ESCALA, Montos.REDONDEO),
+                sinPrecio ? null : pnlNoRealizado.setScale(Montos.ESCALA, Montos.REDONDEO),
                 realizado.setScale(Montos.ESCALA, Montos.REDONDEO),
                 MONEDA,
                 Instant.now(clock),
-                stale);
+                stale || sinPrecio);
+    }
+
+    private Map<String, CotizacionMercado> cotizacionesVivas(Set<String> symbols) {
+        if (symbols.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            Map<String, CotizacionMercado> cotizaciones = datosMercado.obtenerCotizaciones(symbols);
+            return cotizaciones == null ? Map.of() : Map.copyOf(new LinkedHashMap<>(cotizaciones));
+        } catch (DatosMercadoNoDisponibleException ex) {
+            return Map.of();
+        }
     }
 }

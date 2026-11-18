@@ -59,6 +59,10 @@ app:
     interval-seconds: 30
     solo-mercado-abierto: true
     lote: 200
+  m4-client:
+    base-url: ${M4_BASE_URL:http://m4-datos-mercado:8084}
+    timeout-seconds: 5
+    cache-ttl-seconds: 5
   outbox:
     intervalo-ms: 1000
     lote: 50

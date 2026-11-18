@@ -39,7 +39,7 @@ class ConsultasPortafolioUseCaseTest {
     @Mock
     private PosicionRepositoryPort posiciones;
 
-    private final ValoracionService valoracion = new ValoracionService(CLOCK);
+    private final ValoracionService valoracion = new ValoracionService(symbols -> java.util.Map.of(), CLOCK);
     private ConsultarPosicionUseCase consultarPosicion;
     private ListarPosicionesUseCase listarPosiciones;
     private ConsultarPortafolioUseCase consultarPortafolio;

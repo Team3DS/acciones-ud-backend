@@ -69,7 +69,7 @@ class AplicarEjecucionUseCaseTest {
     @BeforeEach
     void prepararCaso() {
         caso = new AplicarEjecucionUseCase(posiciones, reservas, movimientos,
-                new ValoracionService(CLOCK), outbox, CLOCK);
+                new ValoracionService(symbols -> java.util.Map.of(), CLOCK), outbox, CLOCK);
     }
 
     @Test

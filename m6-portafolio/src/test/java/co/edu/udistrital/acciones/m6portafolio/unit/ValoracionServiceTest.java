@@ -2,6 +2,8 @@ package co.edu.udistrital.acciones.m6portafolio.unit;
 
 import co.edu.udistrital.acciones.m6portafolio.application.dto.PortafolioResponse;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.PosicionResponse;
+import co.edu.udistrital.acciones.m6portafolio.application.dto.CotizacionMercado;
+import co.edu.udistrital.acciones.m6portafolio.application.exception.DatosMercadoNoDisponibleException;
 import co.edu.udistrital.acciones.m6portafolio.application.service.ValoracionService;
 import co.edu.udistrital.acciones.m6portafolio.domain.Posicion;
 import org.junit.jupiter.api.Test;
@@ -20,7 +22,7 @@ class ValoracionServiceTest {
     private static final Instant T0 = Instant.parse("2026-01-02T10:00:00Z");
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-01-02T12:00:00Z"), ZoneOffset.UTC);
 
-    private final ValoracionService servicio = new ValoracionService(CLOCK);
+    private final ValoracionService servicio = new ValoracionService(symbols -> java.util.Map.of(), CLOCK);
 
     @Test
     void valoraUnaPosicionConElPrecioGuardado() {
@@ -42,7 +44,7 @@ class ValoracionServiceTest {
         assertThat(respuesta.unrealizedPnlPct()).isEqualByComparingTo("2.7027");
         assertThat(respuesta.realizedPnl()).isEqualByComparingTo("0");
         assertThat(respuesta.priceTimestamp()).isEqualTo(T0.plusSeconds(60));
-        assertThat(respuesta.stale()).isFalse();
+        assertThat(respuesta.stale()).isTrue();
         assertThat(respuesta.currency()).isEqualTo("USD");
     }
 
@@ -76,7 +78,7 @@ class ValoracionServiceTest {
         assertThat(respuesta.realizedPnl()).isEqualByComparingTo("0.0000");
         assertThat(respuesta.currency()).isEqualTo("USD");
         assertThat(respuesta.valuedAt()).isEqualTo(Instant.parse("2026-01-02T12:00:00Z"));
-        assertThat(respuesta.stale()).isFalse();
+        assertThat(respuesta.stale()).isTrue();
     }
 
     @Test
@@ -104,5 +106,34 @@ class ValoracionServiceTest {
         assertThat(respuesta.unrealizedPnl()).isEqualByComparingTo("0");
         assertThat(respuesta.realizedPnl()).isEqualByComparingTo("0");
         assertThat(respuesta.stale()).isFalse();
+    }
+
+    @Test
+    void usaLaCotizacionVivaSinModificarElPrecioGuardado() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(BigDecimal.TEN, new BigDecimal("180.00"), T0);
+        ValoracionService conMercado = new ValoracionService(symbols -> java.util.Map.of("AAPL",
+                new CotizacionMercado("AAPL", new BigDecimal("200.00"), T0.plusSeconds(30))), CLOCK);
+
+        PosicionResponse respuesta = conMercado.valorar(posicion);
+
+        assertThat(respuesta.currentPrice()).isEqualByComparingTo("200.0000");
+        assertThat(respuesta.unrealizedPnl()).isEqualByComparingTo("200.0000");
+        assertThat(respuesta.stale()).isFalse();
+        assertThat(posicion.getPrecioActual()).isEqualByComparingTo("180.0000");
+    }
+
+    @Test
+    void conservaElPrecioGuardadoCuandoM4NoEstaDisponible() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(BigDecimal.TEN, new BigDecimal("180.00"), T0);
+        ValoracionService sinMercado = new ValoracionService(symbols -> {
+            throw new DatosMercadoNoDisponibleException("M4 no esta disponible", null);
+        }, CLOCK);
+
+        PosicionResponse respuesta = sinMercado.valorar(posicion);
+
+        assertThat(respuesta.currentPrice()).isEqualByComparingTo("180.0000");
+        assertThat(respuesta.stale()).isTrue();
     }
 }

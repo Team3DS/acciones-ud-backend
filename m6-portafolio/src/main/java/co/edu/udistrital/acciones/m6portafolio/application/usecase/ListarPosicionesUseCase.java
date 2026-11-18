@@ -23,8 +23,6 @@ public class ListarPosicionesUseCase {
     @Transactional(readOnly = true)
     public List<PosicionResponse> ejecutar(Long userId, Actor actor) {
         actor.verificarLectura(userId);
-        return posiciones.findAbiertasByUserId(userId).stream()
-                .map(valoracion::valorar)
-                .toList();
+        return valoracion.valorarTodas(posiciones.findAbiertasByUserId(userId));
     }
 }

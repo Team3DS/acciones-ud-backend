@@ -1,7 +1,9 @@
 package co.edu.udistrital.acciones.m6portafolio.integration;
 
 import co.edu.udistrital.acciones.m6portafolio.support.TokenTestFactory;
+import co.edu.udistrital.acciones.m6portafolio.infrastructure.adapter.out.mercado.CacheCotizaciones;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -22,7 +24,7 @@ public abstract class AbstractIntegrationTest {
 
     private static final RabbitMQContainer RABBITMQ = new RabbitMQContainer("rabbitmq:3.13-management-alpine");
 
-    private static final WireMockServer MERCADO = new WireMockServer(options().dynamicPort());
+    protected static final WireMockServer MERCADO = new WireMockServer(options().dynamicPort());
 
     static {
         POSTGRES.start();
@@ -47,4 +49,13 @@ public abstract class AbstractIntegrationTest {
 
     @Autowired
     protected TestRestTemplate rest;
+
+    @Autowired
+    private CacheCotizaciones cacheCotizaciones;
+
+    @BeforeEach
+    void limpiarCacheCotizaciones() {
+        cacheCotizaciones.limpiar();
+        MERCADO.resetAll();
+    }
 }
