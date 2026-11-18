@@ -1,6 +1,9 @@
 package co.edu.udistrital.acciones.m6portafolio.integration;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -17,6 +20,9 @@ class M6ArranqueIntegrationTest extends AbstractIntegrationTest {
 
     private static final String PATRON_UUID =
             "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void healthRespondeUp() {
@@ -40,6 +46,24 @@ class M6ArranqueIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(respuesta.getBody()).contains("M6 Portafolio");
+    }
+
+    @Test
+    void apiDocsExponeLasSeisRutasDelContrato() throws Exception {
+        ResponseEntity<String> respuesta = rest.getForEntity("/v3/api-docs", String.class);
+
+        assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode rutas = objectMapper.readTree(respuesta.getBody()).path("paths");
+        assertThat(rutas.size()).isEqualTo(6);
+        assertThat(rutas.has("/api/v1/positions/updates")).isTrue();
+        assertThat(rutas.has("/api/v1/positions/reservations")).isTrue();
+        assertThat(rutas.has("/api/v1/positions/reservations/{id}/release")).isTrue();
+        assertThat(rutas.has("/api/v1/positions/{userId}")).isTrue();
+        assertThat(rutas.has("/api/v1/positions/{userId}/{symbol}")).isTrue();
+        assertThat(rutas.has("/api/v1/portfolio/{userId}")).isTrue();
+        assertThat(rutas.path("/api/v1/positions/updates").path("post")
+                .path("responses").path("422").path("content")
+                .has("application/problem+json")).isTrue();
     }
 
     @Test
