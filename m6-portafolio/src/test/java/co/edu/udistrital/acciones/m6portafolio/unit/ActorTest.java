@@ -1,9 +1,12 @@
 package co.edu.udistrital.acciones.m6portafolio.unit;
 
 import co.edu.udistrital.acciones.m6portafolio.application.dto.Actor;
+import co.edu.udistrital.acciones.m6portafolio.application.exception.AccesoDenegadoException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ActorTest {
 
@@ -49,5 +52,41 @@ class ActorTest {
 
         assertThat(administradorTecnico.puedeVer(AJENO)).isTrue();
         assertThat(administradorTecnico.puedeOperar(AJENO)).isFalse();
+    }
+
+    @Test
+    void verificarLecturaPermiteAlPropietarioYAlAdministrador() {
+        assertThatCode(() -> new Actor(PROPIETARIO, false, false).verificarLectura(PROPIETARIO))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> new Actor(AJENO, true, false).verificarLectura(PROPIETARIO))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> Actor.interno().verificarLectura(PROPIETARIO))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void verificarLecturaRechazaAUnUsuarioAjeno() {
+        Actor otro = new Actor(AJENO, false, false);
+
+        assertThatThrownBy(() -> otro.verificarLectura(PROPIETARIO))
+                .isInstanceOf(AccesoDenegadoException.class)
+                .hasMessageContaining("consultar");
+    }
+
+    @Test
+    void verificarOperacionPermiteAlPropietarioYAlSistema() {
+        assertThatCode(() -> new Actor(PROPIETARIO, false, false).verificarOperacion(PROPIETARIO))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> Actor.interno().verificarOperacion(PROPIETARIO))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void verificarOperacionRechazaAlAdministradorYAUnUsuarioAjeno() {
+        Actor administrador = new Actor(AJENO, true, false);
+
+        assertThatThrownBy(() -> administrador.verificarOperacion(PROPIETARIO))
+                .isInstanceOf(AccesoDenegadoException.class)
+                .hasMessageContaining("operar");
     }
 }
