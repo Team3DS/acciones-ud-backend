@@ -183,8 +183,48 @@ class PosicionTest {
     }
 
     @Test
-    void validaLasCantidadesYLosInstantesDeReserva() {
+    void valorarActualizaElPrecioElValorYElPnlNoRealizado() {
         Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(new BigDecimal("10"), new BigDecimal("185.00"), T0);
+
+        posicion.valorar(new BigDecimal("200.00"), T0.plusSeconds(300));
+
+        assertThat(posicion.getPrecioActual()).isEqualByComparingTo("200.0000");
+        assertThat(posicion.getValorActual()).isEqualByComparingTo("2000.0000");
+        assertThat(posicion.getPnlNoRealizado()).isEqualByComparingTo("150.0000");
+        assertThat(posicion.getCostoPromedio()).isEqualByComparingTo("185.0000");
+        assertThat(posicion.getCantidad()).isEqualByComparingTo("10");
+        assertThat(posicion.getValoradoEn()).isEqualTo(T0.plusSeconds(300));
+        assertThat(posicion.getActualizadoEn()).isEqualTo(T0.plusSeconds(300));
+    }
+
+    @Test
+    void valorarCalculaPerdidaYRedondeaConEscalaCuatro() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(new BigDecimal("3"), new BigDecimal("10.0000"), T0);
+
+        posicion.valorar(new BigDecimal("9.3333"), T0.plusSeconds(1));
+
+        assertThat(posicion.getValorActual()).isEqualByComparingTo("27.9999");
+        assertThat(posicion.getPnlNoRealizado()).isEqualByComparingTo("-2.0001");
+    }
+
+    @Test
+    void valorarExigeUnPrecioPositivoYElInstante() {
+        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
+        posicion.comprar(BigDecimal.TEN, new BigDecimal("100.00"), T0);
+
+        assertThatThrownBy(() -> posicion.valorar(BigDecimal.ZERO, T0))
+                .isInstanceOf(PrecioInvalidoException.class);
+        assertThatThrownBy(() -> posicion.valorar(null, T0))
+                .isInstanceOf(PrecioInvalidoException.class);
+        assertThatThrownBy(() -> posicion.valorar(BigDecimal.ONE, null))
+                .isInstanceOf(NullPointerException.class);
+        assertThat(posicion.getPrecioActual()).isEqualByComparingTo("100.0000");
+    }
+
+    @Test
+    void validaLasCantidadesYLosInstantesDeReserva() {        Posicion posicion = Posicion.abrir(USUARIO, "AAPL", T0);
         posicion.comprar(BigDecimal.TEN, new BigDecimal("100.00"), T0);
 
         assertThatThrownBy(() -> posicion.reservar(BigDecimal.ZERO, T0))

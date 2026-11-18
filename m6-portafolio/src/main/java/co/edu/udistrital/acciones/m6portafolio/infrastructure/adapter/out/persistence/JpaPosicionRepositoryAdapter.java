@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +33,20 @@ interface SpringDataPosicionRepository extends JpaRepository<Posicion, Long> {
     List<Posicion> findAbiertasByUserId(@Param("userId") Long userId);
 
     List<Posicion> findByUserIdOrderBySymbolAsc(Long userId);
+
+    @Query("select distinct p.symbol from Posicion p where p.cantidad > 0 order by p.symbol asc")
+    List<String> findSymbolsConCantidad();
+
+    @Query(value = """
+            SELECT * FROM posicion
+            WHERE symbol = :symbol AND cantidad > 0 AND precio_actual IS DISTINCT FROM :precio
+            ORDER BY id ASC
+            LIMIT :lote
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<Posicion> buscarAbiertasPorSymbolConPrecioDistinto(@Param("symbol") String symbol,
+                                                           @Param("precio") BigDecimal precio,
+                                                           @Param("lote") int lote);
 
     @Modifying
     @Query(value = """
@@ -86,6 +101,16 @@ public class JpaPosicionRepositoryAdapter implements PosicionRepositoryPort {
     @Override
     public List<Posicion> findByUserId(Long userId) {
         return repositorio.findByUserIdOrderBySymbolAsc(userId);
+    }
+
+    @Override
+    public List<String> findSymbolsConCantidad() {
+        return repositorio.findSymbolsConCantidad();
+    }
+
+    @Override
+    public List<Posicion> findAbiertasPorSymbolConPrecioDistinto(String symbol, BigDecimal precio, int lote) {
+        return repositorio.buscarAbiertasPorSymbolConPrecioDistinto(symbol, precio, lote);
     }
 
     @Override

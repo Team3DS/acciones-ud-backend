@@ -151,6 +151,17 @@ public class Posicion {
         this.actualizadoEn = instante;
     }
 
+    public void valorar(BigDecimal precioMercado, Instant valoradoEn) {
+        BigDecimal precio = Montos.validarPositivo(precioMercado);
+        Instant instante = Objects.requireNonNull(valoradoEn, "El instante de la valoracion es obligatorio");
+        this.precioActual = precio;
+        this.valorActual = precio.multiply(this.cantidad).setScale(Montos.ESCALA, Montos.REDONDEO);
+        this.pnlNoRealizado = precio.subtract(this.costoPromedio).multiply(this.cantidad)
+                .setScale(Montos.ESCALA, Montos.REDONDEO);
+        this.valoradoEn = instante;
+        this.actualizadoEn = instante;
+    }
+
     public BigDecimal disponible() {
         return this.cantidad.subtract(this.cantidadReservada);
     }
