@@ -23,12 +23,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 class M6OutboxIntegrationTest extends AbstractIntegrationTest {
 
@@ -76,6 +78,10 @@ class M6OutboxIntegrationTest extends AbstractIntegrationTest {
                     "select id, publicado, reintentos from outbox_evento where correlation_id = ?", correlacion);
             assertThat(fila.get("id").toString())
                     .isEqualTo(mensaje.getMessageProperties().getMessageId());
+            await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(50))
+                    .untilAsserted(() -> assertThat(publicado(correlacion)).isTrue());
+            fila = jdbc.queryForMap(
+                    "select id, publicado, reintentos from outbox_evento where correlation_id = ?", correlacion);
             assertThat(fila.get("publicado")).isEqualTo(Boolean.TRUE);
             assertThat(((Number) fila.get("reintentos")).intValue()).isZero();
             assertThat((String) mensaje.getMessageProperties().getHeader(CorrelationIdFilter.HEADER))
@@ -120,6 +126,12 @@ class M6OutboxIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(tablas).isEqualTo(1);
         assertThat(versiones).isEqualTo(1);
+    }
+
+    private boolean publicado(String correlacion) {
+        Boolean publicado = jdbc.queryForObject(
+                "select publicado from outbox_evento where correlation_id = ?", Boolean.class, correlacion);
+        return Boolean.TRUE.equals(publicado);
     }
 
     private static Map<String, Object> cuerpo(long userId, String orderId, String executionId,
