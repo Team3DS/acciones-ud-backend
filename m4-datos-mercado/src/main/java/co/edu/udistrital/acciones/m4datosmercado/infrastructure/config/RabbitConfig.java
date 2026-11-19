@@ -6,6 +6,9 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -61,5 +64,13 @@ public class RabbitConfig {
     @Bean
     public Binding bindingDlq(TopicExchange dlxExchange, Queue m4EventosDlq) {
         return BindingBuilder.bind(m4EventosDlq).to(dlxExchange).with(RoutingKeys.COLA_M4_EVENTOS_DLQ);
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory m4ListenerContainerFactory(
+            SimpleRabbitListenerContainerFactoryConfigurer configurer, ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory, connectionFactory);
+        return factory;
     }
 }
