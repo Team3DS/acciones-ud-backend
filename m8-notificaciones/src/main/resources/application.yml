@@ -18,11 +18,58 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:acciones_ud}
     password: ${RABBITMQ_PASSWORD:acciones_ud}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        prefetch: 10
+        default-requeue-rejected: false
+        auto-startup: ${M8_RABBIT_ENABLED:true}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    user: ${M8_MIGRATION_USER:${DB_USER:acciones_ud}}
+    password: ${M8_MIGRATION_PASSWORD:${DB_PASSWORD:acciones_ud}}
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
 
 server:
   port: ${SERVER_PORT:8088}
 
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+  health:
+    redis:
+      enabled: false
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  mail:
+    encryption-key: ${M8_MAIL_KEY}
+  resend:
+    base-url: ${RESEND_BASE_URL:https://api.resend.com}
+    api-key: ${RESEND_API_KEY:}
+    from: ${RESEND_FROM:Acciones UD <noreply@accionesud.com>}
+  services:
+    token: ${M8_SERVICE_TOKEN:}
+    m1: ${M1_BASE_URL:http://m1-identidad:8081}
+    m3: ${M3_BASE_URL:http://m3-catalogo-mercados:8083}
+    m4: ${M4_BASE_URL:http://m4-datos-mercado:8084}
+    m5: ${M5_BASE_URL:http://m5-ordenes-ejecucion:8085}
+    m6: ${M6_BASE_URL:http://m6-portafolio:8086}
+    m10: ${M10_BASE_URL:http://m10-suscripciones-pagos:8090}
+  jobs:
+    enabled: ${M8_JOBS_ENABLED:true}
+  monthly:
+    enabled: ${M8_MONTHLY_ENABLED:false}
