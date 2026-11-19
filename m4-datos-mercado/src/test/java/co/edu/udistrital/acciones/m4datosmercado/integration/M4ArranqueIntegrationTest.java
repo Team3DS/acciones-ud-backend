@@ -49,6 +49,8 @@ class M4ArranqueIntegrationTest {
         registry.add("app.m3.timeout-ms", () -> "5000");
         registry.add("app.websocket.endpoint", () -> "/market/ws");
         registry.add("app.websocket.heartbeat-interval", () -> "20000");
+        registry.add("app.cache.quote-ttl-seconds", () -> "30");
+        registry.add("app.cache.snapshot-ttl-seconds", () -> "300");
         registry.add("app.jwt.secret", () -> "clave-secreta-para-testing-minimo-32-chars");
     }
 
