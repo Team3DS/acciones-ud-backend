@@ -51,7 +51,7 @@ public class FondosController {
     }
 
     @Operation(summary = "Registra un depósito",
-            description = "Acredita fondos a la cuenta del usuario. Requiere rol ADMINISTRADOR.")
+            description = "Acredita fondos a la cuenta del usuario. El titular de la cuenta o un administrador pueden depositar.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Depósito registrado"),
             @ApiResponse(responseCode = "400", description = "Solicitud inválida",

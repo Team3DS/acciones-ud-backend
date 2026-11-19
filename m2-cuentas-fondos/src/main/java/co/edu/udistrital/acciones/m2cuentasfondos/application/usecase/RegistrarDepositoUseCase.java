@@ -42,7 +42,7 @@ public class RegistrarDepositoUseCase {
 
     @Transactional
     public DepositoResponse ejecutar(DepositoRequest request, String idempotencyKey, Actor actor) {
-        verificarAdministrador(actor);
+        verificarPuedeDepositar(actor, request.userId());
         BigDecimal monto = MonetaryUtil.validarPositivo(request.amount());
         String clave = PREFIJO_CLAVE + idempotencyKey;
         Instant ahora = Instant.now(clock);
@@ -88,9 +88,12 @@ public class RegistrarDepositoUseCase {
                 MONEDA, movimiento.getCreadoEn());
     }
 
-    private void verificarAdministrador(Actor actor) {
-        if (!actor.administrador() && !actor.esSistema()) {
-            throw new AccesoDenegadoException("Solo un administrador puede registrar depósitos");
+    private void verificarPuedeDepositar(Actor actor, Long usuarioId) {
+        boolean esPropiaCuenta = actor.esSistema() || actor.userId() != null
+                && actor.userId().equals(usuarioId);
+        if (!actor.administrador() && !esPropiaCuenta) {
+            throw new AccesoDenegadoException(
+                    "Solo el titular de la cuenta o un administrador puede registrar depósitos");
         }
     }
 }

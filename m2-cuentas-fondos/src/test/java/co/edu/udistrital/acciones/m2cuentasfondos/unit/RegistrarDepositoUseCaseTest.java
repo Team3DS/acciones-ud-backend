@@ -175,13 +175,34 @@ class RegistrarDepositoUseCaseTest {
     }
 
     @Test
-    void soloUnAdministradorPuedeRegistrarDepositos() {
+    void soloElTitularOMinistroPuedeDepositar() {
         assertThatThrownBy(() -> casoDeUso.ejecutar(
                 new DepositoRequest(5L, new BigDecimal("100.00"), null),
-                "clave-1", new Actor(5L, false)))
+                "clave-1", new Actor(6L, false)))
                 .isInstanceOf(AccesoDenegadoException.class);
 
         verifyNoInteractions(cuentas, movimientos);
+    }
+
+    @Test
+    void elTitularPuedeDepositarEnSuPropiaCuenta() {
+        Cuenta cuenta = cuenta(10L, 5L);
+        when(movimientos.findByIdempotencyKey("DEP:clave-1")).thenReturn(Optional.empty());
+        when(cuentas.findByUserIdForUpdate(5L)).thenReturn(Optional.of(cuenta));
+        when(movimientos.save(any(Movimiento.class))).thenAnswer(invocacion -> {
+            Movimiento movimiento = invocacion.getArgument(0);
+            ReflectionTestUtils.setField(movimiento, "id", 99L);
+            return movimiento;
+        });
+
+        DepositoResponse respuesta = casoDeUso.ejecutar(
+                new DepositoRequest(5L, new BigDecimal("100.00"), "Abono propio"),
+                "clave-1", new Actor(5L, false));
+
+        assertThat(respuesta.movementId()).isEqualTo(99L);
+        assertThat(respuesta.userId()).isEqualTo(5L);
+        verify(cuentas).crearSiNoExiste(5L, AHORA);
+        verify(cuentas).save(cuenta);
     }
 
     private Cuenta cuenta(Long id, Long userId) {
