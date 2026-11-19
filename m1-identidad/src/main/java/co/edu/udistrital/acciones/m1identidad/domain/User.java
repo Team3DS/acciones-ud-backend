@@ -67,6 +67,7 @@ public class User {
     public Long getId() { return id; }
     public String getCorreo() { return correo; }
     public String getEstadoUsuario() { return estadoUsuario; }
+    public void setEstadoUsuario(String estadoUsuario) { this.estadoUsuario = estadoUsuario; }
 
     public void setNombres(String nombres) { this.nombres = nombres; }
     public void setApellidos(String apellidos) { this.apellidos = apellidos; }

@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -53,20 +54,22 @@ class UserControllerTest {
     }
 
     @Test
-    void listUsersReturns501() {
+    void listUsersReturnsOk() {
         ResponseEntity<?> result = controller.listUsers();
-        assertEquals(501, result.getStatusCode().value());
+        assertEquals(200, result.getStatusCode().value());
     }
 
     @Test
-    void updateUserRolesReturns501() {
+    void updateUserRolesReturnsOk() {
         ResponseEntity<?> result = controller.updateUserRoles(1L, Map.of("roles", List.of("ADMINISTRADOR")));
-        assertEquals(501, result.getStatusCode().value());
+        assertEquals(200, result.getStatusCode().value());
+        verify(userApplicationService).assignRoles(1L, Set.of("ADMINISTRADOR"));
     }
 
     @Test
-    void updateUserEstadoReturns501() {
-        ResponseEntity<?> result = controller.updateUserEstado(1L, Map.of("estado", "ACTIVO"));
-        assertEquals(501, result.getStatusCode().value());
+    void updateUserEstadoReturnsOk() {
+        ResponseEntity<?> result = controller.updateUserEstado(1L, Map.of("estado", "ACTIVO", "motivo", "prueba"));
+        assertEquals(200, result.getStatusCode().value());
+        verify(userApplicationService).changeStatus(1L, "ACTIVO", "prueba");
     }
 }

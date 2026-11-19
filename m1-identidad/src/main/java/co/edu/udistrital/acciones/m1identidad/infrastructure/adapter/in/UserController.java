@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -77,11 +78,17 @@ public class UserController {
 
     @PatchMapping("/{id}/roles")
     public ResponseEntity<?> updateUserRoles(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return ResponseEntity.status(501).body(Map.of("error", "Endpoint no implementado: asignarRoles no existe en UserApplicationService"));
+        @SuppressWarnings("unchecked")
+        List<String> roles = (List<String>) body.getOrDefault("roles", List.of());
+        userApplicationService.assignRoles(id, Set.copyOf(roles));
+        return ResponseEntity.ok(Map.of("message", "Roles actualizados"));
     }
 
     @PatchMapping("/{id}/estado")
     public ResponseEntity<?> updateUserEstado(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return ResponseEntity.status(501).body(Map.of("error", "Endpoint no implementado: changeStatus no existe en UserApplicationService"));
+        String estado = (String) body.getOrDefault("estado", "");
+        String motivo = (String) body.getOrDefault("motivo", "");
+        userApplicationService.changeStatus(id, estado, motivo);
+        return ResponseEntity.ok(Map.of("message", "Estado actualizado"));
     }
 }

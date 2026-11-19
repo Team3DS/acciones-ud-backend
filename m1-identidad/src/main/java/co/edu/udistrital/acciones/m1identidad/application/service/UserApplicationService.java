@@ -4,6 +4,7 @@ import co.edu.udistrital.acciones.m1identidad.application.dto.LoginRequest;
 import co.edu.udistrital.acciones.m1identidad.application.dto.RegisterUserRequest;
 import co.edu.udistrital.acciones.m1identidad.application.port.out.UserRepositoryPort;
 import co.edu.udistrital.acciones.m1identidad.application.usecase.RegisterUserUseCase;
+import co.edu.udistrital.acciones.m1identidad.domain.Rol;
 import co.edu.udistrital.acciones.m1identidad.domain.User;
 import co.edu.udistrital.acciones.m1identidad.infrastructure.service.CifradoService;
 import co.edu.udistrital.acciones.m1identidad.infrastructure.service.JwtService;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -78,5 +80,33 @@ public class UserApplicationService {
 
     public void logout(Long userId) {
         refreshTokenService.revoke(userId);
+    }
+
+    public void assignRoles(Long userId, Set<String> roles) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        for (String rol : roles) {
+            try {
+                Rol.valueOf(rol);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Rol inválido: " + rol);
+            }
+        }
+    }
+
+    public void changeStatus(Long userId, String estado, String motivo) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        try {
+            switch (estado) {
+                case "ACTIVO", "OPERACIONES_RESTRINGIDAS", "BLOQUEADO", "PENDIENTE_VERIFICACION" -> {
+                    user.setEstadoUsuario(estado);
+                    userRepository.save(user);
+                }
+                default -> throw new IllegalArgumentException("Estado inválido: " + estado);
+            }
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        }
     }
 }
