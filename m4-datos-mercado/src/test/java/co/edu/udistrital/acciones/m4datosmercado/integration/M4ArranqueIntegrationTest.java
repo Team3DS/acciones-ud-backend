@@ -45,6 +45,10 @@ class M4ArranqueIntegrationTest {
         registry.add("app.alpaca.api-secret", () -> "test-secret");
         registry.add("app.alpaca.base-url", () -> "http://localhost:8080");
         registry.add("app.alpaca.data-feed", () -> "dummy-feed");
+        registry.add("app.m3.base-url", () -> "http://localhost:8083");
+        registry.add("app.m3.timeout-ms", () -> "5000");
+        registry.add("app.websocket.endpoint", () -> "/market/ws");
+        registry.add("app.websocket.heartbeat-interval", () -> "20000");
         registry.add("app.jwt.secret", () -> "clave-secreta-para-testing-minimo-32-chars");
     }
 
