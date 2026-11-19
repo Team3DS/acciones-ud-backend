@@ -34,6 +34,7 @@ class M4ArranqueIntegrationTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", () -> "acciones_ud");
@@ -42,6 +43,8 @@ class M4ArranqueIntegrationTest {
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
         registry.add("app.alpaca.api-key", () -> "test-key");
         registry.add("app.alpaca.api-secret", () -> "test-secret");
+        registry.add("app.alpaca.base-url", () -> "http://localhost:8080");
+        registry.add("app.alpaca.data-feed", () -> "dummy-feed");
         registry.add("app.jwt.secret", () -> "clave-secreta-para-testing-minimo-32-chars");
     }
 
