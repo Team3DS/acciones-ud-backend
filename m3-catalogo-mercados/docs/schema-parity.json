@@ -1,0 +1,88 @@
+{
+  "source": "03_catalogo_db.sql, 2026-10-30",
+  "sourceSha256": "784ece1945136f7de5935be2d2602002381d289cfa5a141e9ac2480f1b78c9dd",
+  "scope": "V3 ampliada por solicitud de Jamyson; preserva claves, restricciones y datos del modelo base",
+  "retainedOriginalColumns": 17,
+  "retainedOriginalConstraints": 10,
+  "intentionalChanges": [
+    {
+      "table": "accion",
+      "column": "ticker",
+      "before": [
+        "accion",
+        "ticker",
+        "character varying",
+        "varchar",
+        10,
+        "NO",
+        null,
+        "NO",
+        null
+      ],
+      "after": [
+        "accion",
+        "ticker",
+        "character varying",
+        "varchar",
+        20,
+        "NO",
+        null,
+        "NO",
+        null
+      ]
+    }
+  ],
+  "addedColumns": [
+    {
+      "table": "accion",
+      "column": "tipo"
+    },
+    {
+      "table": "accion",
+      "column": "lot_size"
+    },
+    {
+      "table": "accion",
+      "column": "tick_size"
+    },
+    {
+      "table": "accion",
+      "column": "estado"
+    },
+    {
+      "table": "accion",
+      "column": "creado_en"
+    },
+    {
+      "table": "accion",
+      "column": "actualizado_en"
+    },
+    {
+      "table": "mercado",
+      "column": "pais"
+    },
+    {
+      "table": "mercado",
+      "column": "horario_apertura"
+    },
+    {
+      "table": "mercado",
+      "column": "horario_cierre"
+    }
+  ],
+  "seed": {
+    "markets": {
+      "sameValuesAndIds": true,
+      "rows": 2
+    },
+    "sectors": {
+      "sameValuesAndIds": true,
+      "rows": 6
+    },
+    "instruments": {
+      "sameValuesAndIds": true,
+      "rows": 10
+    }
+  },
+  "passed": true
+}

@@ -1,0 +1,47 @@
+\set ON_ERROR_STOP on
+\getenv catalogo_app_password CATALOGO_APP_PASSWORD
+\if :{?catalogo_app_password}
+SELECT :'catalogo_app_password' <> '' AS catalogo_clave_ok \gset
+\else
+\set catalogo_clave_ok false
+\endif
+\if :catalogo_clave_ok
+\else
+DO $$ BEGIN RAISE EXCEPTION 'Defina CATALOGO_APP_PASSWORD con una contraseña no vacía'; END $$;
+\endif
+
+BEGIN;
+DO $$ BEGIN
+    IF current_database() <> 'catalogo_db' THEN
+        RAISE EXCEPTION 'Conéctese a catalogo_db antes de aplicar permisos';
+    END IF;
+END $$;
+
+SELECT 'CREATE ROLE catalogo_owner NOLOGIN'
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'catalogo_owner')
+\gexec
+ALTER ROLE catalogo_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+
+SELECT 'CREATE ROLE catalogo_app LOGIN'
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'catalogo_app')
+\gexec
+ALTER ROLE catalogo_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'catalogo_app_password';
+
+ALTER TABLE mercado OWNER TO catalogo_owner;
+ALTER TABLE sector OWNER TO catalogo_owner;
+ALTER TABLE accion OWNER TO catalogo_owner;
+ALTER TABLE comando_catalogo OWNER TO catalogo_owner;
+ALTER TABLE outbox_evento OWNER TO catalogo_owner;
+REVOKE ALL ON DATABASE catalogo_db FROM PUBLIC;
+GRANT CONNECT ON DATABASE catalogo_db TO catalogo_app, catalogo_owner;
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO catalogo_app;
+GRANT USAGE, CREATE ON SCHEMA public TO catalogo_owner;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM catalogo_app;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM catalogo_app;
+GRANT SELECT ON mercado, sector, accion TO catalogo_app;
+GRANT INSERT, UPDATE ON mercado, accion TO catalogo_app;
+GRANT SELECT, INSERT, UPDATE ON comando_catalogo, outbox_evento TO catalogo_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE catalogo_owner IN SCHEMA public GRANT SELECT ON TABLES TO catalogo_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE catalogo_owner REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+COMMIT;

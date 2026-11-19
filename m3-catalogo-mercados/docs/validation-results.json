@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-13",
+  "baseCommit": "ea53c0292e3f846517567eb903169c8e14fd85a0",
+  "branch": "feat/m3-catalogo-mercados",
+  "scope": "M3 con administración y modelo ampliado solicitados por Jamyson",
+  "java": "Temurin 21.0.13+9",
+  "maven": "3.9.9",
+  "postgres": "16.4",
+  "tests": {
+    "unit": {
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "integration": {
+      "tests": 44,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "coverage": {
+    "BRANCH": {
+      "covered": 198,
+      "missed": 34
+    },
+    "LINE": {
+      "covered": 655,
+      "missed": 17
+    }
+  },
+  "quality": {
+    "checkstyleViolations": 0,
+    "spotbugsThreshold": "High",
+    "spotbugsEffort": "Max",
+    "spotbugsPassed": true
+  },
+  "sourceLogSha256": "06da2d4a906862210fda4a52d9bae1bdfbf4a56940d04c34615db12942350c05",
+  "notExecutedLocally": [
+    "Grupo broker con RabbitMQ real: incluido en el workflow, requiere Docker",
+    "Docker Build",
+    "GitHub Actions y SonarCloud remotos",
+    "Prueba completa con emision de roles por M1 y consumidores M4/M5",
+    "Aplicacion del script de permisos mediante psql"
+  ],
+  "passed": true
+}

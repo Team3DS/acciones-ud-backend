@@ -42,7 +42,7 @@ jobs:
 
       - name: Cobertura completa M3 y M8 antes de SonarCloud
         if: matrix.java == '21'
-        run: mvn -B -pl m3-catalogo-mercados,m8-notificaciones -am -Pintegration,quality verify -Dm3.test.rabbit=true -Dm3.excluded-groups=
+        run: mvn -B -pl m3-catalogo-mercados, m8-notificaciones -am -Pintegration,quality verify -Dm3.test.rabbit=true -Dm3.excluded-groups=
 
       - name: SonarCloud Scan
         if: matrix.java == '21' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)

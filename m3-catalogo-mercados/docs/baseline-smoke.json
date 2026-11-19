@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "scenario": "Adopción del esquema original y evolución V3 preservando las diez acciones",
+  "history": [
+    {
+      "version": "1",
+      "type": "BASELINE",
+      "success": true
+    },
+    {
+      "version": "2",
+      "type": "SQL",
+      "success": true
+    },
+    {
+      "version": "3",
+      "type": "SQL",
+      "success": true
+    }
+  ]
+}

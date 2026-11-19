@@ -1,0 +1,35 @@
+services:
+  postgres-m3:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: catalogo_db
+      POSTGRES_USER: acciones_ud
+      POSTGRES_PASSWORD: ${M3_LOCAL_DB_PASSWORD:?Defina M3_LOCAL_DB_PASSWORD}
+    ports:
+      - '127.0.0.1:55434:5432'
+    volumes:
+      - catalogo-m3-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U acciones_ud -d catalogo_db']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  rabbit-m3:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: acciones_ud
+      RABBITMQ_DEFAULT_PASS: ${M3_LOCAL_RABBIT_PASSWORD:?Defina M3_LOCAL_RABBIT_PASSWORD}
+    ports:
+      - '127.0.0.1:5674:5672'
+      - '127.0.0.1:15674:15672'
+    volumes:
+      - rabbit-m3-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  catalogo-m3-data:
+  rabbit-m3-data:
