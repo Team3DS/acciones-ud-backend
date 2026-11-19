@@ -1,0 +1,26 @@
+spring:
+  flyway:
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+management:
+  health:
+    rabbit:
+      enabled: false
+app:
+  jwt:
+    secret: m8-test-only-jwt-secret-1234567890123456789012345678901234567890
+  mail:
+    encryption-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+  resend:
+    api-key: re_fixture_not_a_real_key
+    from: Acciones UD <noreply@example.test>
+  services:
+    token: fixture-service-token
+  jobs:
+    enabled: false
+  monthly:
+    enabled: false

@@ -40,9 +40,9 @@ jobs:
       - name: Run tests and verify
         run: mvn -B verify -DskipTests=false -DfailIfNoTests=false
 
-      - name: Cobertura completa M3 antes de SonarCloud
+      - name: Cobertura completa M3 y M8 antes de SonarCloud
         if: matrix.java == '21'
-        run: mvn -B -pl m3-catalogo-mercados -am -Pintegration,quality verify -Dm3.test.rabbit=true -Dm3.excluded-groups=
+        run: mvn -B -pl m3-catalogo-mercados,m8-notificaciones -am -Pintegration,quality verify -Dm3.test.rabbit=true -Dm3.excluded-groups=
 
       - name: SonarCloud Scan
         if: matrix.java == '21' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
@@ -102,3 +102,35 @@ jobs:
           file: m6-portafolio/Dockerfile
           load: true
           tags: team3ds/m6-portafolio:ci-${{ github.sha }}
+          
+      - name: Build M3 Catalogo Mercados image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: m3-catalogo-mercados/Dockerfile
+          load: true
+          tags: team3ds/m3-catalogo-mercados:ci-${{ github.sha }}
+
+      - name: Build M4 Datos Mercado image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: m4-datos-mercado/Dockerfile
+          load: true
+          tags: team3ds/m4-datos-mercado:ci-${{ github.sha }}
+
+      - name: Build M8 Notificaciones image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: m8-notificaciones/Dockerfile
+          load: true
+          tags: team3ds/m8-notificaciones:ci-${{ github.sha }}
+
+      - name: Build Gateway image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: gateway/Dockerfile
+          load: true
+          tags: team3ds/gateway:ci-${{ github.sha }}
