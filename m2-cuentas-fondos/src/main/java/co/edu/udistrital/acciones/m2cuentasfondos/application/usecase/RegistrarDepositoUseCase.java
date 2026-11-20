@@ -26,6 +26,7 @@ public class RegistrarDepositoUseCase {
 
     public static final String PREFIJO_CLAVE = "DEP:";
     public static final String MONEDA = "USD";
+    public static final BigDecimal LIMITE_MAXIMO_DEPOSITO = new BigDecimal("1000000.00");
 
     private final CuentaRepositoryPort cuentas;
     private final MovimientoRepositoryPort movimientos;
@@ -42,8 +43,11 @@ public class RegistrarDepositoUseCase {
 
     @Transactional
     public DepositoResponse ejecutar(DepositoRequest request, String idempotencyKey, Actor actor) {
-        verificarAdministrador(actor);
+        verificarAutorizacion(request.userId(), actor);
         BigDecimal monto = MonetaryUtil.validarPositivo(request.amount());
+        if (monto.compareTo(LIMITE_MAXIMO_DEPOSITO) > 0) {
+            throw new IllegalArgumentException("El monto del depósito supera el límite permitido de USD " + LIMITE_MAXIMO_DEPOSITO);
+        }
         String clave = PREFIJO_CLAVE + idempotencyKey;
         Instant ahora = Instant.now(clock);
 
@@ -88,9 +92,9 @@ public class RegistrarDepositoUseCase {
                 MONEDA, movimiento.getCreadoEn());
     }
 
-    private void verificarAdministrador(Actor actor) {
-        if (!actor.administrador() && !actor.esSistema()) {
-            throw new AccesoDenegadoException("Solo un administrador puede registrar depósitos");
+    private void verificarAutorizacion(Long userId, Actor actor) {
+        if (!actor.puedeOperar(userId) && !actor.administrador()) {
+            throw new AccesoDenegadoException("No está autorizado para realizar depósitos en esta cuenta");
         }
     }
 }

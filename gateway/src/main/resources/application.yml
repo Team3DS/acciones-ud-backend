@@ -21,7 +21,7 @@ spring:
         - id: m4-datos-mercado
           uri: http://m4-datos-mercado:8084
           predicates:
-            - Path=/api/v1/quotes/**,/api/v1/market-hours/**
+            - Path=/api/v1/quotes/**,/api/v1/market-hours/**,/api/v1/market/**
         - id: m5-ordenes-ejecucion
           uri: http://m5-ordenes-ejecucion:8085
           predicates:
