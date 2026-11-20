@@ -2,7 +2,7 @@ ALTER TABLE reserva_posicion
     RENAME COLUMN order_id TO orden_id;
 
 ALTER TABLE reserva_posicion
-    ALTER COLUMN orden_id SET DATA TYPE BIGINT;
+    ALTER COLUMN orden_id SET DATA TYPE BIGINT USING orden_id::bigint;
 
 ALTER TABLE reserva_posicion
     RENAME COLUMN cantidad TO cantidad_reservada;
@@ -40,7 +40,7 @@ ALTER TABLE reserva_posicion
     RENAME COLUMN idempotency_key TO clave_idempotencia;
 
 ALTER TABLE reserva_posicion
-    ALTER COLUMN clave_idempotencia SET DATA TYPE UUID;
+    ALTER COLUMN clave_idempotencia SET DATA TYPE UUID USING clave_idempotencia::uuid;
 
 ALTER TABLE reserva_posicion
     RENAME COLUMN creado_en TO creada_en;
