@@ -146,12 +146,12 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
         long userId = 5204L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
 
-        ResponseEntity<Map> sinPosicion = reservar(token, userId, "ORD-5204-A", "AAPL", "10",
+        ResponseEntity<Map> sinPosicion = reservar(token, userId, 520401L, "AAPL", "10",
                 "clave-5204-a", null);
         assertThat(sinPosicion.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
 
-        comprar(token, userId, "ORD-5204", "EXE-5204", "AAPL", "5", "180.00");
-        ResponseEntity<Map> insuficiente = reservar(token, userId, "ORD-5204-B", "AAPL", "10",
+        comprar(token, userId, 5204L, "EXE-5204", "AAPL", "5", "180.00");
+        ResponseEntity<Map> insuficiente = reservar(token, userId, 520402L, "AAPL", "10",
                 "clave-5204-b", null);
 
         assertThat(insuficiente.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -162,16 +162,16 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void unUsuarioAjenoResponde403YElSistemaPuedeReservar() {
         long userId = 5205L;
         String tokenDueno = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(tokenDueno, userId, "ORD-5205", "EXE-5205", "NVDA", "10", "500.00");
+        comprar(tokenDueno, userId, 5205L, "EXE-5205", "NVDA", "10", "500.00");
 
         String tokenAjeno = TokenTestFactory.token(5299L, "INVERSIONISTA");
-        ResponseEntity<Map> ajena = reservar(tokenAjeno, userId, "ORD-5205-A", "NVDA", "2",
+        ResponseEntity<Map> ajena = reservar(tokenAjeno, userId, 520501L, "NVDA", "2",
                 "clave-5205-a", null);
         assertThat(ajena.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(numero(posicion(tokenDueno, userId, "NVDA"), "reservedQuantity")).isZero();
 
         String tokenSistema = TokenTestFactory.sistema();
-        ResponseEntity<Map> delSistema = reservar(tokenSistema, userId, "ORD-5205-B", "NVDA", "3",
+        ResponseEntity<Map> delSistema = reservar(tokenSistema, userId, 520502L, "NVDA", "3",
                 "clave-5205-b", null);
 
         assertThat(delSistema.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -182,16 +182,16 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void lasClavesDelHeaderYDelCuerpoDebenCoincidir() {
         long userId = 5207L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-5207", "EXE-5207", "AMD", "10", "120.00");
+        comprar(token, userId, 5207L, "EXE-5207", "AMD", "10", "120.00");
 
-        ResponseEntity<Map> soloHeader = reservar(token, userId, "ORD-5207-A", "AMD", "1",
+        ResponseEntity<Map> soloHeader = reservar(token, userId, 520701L, "AMD", "1",
                 null, "clave-5207-a");
-        ResponseEntity<Map> iguales = reservar(token, userId, "ORD-5207-B", "AMD", "1",
+        ResponseEntity<Map> iguales = reservar(token, userId, 520702L, "AMD", "1",
                 "clave-5207-b", "clave-5207-b");
-        ResponseEntity<Map> distintas = reservar(token, userId, "ORD-5207-C", "AMD", "1",
+        ResponseEntity<Map> distintas = reservar(token, userId, 520703L, "AMD", "1",
                 "clave-5207-c", "otra-clave");
-        ResponseEntity<Map> sinClave = reservar(token, userId, "ORD-5207-D", "AMD", "1", null, null);
-        ResponseEntity<Map> claveLarga = reservar(token, userId, "ORD-5207-E", "AMD", "1",
+        ResponseEntity<Map> sinClave = reservar(token, userId, 520704L, "AMD", "1", null, null);
+        ResponseEntity<Map> claveLarga = reservar(token, userId, 520705L, "AMD", "1",
                 null, "x".repeat(65));
 
         assertThat(soloHeader.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -205,7 +205,7 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void lasReservasConcurrentesNoSuperanElDisponible() throws Exception {
         long userId = 5206L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-5206", "EXE-5206", "GOOG", "50", "100.00");
+        comprar(token, userId, 5206L, "EXE-5206", "GOOG", "50", "100.00");
 
         ExecutorService ejecutor = Executors.newFixedThreadPool(10);
         CountDownLatch preparadas = new CountDownLatch(10);
@@ -214,10 +214,11 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
         try {
             for (int i = 0; i < 10; i++) {
                 String sufijo = String.valueOf(i);
+                long orderId = 520600L + i;
                 futuros.add(ejecutor.submit(() -> {
                     preparadas.countDown();
                     salida.await(10, TimeUnit.SECONDS);
-                    return reservar(token, userId, "ORD-5206-" + sufijo, "GOOG", "10",
+                    return reservar(token, userId, orderId, "GOOG", "10",
                             "clave-5206-" + sufijo, null).getStatusCode().value();
                 }));
             }
@@ -251,7 +252,7 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
         assertThat(pendientes).isEqualTo(5);
     }
 
-    private ResponseEntity<Map> comprar(String token, long userId, String orderId, String executionId,
+    private ResponseEntity<Map> comprar(String token, long userId, Long orderId, String executionId,
                                         String symbol, String quantity, String price) {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("orderId", orderId);
@@ -266,7 +267,7 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
                 new HttpEntity<>(cuerpo, cabeceras(token, null)), Map.class);
     }
 
-    private ResponseEntity<Map> reservar(String token, long userId, String orderId, String symbol,
+    private ResponseEntity<Map> reservar(String token, long userId, Long orderId, String symbol,
                                          String quantity, String claveCuerpo, String claveHeader) {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("orderId", orderId);
