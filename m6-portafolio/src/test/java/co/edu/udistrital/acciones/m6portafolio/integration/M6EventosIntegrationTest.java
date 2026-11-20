@@ -176,7 +176,7 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
         esperarEventoProcesado(eventoId);
         assertThat(cantidad(userId, "TSLA")).isEqualByComparingTo("6");
         assertThat(reservado(userId, "TSLA")).isEqualByComparingTo("0");
-        assertThat(estadoReserva("ORD-7004-R")).isEqualTo("CONFIRMED");
+        assertThat(estadoReserva("ORD-7004-R")).isEqualTo("CONSUMIDA");
         assertThat(movimientos("EXE:EXE-VENTA-7004")).isEqualTo(1);
     }
 
@@ -193,7 +193,7 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
 
         esperarEventoProcesado(eventoId);
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                assertThat(estadoReserva("ORD-7005-R")).isEqualTo("RELEASED"));
+                assertThat(estadoReserva("ORD-7005-R")).isEqualTo("LIBERADA"));
         assertThat(reservado(userId, "AMD")).isEqualByComparingTo("0");
         assertThat(cantidad(userId, "AMD")).isEqualByComparingTo("10");
         assertThat(motivoLiberacion("ORD-7005-R")).isEqualTo("Cancelada por el usuario");

@@ -101,7 +101,7 @@ class M6FlujoCompletoIntegrationTest extends AbstractIntegrationTest {
 
         String eventoCancelacion = publicarCancelada(ORDER_RESERVA, "Cancelada durante el flujo");
         await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofMillis(100))
-                .untilAsserted(() -> assertThat(estadoReserva(reservaId)).isEqualTo("RELEASED"));
+                .untilAsserted(() -> assertThat(estadoReserva(reservaId)).isEqualTo("LIBERADA"));
         assertThat(eventoProcesado(eventoCancelacion)).isEqualTo(1);
         posicion = posicion();
         assertPosicion(posicion, "15", "0", "15");

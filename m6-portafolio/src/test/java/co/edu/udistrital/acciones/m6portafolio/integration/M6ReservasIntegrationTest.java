@@ -55,7 +55,7 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
 
         ResponseEntity<Map> reserva = reservar(token, userId, "ORD-5201-R", "AAPL", "10", "clave-5201", null);
         assertThat(reserva.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(reserva.getBody().get("status")).isEqualTo("PENDING");
+        assertThat(reserva.getBody().get("status")).isEqualTo("ACTIVA");
         assertThat(numero(reserva.getBody(), "quantity")).isEqualTo(10.0);
         assertThat(numero(reserva.getBody(), "executedQuantity")).isZero();
         long reservaId = idReserva(reserva);
@@ -67,7 +67,7 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
 
         ResponseEntity<Map> liberada = liberar(token, reservaId, "cancelada");
         assertThat(liberada.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(liberada.getBody().get("status")).isEqualTo("RELEASED");
+        assertThat(liberada.getBody().get("status")).isEqualTo("LIBERADA");
         assertThat(liberada.getBody().get("reason")).isEqualTo("cancelada");
 
         Map<?, ?> despues = posicion(token, userId, "AAPL");
@@ -92,7 +92,7 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(primera.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(segunda.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(segunda.getBody().get("status")).isEqualTo("RELEASED");
+        assertThat(segunda.getBody().get("status")).isEqualTo("LIBERADA");
         assertThat(segunda.getBody().get("reason")).isEqualTo("cancelada");
         assertThat(movimientosConClave("LIB:" + reservaId)).isEqualTo(1);
         assertThat(numero(posicion(token, userId, "TSLA"), "availableQuantity")).isEqualTo(10.0);
@@ -246,7 +246,7 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
         Integer pendientes = jdbc.queryForObject("""
                 select count(*) from reserva_posicion r
                 join posicion p on p.id = r.posicion_id
-                where p.user_id = ? and r.estado = 'PENDING'
+                where p.user_id = ? and r.estado_reserva = 'ACTIVA'
                 """, Integer.class, userId);
         assertThat(pendientes).isEqualTo(5);
     }

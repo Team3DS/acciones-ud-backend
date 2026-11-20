@@ -158,7 +158,7 @@ class PosicionControllerWebMvcTest {
     @Test
     void clavesDistintasEnElHeaderYEnElCuerpoResponden400() throws Exception {
         mockMvc.perform(post(RUTA_RESERVAS).with(autenticado()).contentType(MediaType.APPLICATION_JSON)
-                        .header(PosicionController.CLAVE_IDEMPOTENCIA, "clave-1")
+                        .header(PosicionController.CLAVE_IDEMPOTENCIA, "00000000-0000-0000-0000-000000000001")
                         .content(reserva("ORD-1", "AAPL", "10", "clave-2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
@@ -167,26 +167,26 @@ class PosicionControllerWebMvcTest {
 
     @Test
     void unaReservaConLaClaveDelHeaderResponde201() throws Exception {
-        when(reservarAcciones.ejecutar(any(), eq("clave-1"), any()))
-                .thenReturn(respuestaReserva("PENDING", null));
+        when(reservarAcciones.ejecutar(any(), eq("00000000-0000-0000-0000-000000000001"), any()))
+                .thenReturn(respuestaReserva("ACTIVA", null));
 
         mockMvc.perform(post(RUTA_RESERVAS).with(autenticado()).contentType(MediaType.APPLICATION_JSON)
-                        .header(PosicionController.CLAVE_IDEMPOTENCIA, "clave-1")
+                        .header(PosicionController.CLAVE_IDEMPOTENCIA, "00000000-0000-0000-0000-000000000001")
                         .content(reserva("ORD-1", "AAPL", "10", null)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.reservationId").value(77))
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.status").value("ACTIVA"));
     }
 
     @Test
     void unaReservaConLaClaveDelCuerpoResponde201() throws Exception {
-        when(reservarAcciones.ejecutar(any(), eq("clave-1"), any()))
-                .thenReturn(respuestaReserva("PENDING", null));
+        when(reservarAcciones.ejecutar(any(), eq("00000000-0000-0000-0000-000000000001"), any()))
+                .thenReturn(respuestaReserva("ACTIVA", null));
 
         mockMvc.perform(post(RUTA_RESERVAS).with(autenticado()).contentType(MediaType.APPLICATION_JSON)
-                        .content(reserva("ORD-1", "AAPL", "10", "clave-1")))
+                        .content(reserva("ORD-1", "AAPL", "10", "00000000-0000-0000-0000-000000000001")))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.orderId").value("ORD-1"));
+                .andExpect(jsonPath("$.orderId").value(1));
     }
 
     @Test
@@ -202,18 +202,18 @@ class PosicionControllerWebMvcTest {
     @Test
     void liberarUnaReservaResponde200() throws Exception {
         when(liberarReserva.ejecutar(eq(77L), eq("cancelada"), any()))
-                .thenReturn(respuestaReserva("RELEASED", "cancelada"));
+                .thenReturn(respuestaReserva("LIBERADA", "cancelada"));
 
         mockMvc.perform(post(RUTA_RESERVAS + "/{id}/release", 77L).with(autenticado())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"cancelada\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("RELEASED"))
+                .andExpect(jsonPath("$.status").value("LIBERADA"))
                 .andExpect(jsonPath("$.reason").value("cancelada"));
     }
 
     private static ReservaPosicionResponse respuestaReserva(String estado, String motivo) {
-        return new ReservaPosicionResponse(77L, "ORD-1", USUARIO, "AAPL", new BigDecimal("10"),
-                BigDecimal.ZERO, estado, motivo, Instant.parse("2026-02-03T10:00:00Z"), null, null);
+        return new ReservaPosicionResponse(77L, 1L, USUARIO, "AAPL", 10,
+                0, estado, motivo, Instant.parse("2026-02-03T10:00:00Z"), null);
     }
 
     private static String reserva(String orderId, String symbol, String quantity, String clave) {

@@ -47,7 +47,7 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
         assertThat(numero(posicion, "realizedPnl")).isEqualByComparingTo(new BigDecimal("150.00"));
 
         Integer reservaConfirmada = jdbc.queryForObject(
-                "select count(*) from reserva_posicion where id = ? and estado = 'CONFIRMED'",
+                "select count(*) from reserva_posicion where id = ? and estado_reserva = 'CONSUMIDA'",
                 Integer.class, reservaId);
         assertThat(reservaConfirmada).isEqualTo(1);
 
@@ -70,7 +70,7 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
         Integer reservaPendiente = jdbc.queryForObject(
                 "select count(*) from reserva_posicion rp " +
                 "join posicion p on p.id = rp.posicion_id " +
-                "where p.user_id = ? and rp.estado = 'PENDING'",
+                "where p.user_id = ? and rp.estado_reserva = 'ACTIVA'",
                 Integer.class, userId);
         assertThat(reservaPendiente).isEqualTo(1);
 
@@ -86,7 +86,7 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
         Integer reservaConfirmada = jdbc.queryForObject(
                 "select count(*) from reserva_posicion rp " +
                 "join posicion p on p.id = rp.posicion_id " +
-                "where p.user_id = ? and rp.estado = 'CONFIRMED'",
+                "where p.user_id = ? and rp.estado_reserva = 'CONSUMIDA'",
                 Integer.class, userId);
         assertThat(reservaConfirmada).isEqualTo(1);
     }
