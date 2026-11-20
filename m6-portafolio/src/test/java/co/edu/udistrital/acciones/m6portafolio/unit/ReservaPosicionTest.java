@@ -7,8 +7,8 @@ import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.TransicionReserv
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibleException;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,35 +17,36 @@ class ReservaPosicionTest {
 
     private static final Instant T0 = Instant.parse("2026-02-03T10:00:00Z");
     private static final Instant T1 = T0.plusSeconds(30);
+    private static final UUID CLAVE = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
     @Test
-    void creaUnaReservaPendienteConLoPendienteIgualALaCantidad() {
-        ReservaPosicion reserva = ReservaPosicion.crear(7L, "ORD-1", new BigDecimal("10"), "RSV:clave-1", T0);
+    void creaUnaReservaActivaConLoPendienteIgualALaCantidad() {
+        ReservaPosicion reserva = ReservaPosicion.crear(7L, 100L, 10, CLAVE, T0);
 
         assertThat(reserva.getPosicionId()).isEqualTo(7L);
-        assertThat(reserva.getOrderId()).isEqualTo("ORD-1");
-        assertThat(reserva.getCantidad()).isEqualByComparingTo("10");
-        assertThat(reserva.getCantidad().scale()).isEqualTo(8);
-        assertThat(reserva.getCantidadEjecutada()).isEqualByComparingTo("0");
-        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.PENDING);
-        assertThat(reserva.getIdempotencyKey()).isEqualTo("RSV:clave-1");
-        assertThat(reserva.pendiente()).isEqualByComparingTo("10");
+        assertThat(reserva.getOrdenId()).isEqualTo(100L);
+        assertThat(reserva.getCantidadReservada()).isEqualTo(10);
+        assertThat(reserva.getCantidadConsumida()).isEqualTo(0);
+        assertThat(reserva.getCantidadLiberada()).isEqualTo(0);
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.ACTIVA);
+        assertThat(reserva.getClaveIdempotencia()).isEqualTo(CLAVE);
+        assertThat(reserva.pendiente()).isEqualTo(10);
         assertThat(reserva.getMotivoLiberacion()).isNull();
-        assertThat(reserva.getCreadoEn()).isEqualTo(T0);
-        assertThat(reserva.getConfirmadoEn()).isNull();
-        assertThat(reserva.getLiberadoEn()).isNull();
+        assertThat(reserva.getCreadaEn()).isEqualTo(T0);
+        assertThat(reserva.getLiberadaEn()).isNull();
     }
 
     @Test
-    void liberarDevuelveLoPendienteYRegistraElMotivo() {
+    void liberarTransfiereLoPendienteACantidadLiberadaYRegistraElMotivo() {
         ReservaPosicion reserva = reserva();
 
-        BigDecimal pendiente = reserva.liberar("cancelada por el usuario", T1);
+        reserva.liberar("cancelada por el usuario", T1);
 
-        assertThat(pendiente).isEqualByComparingTo("10");
-        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.RELEASED);
+        assertThat(reserva.getCantidadLiberada()).isEqualTo(10);
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.LIBERADA);
         assertThat(reserva.getMotivoLiberacion()).isEqualTo("cancelada por el usuario");
-        assertThat(reserva.getLiberadoEn()).isEqualTo(T1);
+        assertThat(reserva.getLiberadaEn()).isEqualTo(T1);
+        assertThat(reserva.pendiente()).isEqualTo(0);
     }
 
     @Test
@@ -55,48 +56,49 @@ class ReservaPosicionTest {
 
         assertThatThrownBy(() -> reserva.liberar("otra vez", T1))
                 .isInstanceOf(TransicionReservaException.class)
-                .hasMessageContaining("RELEASED");
+                .hasMessageContaining("LIBERADA");
     }
 
     @Test
-    void ejecucionesParcialesAcumulanHastaConfirmarLaReserva() {
+    void consumosParcialesAcumulanHastaConsumirLaReserva() {
         ReservaPosicion reserva = reserva();
 
-        reserva.ejecutar(new BigDecimal("4"), T1);
+        reserva.consumir(1L, 4);
 
-        assertThat(reserva.getCantidadEjecutada()).isEqualByComparingTo("4");
-        assertThat(reserva.pendiente()).isEqualByComparingTo("6");
-        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.PENDING);
-        reserva.ejecutar(new BigDecimal("6"), T1.plusSeconds(1));
+        assertThat(reserva.getCantidadConsumida()).isEqualTo(4);
+        assertThat(reserva.pendiente()).isEqualTo(6);
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.ACTIVA);
+        reserva.consumir(2L, 6);
 
-        assertThat(reserva.getCantidadEjecutada()).isEqualByComparingTo("10");
-        assertThat(reserva.pendiente()).isEqualByComparingTo("0");
-        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.CONFIRMED);
-        assertThat(reserva.getConfirmadoEn()).isEqualTo(T1.plusSeconds(1));
+        assertThat(reserva.getCantidadConsumida()).isEqualTo(10);
+        assertThat(reserva.pendiente()).isEqualTo(0);
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.CONSUMIDA);
     }
 
     @Test
-    void noEjecutaMasDeLoPendienteNiUnaReservaLiberada() {
+    void noConsumeMasDeLoPendienteNiUnaReservaLiberada() {
         ReservaPosicion reserva = reserva();
 
-        assertThatThrownBy(() -> reserva.ejecutar(new BigDecimal("11"), T1))
+        assertThatThrownBy(() -> reserva.consumir(1L, 11))
                 .isInstanceOf(VentaNoDisponibleException.class);
         reserva.liberar("cancelada", T1);
-        assertThatThrownBy(() -> reserva.ejecutar(BigDecimal.ONE, T1.plusSeconds(1)))
+        assertThatThrownBy(() -> reserva.consumir(1L, 1))
                 .isInstanceOf(TransicionReservaException.class);
     }
 
     @Test
     void exigeLosDatosObligatorios() {
-        assertThatThrownBy(() -> ReservaPosicion.crear(null, "ORD-1", BigDecimal.ONE, "RSV:1", T0))
+        assertThatThrownBy(() -> ReservaPosicion.crear(null, 100L, 10, CLAVE, T0))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> ReservaPosicion.crear(7L, " ", BigDecimal.ONE, "RSV:1", T0))
+        assertThatThrownBy(() -> ReservaPosicion.crear(7L, null, 10, CLAVE, T0))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> ReservaPosicion.crear(7L, 100L, 0, CLAVE, T0))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ReservaPosicion.crear(7L, "ORD-1", BigDecimal.ZERO, "RSV:1", T0))
-                .isInstanceOf(CantidadInvalidaException.class);
-        assertThatThrownBy(() -> ReservaPosicion.crear(7L, "ORD-1", BigDecimal.ONE, null, T0))
+        assertThatThrownBy(() -> ReservaPosicion.crear(7L, 100L, -1, CLAVE, T0))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ReservaPosicion.crear(7L, "ORD-1", BigDecimal.ONE, "RSV:1", null))
+        assertThatThrownBy(() -> ReservaPosicion.crear(7L, 100L, 10, null, T0))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> ReservaPosicion.crear(7L, 100L, 10, CLAVE, null))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -106,10 +108,20 @@ class ReservaPosicionTest {
 
         assertThatThrownBy(() -> reserva.liberar("cancelada", null))
                 .isInstanceOf(NullPointerException.class);
-        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.PENDING);
+        assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.ACTIVA);
+    }
+
+    @Test
+    void exigeCantidadPositivaAlConsumir() {
+        ReservaPosicion reserva = reserva();
+
+        assertThatThrownBy(() -> reserva.consumir(1L, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reserva.consumir(1L, -1))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private static ReservaPosicion reserva() {
-        return ReservaPosicion.crear(7L, "ORD-1", new BigDecimal("10"), "RSV:clave-1", T0);
+        return ReservaPosicion.crear(7L, 100L, 10, CLAVE, T0);
     }
 }

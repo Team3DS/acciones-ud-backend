@@ -21,5 +21,6 @@ public record EjecucionRequest(
         @NotNull LadoEjecucion side,
         @NotNull @Positive @Digits(integer = 11, fraction = 0) BigDecimal quantity,
         @NotNull @DecimalMin("0.0001") @Digits(integer = 15, fraction = 4) BigDecimal price,
-        Instant executedAt) {
+        Instant executedAt,
+        String eventId) {
 }

@@ -7,11 +7,13 @@ import co.edu.udistrital.acciones.m6portafolio.application.dto.PosicionesActuali
 import co.edu.udistrital.acciones.m6portafolio.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.ConflictoIdempotenciaException;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.RecursoNoEncontradoException;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.EjecucionAplicadaPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.MovimientoPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.ReservaPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.service.ValoracionService;
+import co.edu.udistrital.acciones.m6portafolio.domain.EjecucionAplicada;
 import co.edu.udistrital.acciones.m6portafolio.domain.EstadoReservaPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.LadoEjecucion;
 import co.edu.udistrital.acciones.m6portafolio.domain.MovimientoPosicion;
@@ -24,25 +26,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 public class AplicarEjecucionUseCase {
 
-    public static final String PREFIJO_CLAVE = "EXE:";
-
     private final PosicionRepositoryPort posiciones;
     private final ReservaPosicionRepositoryPort reservas;
     private final MovimientoPosicionRepositoryPort movimientos;
+    private final EjecucionAplicadaPort ejecucionesAplicadas;
     private final ValoracionService valoracion;
     private final OutboxPort outbox;
     private final Clock clock;
 
     public AplicarEjecucionUseCase(PosicionRepositoryPort posiciones, ReservaPosicionRepositoryPort reservas,
                                    MovimientoPosicionRepositoryPort movimientos,
+                                   EjecucionAplicadaPort ejecucionesAplicadas,
                                    ValoracionService valoracion, OutboxPort outbox, Clock clock) {
         this.posiciones = posiciones;
         this.reservas = reservas;
         this.movimientos = movimientos;
+        this.ejecucionesAplicadas = ejecucionesAplicadas;
         this.valoracion = valoracion;
         this.outbox = outbox;
         this.clock = clock;
@@ -52,19 +56,30 @@ public class AplicarEjecucionUseCase {
     public EjecucionResponse ejecutar(EjecucionRequest peticion, Actor actor) {
         actor.verificarOperacion(peticion.userId());
         String symbol = Simbolos.normalizar(peticion.symbol());
-        String clave = PREFIJO_CLAVE + peticion.executionId();
-        if (movimientos.existsByIdempotencyKey(clave)) {
+        UUID claveIdempotencia = UUID.fromString(peticion.eventId());
+        if (ejecucionesAplicadas.existePorClaveIdempotencia(claveIdempotencia)) {
             return repetida(peticion.userId(), symbol);
         }
         Instant ahora = Instant.now(clock);
         Instant ocurrido = peticion.executedAt() == null ? ahora : peticion.executedAt();
         Posicion posicion = obtenerPosicionBloqueada(peticion, symbol, ahora);
-        if (movimientos.existsByIdempotencyKey(clave)) {
+        if (ejecucionesAplicadas.existePorClaveIdempotencia(claveIdempotencia)) {
             return new EjecucionResponse(false, valoracion.valorar(posicion));
         }
         aplicarMovimiento(peticion, posicion, ocurrido);
         posiciones.save(posicion);
-        movimientos.save(crearMovimiento(peticion, posicion, clave, ocurrido));
+        movimientos.save(crearMovimiento(peticion, posicion, claveIdempotencia.toString(), ocurrido));
+        EjecucionAplicada aplicada = new EjecucionAplicada(
+                posicion.getId(),
+                Long.parseLong(peticion.executionId()),
+                peticion.side(),
+                peticion.quantity(),
+                peticion.price(),
+                posicion.getCostoPromedio(),
+                claveIdempotencia,
+                Instant.now(clock)
+        );
+        ejecucionesAplicadas.save(aplicada);
         outbox.registrar(RoutingKeys.TIPO_AGREGADO_POSICION, String.valueOf(posicion.getId()),
                 RoutingKeys.POSICIONES_ACTUALIZADAS,
                 new PosicionesActualizadasPayload(peticion.orderId(), peticion.executionId(),
@@ -96,11 +111,11 @@ public class AplicarEjecucionUseCase {
             return;
         }
         ReservaPosicion reserva = reservas.findByOrderIdForUpdate(peticion.orderId()).orElse(null);
-        if (reserva != null && reserva.getEstado() == EstadoReservaPosicion.PENDING) {
+        if (reserva != null && reserva.getEstado() == EstadoReservaPosicion.ACTIVA) {
             if (!reserva.getPosicionId().equals(posicion.getId())) {
                 throw new VentaNoDisponibleException("La reserva no corresponde a la posicion de la venta");
             }
-            reserva.ejecutar(peticion.quantity(), ocurrido);
+            reserva.consumir(Long.parseLong(peticion.executionId()), peticion.quantity().intValue());
             posicion.venderReservado(peticion.quantity(), peticion.price(), ocurrido);
             reservas.save(reserva);
             return;

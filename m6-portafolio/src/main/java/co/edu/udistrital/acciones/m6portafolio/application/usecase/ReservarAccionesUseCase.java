@@ -17,9 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ReservarAccionesUseCase {
@@ -45,9 +47,10 @@ public class ReservarAccionesUseCase {
         actor.verificarOperacion(peticion.userId());
         String symbol = Simbolos.normalizar(peticion.symbol());
         BigDecimal cantidad = Cantidades.validarPositiva(peticion.quantity());
-        String clave = PREFIJO_CLAVE + clavePeticion;
+        String clave = "RSV:" + clavePeticion;
+        UUID claveUuid = UUID.nameUUIDFromBytes(clave.getBytes(StandardCharsets.UTF_8));
 
-        Optional<ReservaPosicion> previa = reservas.findByIdempotencyKey(clave);
+        Optional<ReservaPosicion> previa = reservas.findByIdempotencyKey(claveUuid.toString());
         if (previa.isPresent()) {
             return repetir(previa.get(), peticion, symbol, cantidad);
         }
@@ -56,7 +59,7 @@ public class ReservarAccionesUseCase {
                 .orElseThrow(() -> new ReservaNoDisponibleException(
                         "No existe la posicion " + symbol + " del usuario " + peticion.userId()));
 
-        Optional<ReservaPosicion> trasBloqueo = reservas.findByIdempotencyKey(clave);
+        Optional<ReservaPosicion> trasBloqueo = reservas.findByIdempotencyKey(claveUuid.toString());
         if (trasBloqueo.isPresent()) {
             return repetir(trasBloqueo.get(), peticion, symbol, cantidad);
         }
@@ -68,8 +71,8 @@ public class ReservarAccionesUseCase {
         Instant ahora = Instant.now(clock);
         posicion.reservar(cantidad, ahora);
         posiciones.save(posicion);
-        ReservaPosicion reserva = reservas.save(ReservaPosicion.crear(posicion.getId(), peticion.orderId(),
-                cantidad, clave, ahora));
+        ReservaPosicion reserva = reservas.save(ReservaPosicion.crear(posicion.getId(), Long.valueOf(peticion.orderId()),
+                cantidad.intValue(), claveUuid, ahora));
         movimientos.save(MovimientoPosicion.reserva(posicion.getId(), cantidad, posicion.getCostoPromedio(),
                 peticion.orderId(), PREFIJO_MOVIMIENTO + reserva.getId(), ahora));
         return respuesta(posicion, reserva);
@@ -82,8 +85,8 @@ public class ReservarAccionesUseCase {
                         "La clave de idempotencia ya fue usada con otros datos"));
         boolean mismosDatos = posicion.getUserId().equals(peticion.userId())
                 && posicion.getSymbol().equals(symbol)
-                && reserva.getOrderId().equals(peticion.orderId())
-                && reserva.getCantidad().compareTo(cantidad) == 0;
+                && reserva.getOrdenId().equals(Long.valueOf(peticion.orderId()))
+                && reserva.getCantidadReservada().equals(cantidad.intValue());
         if (!mismosDatos) {
             throw new ConflictoIdempotenciaException("La clave de idempotencia ya fue usada con otros datos");
         }
@@ -91,9 +94,9 @@ public class ReservarAccionesUseCase {
     }
 
     private static ReservaPosicionResponse respuesta(Posicion posicion, ReservaPosicion reserva) {
-        return new ReservaPosicionResponse(reserva.getId(), reserva.getOrderId(), posicion.getUserId(),
-                posicion.getSymbol(), reserva.getCantidad(), reserva.getCantidadEjecutada(),
-                reserva.getEstado().name(), reserva.getMotivoLiberacion(), reserva.getCreadoEn(),
-                reserva.getConfirmadoEn(), reserva.getLiberadoEn());
+        return new ReservaPosicionResponse(reserva.getId(), reserva.getOrdenId(), posicion.getUserId(),
+                posicion.getSymbol(), reserva.getCantidadReservada(), reserva.getCantidadConsumida(),
+                reserva.getEstado().name(), reserva.getMotivoLiberacion(), reserva.getCreadaEn(),
+                reserva.getLiberadaEn());
     }
 }

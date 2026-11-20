@@ -10,21 +10,22 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 interface SpringDataReservaPosicionRepository extends JpaRepository<ReservaPosicion, Long> {
 
-    Optional<ReservaPosicion> findByOrderId(String orderId);
+    Optional<ReservaPosicion> findByOrdenId(Long ordenId);
 
-    Optional<ReservaPosicion> findByIdempotencyKey(String idempotencyKey);
+    Optional<ReservaPosicion> findByClaveIdempotencia(UUID claveIdempotencia);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from ReservaPosicion r where r.id = :id")
     Optional<ReservaPosicion> buscarPorIdForUpdate(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select r from ReservaPosicion r where r.orderId = :orderId")
-    Optional<ReservaPosicion> buscarPorOrderIdForUpdate(@Param("orderId") String orderId);
+    @Query("select r from ReservaPosicion r where r.ordenId = :ordenId")
+    Optional<ReservaPosicion> buscarPorOrdenIdForUpdate(@Param("ordenId") Long ordenId);
 }
 
 @Repository
@@ -48,17 +49,17 @@ public class JpaReservaPosicionRepositoryAdapter implements ReservaPosicionRepos
 
     @Override
     public Optional<ReservaPosicion> findByOrderId(String orderId) {
-        return repositorio.findByOrderId(orderId);
+        return repositorio.findByOrdenId(Long.valueOf(orderId));
     }
 
     @Override
     public Optional<ReservaPosicion> findByOrderIdForUpdate(String orderId) {
-        return repositorio.buscarPorOrderIdForUpdate(orderId);
+        return repositorio.buscarPorOrdenIdForUpdate(Long.valueOf(orderId));
     }
 
     @Override
     public Optional<ReservaPosicion> findByIdempotencyKey(String idempotencyKey) {
-        return repositorio.findByIdempotencyKey(idempotencyKey);
+        return repositorio.findByClaveIdempotencia(UUID.fromString(idempotencyKey));
     }
 
     @Override

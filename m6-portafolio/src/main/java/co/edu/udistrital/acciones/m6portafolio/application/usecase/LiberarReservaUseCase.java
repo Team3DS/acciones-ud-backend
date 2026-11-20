@@ -47,20 +47,22 @@ public class LiberarReservaUseCase {
 
         ReservaPosicion reserva = reservas.findByIdForUpdate(reservaId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la reserva " + reservaId));
-        if (reserva.getEstado() == EstadoReservaPosicion.CONFIRMED) {
-            throw new ConflictoEstadoReservaException("La reserva " + reservaId + " ya fue confirmada");
+        if (reserva.getEstado() == EstadoReservaPosicion.CONSUMIDA) {
+            throw new ConflictoEstadoReservaException("La reserva " + reservaId + " ya fue consumida");
         }
-        if (reserva.getEstado() == EstadoReservaPosicion.RELEASED) {
+        if (reserva.getEstado() == EstadoReservaPosicion.LIBERADA) {
             return respuesta(posicion, reserva);
         }
 
         Instant ahora = Instant.now(clock);
-        BigDecimal pendiente = reserva.liberar(motivo, ahora);
-        if (pendiente.signum() > 0) {
-            posicion.liberarReserva(pendiente, ahora);
+        Integer pendiente = reserva.pendiente();
+        reserva.liberar(motivo, ahora);
+        if (pendiente > 0) {
+            BigDecimal pendienteBD = BigDecimal.valueOf(pendiente);
+            posicion.liberarReserva(pendienteBD, ahora);
             posiciones.save(posicion);
-            movimientos.save(MovimientoPosicion.liberacion(posicion.getId(), pendiente,
-                    posicion.getCostoPromedio(), reserva.getOrderId(),
+            movimientos.save(MovimientoPosicion.liberacion(posicion.getId(), pendienteBD,
+                    posicion.getCostoPromedio(), String.valueOf(reserva.getOrdenId()),
                     PREFIJO_MOVIMIENTO + reserva.getId(), ahora));
         }
         reservas.save(reserva);
@@ -68,9 +70,9 @@ public class LiberarReservaUseCase {
     }
 
     private static ReservaPosicionResponse respuesta(Posicion posicion, ReservaPosicion reserva) {
-        return new ReservaPosicionResponse(reserva.getId(), reserva.getOrderId(), posicion.getUserId(),
-                posicion.getSymbol(), reserva.getCantidad(), reserva.getCantidadEjecutada(),
-                reserva.getEstado().name(), reserva.getMotivoLiberacion(), reserva.getCreadoEn(),
-                reserva.getConfirmadoEn(), reserva.getLiberadoEn());
+        return new ReservaPosicionResponse(reserva.getId(), reserva.getOrdenId(), posicion.getUserId(),
+                posicion.getSymbol(), reserva.getCantidadReservada(), reserva.getCantidadConsumida(),
+                reserva.getEstado().name(), reserva.getMotivoLiberacion(), reserva.getCreadaEn(),
+                reserva.getLiberadaEn());
     }
 }

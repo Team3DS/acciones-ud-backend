@@ -11,9 +11,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "reserva_posicion")
@@ -26,89 +26,88 @@ public class ReservaPosicion {
     @Column(name = "posicion_id", nullable = false)
     private Long posicionId;
 
-    @Column(name = "order_id", nullable = false, unique = true, length = 100)
-    private String orderId;
+    @Column(name = "orden_id", nullable = false, unique = true)
+    private Long ordenId;
 
-    @Column(nullable = false, precision = 19, scale = 8)
-    private BigDecimal cantidad;
+    @Column(name = "cantidad_reservada", nullable = false)
+    private Integer cantidadReservada;
 
-    @Column(name = "cantidad_ejecutada", nullable = false, precision = 19, scale = 8)
-    private BigDecimal cantidadEjecutada;
+    @Column(name = "cantidad_consumida", nullable = false)
+    private Integer cantidadConsumida;
+
+    @Column(name = "cantidad_liberada", nullable = false)
+    private Integer cantidadLiberada;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "estado_reserva", nullable = false, length = 30)
     private EstadoReservaPosicion estado;
 
-    @Column(name = "idempotency_key", nullable = false, unique = true, length = 110)
-    private String idempotencyKey;
+    @Column(name = "clave_idempotencia", nullable = false, unique = true, columnDefinition = "UUID")
+    private UUID claveIdempotencia;
 
     @Column(name = "motivo_liberacion", length = 255)
     private String motivoLiberacion;
 
-    @Column(name = "creado_en", nullable = false)
-    private Instant creadoEn;
+    @Column(name = "creada_en", nullable = false)
+    private Instant creadaEn;
 
-    @Column(name = "confirmado_en")
-    private Instant confirmadoEn;
-
-    @Column(name = "liberado_en")
-    private Instant liberadoEn;
+    @Column(name = "liberada_en")
+    private Instant liberadaEn;
 
     protected ReservaPosicion() {
     }
 
-    public static ReservaPosicion crear(Long posicionId, String orderId, BigDecimal cantidad,
-                                        String idempotencyKey, Instant creadoEn) {
+    public static ReservaPosicion crear(Long posicionId, Long ordenId, Integer cantidad,
+                                        UUID claveIdempotencia, Instant creadaEn) {
         ReservaPosicion reserva = new ReservaPosicion();
         reserva.posicionId = Objects.requireNonNull(posicionId, "La posicion es obligatoria");
-        reserva.orderId = exigirTexto(orderId, "La orden es obligatoria");
-        reserva.cantidad = Cantidades.validarPositiva(cantidad);
-        reserva.cantidadEjecutada = Cantidades.cero();
-        reserva.estado = EstadoReservaPosicion.PENDING;
-        reserva.idempotencyKey = exigirTexto(idempotencyKey, "La clave de idempotencia es obligatoria");
-        reserva.creadoEn = Objects.requireNonNull(creadoEn, "El instante de creacion es obligatorio");
+        reserva.ordenId = Objects.requireNonNull(ordenId, "La orden es obligatoria");
+        reserva.cantidadReservada = validarPositiva(cantidad, "La cantidad debe ser mayor que cero");
+        reserva.cantidadConsumida = 0;
+        reserva.cantidadLiberada = 0;
+        reserva.estado = EstadoReservaPosicion.ACTIVA;
+        reserva.claveIdempotencia = Objects.requireNonNull(claveIdempotencia, "La clave de idempotencia es obligatoria");
+        reserva.creadaEn = Objects.requireNonNull(creadaEn, "El instante de creacion es obligatorio");
         return reserva;
     }
 
-    public BigDecimal pendiente() {
-        return this.cantidad.subtract(this.cantidadEjecutada);
+    public Integer pendiente() {
+        return this.cantidadReservada - this.cantidadConsumida - this.cantidadLiberada;
     }
 
-    public BigDecimal liberar(String motivo, Instant ahora) {
-        if (this.estado != EstadoReservaPosicion.PENDING) {
+    public void consumir(Long ejecucionId, Integer cantidad) {
+        if (this.estado != EstadoReservaPosicion.ACTIVA) {
+            throw new TransicionReservaException(
+                    "No se puede consumir una reserva en estado " + this.estado);
+        }
+        Integer consumo = validarPositiva(cantidad, "La cantidad a consumir debe ser mayor que cero");
+        if (pendiente() < consumo) {
+            throw new VentaNoDisponibleException("El consumo supera la cantidad pendiente de la reserva");
+        }
+        this.cantidadConsumida += consumo;
+        if (pendiente() == 0) {
+            this.estado = EstadoReservaPosicion.CONSUMIDA;
+        }
+    }
+
+    public void liberar(String motivo, Instant ahora) {
+        if (this.estado != EstadoReservaPosicion.ACTIVA) {
             throw new TransicionReservaException(
                     "No se puede liberar una reserva en estado " + this.estado);
         }
         Instant instante = Objects.requireNonNull(ahora, "El instante de liberacion es obligatorio");
-        BigDecimal pendiente = pendiente();
-        this.estado = EstadoReservaPosicion.RELEASED;
+        Integer pendiente = pendiente();
+        this.cantidadLiberada += pendiente;
+        this.estado = EstadoReservaPosicion.LIBERADA;
         this.motivoLiberacion = motivo;
-        this.liberadoEn = instante;
-        return pendiente;
+        this.liberadaEn = instante;
     }
 
-    public void ejecutar(BigDecimal cantidad, Instant ahora) {
-        if (this.estado != EstadoReservaPosicion.PENDING) {
-            throw new TransicionReservaException(
-                    "No se puede ejecutar una reserva en estado " + this.estado);
-        }
-        BigDecimal ejecucion = Cantidades.validarPositiva(cantidad);
-        if (pendiente().compareTo(ejecucion) < 0) {
-            throw new VentaNoDisponibleException("La venta supera la cantidad pendiente de la reserva");
-        }
-        Instant instante = Objects.requireNonNull(ahora, "El instante de ejecucion es obligatorio");
-        this.cantidadEjecutada = this.cantidadEjecutada.add(ejecucion);
-        if (pendiente().signum() == 0) {
-            this.estado = EstadoReservaPosicion.CONFIRMED;
-            this.confirmadoEn = instante;
-        }
-    }
-
-    private static String exigirTexto(String valor, String mensaje) {
-        if (valor == null || valor.isBlank()) {
+    private static Integer validarPositiva(Integer cantidad, String mensaje) {
+        if (cantidad == null || cantidad <= 0) {
             throw new IllegalArgumentException(mensaje);
         }
-        return valor;
+        return cantidad;
     }
 
     public Long getId() {
@@ -119,39 +118,39 @@ public class ReservaPosicion {
         return posicionId;
     }
 
-    public String getOrderId() {
-        return orderId;
+    public Long getOrdenId() {
+        return ordenId;
     }
 
-    public BigDecimal getCantidad() {
-        return cantidad;
+    public Integer getCantidadReservada() {
+        return cantidadReservada;
     }
 
-    public BigDecimal getCantidadEjecutada() {
-        return cantidadEjecutada;
+    public Integer getCantidadConsumida() {
+        return cantidadConsumida;
+    }
+
+    public Integer getCantidadLiberada() {
+        return cantidadLiberada;
     }
 
     public EstadoReservaPosicion getEstado() {
         return estado;
     }
 
-    public String getIdempotencyKey() {
-        return idempotencyKey;
+    public UUID getClaveIdempotencia() {
+        return claveIdempotencia;
     }
 
     public String getMotivoLiberacion() {
         return motivoLiberacion;
     }
 
-    public Instant getCreadoEn() {
-        return creadoEn;
+    public Instant getCreadaEn() {
+        return creadaEn;
     }
 
-    public Instant getConfirmadoEn() {
-        return confirmadoEn;
-    }
-
-    public Instant getLiberadoEn() {
-        return liberadoEn;
+    public Instant getLiberadaEn() {
+        return liberadaEn;
     }
 }

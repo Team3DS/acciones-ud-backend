@@ -27,6 +27,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +75,7 @@ class LiberarReservaUseCaseTest {
                 new Actor(USUARIO, false, false));
 
         assertThat(respuesta.reservationId()).isEqualTo(RESERVA_ID);
-        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.RELEASED.name());
+        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.LIBERADA.name());
         assertThat(respuesta.reason()).isEqualTo("cancelada");
         assertThat(respuesta.releasedAt()).isEqualTo(AHORA);
         assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("0");
@@ -89,7 +90,7 @@ class LiberarReservaUseCaseTest {
         assertThat(movimiento.getCantidad()).isEqualByComparingTo("10");
         assertThat(movimiento.getPrecio()).isEqualByComparingTo("185.00");
         assertThat(movimiento.getExecutionId()).isNull();
-        assertThat(movimiento.getOrderId()).isEqualTo("ORD-1");
+        assertThat(movimiento.getOrderId()).isEqualTo("1");
         assertThat(movimiento.getIdempotencyKey()).isEqualTo("LIB:77");
     }
 
@@ -105,7 +106,7 @@ class LiberarReservaUseCaseTest {
         ReservaPosicionResponse respuesta = caso.ejecutar(RESERVA_ID, "otra",
                 new Actor(USUARIO, false, false));
 
-        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.RELEASED.name());
+        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.LIBERADA.name());
         assertThat(respuesta.reason()).isEqualTo("previa");
         verify(posiciones, never()).save(any(Posicion.class));
         verify(reservas, never()).save(any(ReservaPosicion.class));
@@ -116,7 +117,7 @@ class LiberarReservaUseCaseTest {
     void liberarDespuesDeUnaEjecucionParcialDevuelveSoloLoPendiente() {
         Posicion posicion = posicionReservada("10");
         ReservaPosicion reserva = reservaPendiente();
-        reserva.ejecutar(new BigDecimal("4"), AHORA.minusSeconds(10));
+        reserva.consumir(1L, 4);
         posicion.venderReservado(new BigDecimal("4"), new BigDecimal("200.00"), AHORA.minusSeconds(10));
         when(reservas.findById(RESERVA_ID)).thenReturn(Optional.of(reserva));
         when(posiciones.findByIdForUpdate(POSICION_ID)).thenReturn(Optional.of(posicion));
@@ -125,8 +126,8 @@ class LiberarReservaUseCaseTest {
         ReservaPosicionResponse respuesta = caso.ejecutar(RESERVA_ID, "cancelada",
                 new Actor(USUARIO, false, false));
 
-        assertThat(respuesta.executedQuantity()).isEqualByComparingTo("4");
-        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.RELEASED.name());
+        assertThat(respuesta.executedQuantity()).isEqualTo(4);
+        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.LIBERADA.name());
         assertThat(posicion.getCantidadReservada()).isEqualByComparingTo("0");
         ArgumentCaptor<MovimientoPosicion> captor = ArgumentCaptor.forClass(MovimientoPosicion.class);
         verify(movimientos).save(captor.capture());
@@ -138,7 +139,7 @@ class LiberarReservaUseCaseTest {
         Posicion posicion = posicionReservada("10");
         ReservaPosicion reserva = mock(ReservaPosicion.class);
         when(reserva.getPosicionId()).thenReturn(POSICION_ID);
-        when(reserva.getEstado()).thenReturn(EstadoReservaPosicion.CONFIRMED);
+        when(reserva.getEstado()).thenReturn(EstadoReservaPosicion.CONSUMIDA);
         when(reservas.findById(RESERVA_ID)).thenReturn(Optional.of(reserva));
         when(posiciones.findByIdForUpdate(POSICION_ID)).thenReturn(Optional.of(posicion));
         when(reservas.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
@@ -146,7 +147,7 @@ class LiberarReservaUseCaseTest {
         assertThatThrownBy(() -> caso.ejecutar(RESERVA_ID, "cancelada",
                 new Actor(USUARIO, false, false)))
                 .isInstanceOf(ConflictoEstadoReservaException.class)
-                .hasMessageContaining("confirmada");
+                .hasMessageContaining("consumida");
         verify(movimientos, never()).save(any(MovimientoPosicion.class));
     }
 
@@ -183,7 +184,7 @@ class LiberarReservaUseCaseTest {
 
         ReservaPosicionResponse respuesta = caso.ejecutar(RESERVA_ID, "cancelada", Actor.interno());
 
-        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.RELEASED.name());
+        assertThat(respuesta.status()).isEqualTo(EstadoReservaPosicion.LIBERADA.name());
         assertThat(respuesta.userId()).isEqualTo(USUARIO);
     }
 
@@ -198,8 +199,8 @@ class LiberarReservaUseCaseTest {
     }
 
     private static ReservaPosicion reservaPendiente() {
-        ReservaPosicion reserva = ReservaPosicion.crear(POSICION_ID, "ORD-1", new BigDecimal("10"),
-                "RSV:clave-1", AHORA.minusSeconds(60));
+        ReservaPosicion reserva = ReservaPosicion.crear(POSICION_ID, 1L, 10,
+                UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), AHORA.minusSeconds(60));
         ReflectionTestUtils.setField(reserva, "id", RESERVA_ID);
         return reserva;
     }

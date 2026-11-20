@@ -7,12 +7,14 @@ import co.edu.udistrital.acciones.m6portafolio.application.dto.PosicionesActuali
 import co.edu.udistrital.acciones.m6portafolio.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.ConflictoIdempotenciaException;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.EjecucionAplicadaPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.MovimientoPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.ReservaPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.service.ValoracionService;
 import co.edu.udistrital.acciones.m6portafolio.application.usecase.AplicarEjecucionUseCase;
+import co.edu.udistrital.acciones.m6portafolio.domain.EjecucionAplicada;
 import co.edu.udistrital.acciones.m6portafolio.domain.LadoEjecucion;
 import co.edu.udistrital.acciones.m6portafolio.domain.MovimientoPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.Posicion;
@@ -32,6 +34,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -50,7 +53,7 @@ class AplicarEjecucionUseCaseTest {
     private static final long OTRO = 9999L;
     private static final Instant T0 = Instant.parse("2026-01-02T10:00:00Z");
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-01-02T12:00:00Z"), ZoneOffset.UTC);
-    private static final String CLAVE = "EXE:E-2";
+    private static final UUID EVENT_ID = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
 
     @Mock
     private PosicionRepositoryPort posiciones;
@@ -62,19 +65,22 @@ class AplicarEjecucionUseCaseTest {
     private MovimientoPosicionRepositoryPort movimientos;
 
     @Mock
+    private EjecucionAplicadaPort ejecucionesAplicadas;
+
+    @Mock
     private OutboxPort outbox;
 
     private AplicarEjecucionUseCase caso;
 
     @BeforeEach
     void prepararCaso() {
-        caso = new AplicarEjecucionUseCase(posiciones, reservas, movimientos,
+        caso = new AplicarEjecucionUseCase(posiciones, reservas, movimientos, ejecucionesAplicadas,
                 new ValoracionService(symbols -> java.util.Map.of(), CLOCK), outbox, CLOCK);
     }
 
     @Test
     void aplicaLaPrimeraCompraConCostoPromedioYMovimiento() {
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL"))
                 .thenReturn(Optional.of(posicionConId(USUARIO, "AAPL")));
         when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
@@ -89,11 +95,12 @@ class AplicarEjecucionUseCaseTest {
         assertThat(respuesta.position().currentPrice()).isEqualByComparingTo("180.0000");
         verify(posiciones).crearSiNoExiste(eq(USUARIO), eq("AAPL"), any(Instant.class));
         verify(movimientos).save(any(MovimientoPosicion.class));
+        verify(ejecucionesAplicadas).save(any(EjecucionAplicada.class));
     }
 
     @Test
-    void registraElMovimientoConLaClaveExeYLosDatosDeLaEjecucion() {
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+    void registraElMovimientoConLaClaveEventIdYLosDatosDeLaEjecucion() {
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "MSFT"))
                 .thenReturn(Optional.of(posicionConId(USUARIO, "MSFT")));
         when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
@@ -103,16 +110,16 @@ class AplicarEjecucionUseCaseTest {
 
         verify(movimientos).save(argThat(movimiento ->
                 movimiento.getTipo() == TipoMovimientoPosicion.COMPRA
-                        && movimiento.getIdempotencyKey().equals(CLAVE)
-                        && movimiento.getExecutionId().equals("E-2")
-                        && movimiento.getOrderId().equals("O-2")
+                        && movimiento.getIdempotencyKey().equals(EVENT_ID.toString())
+                        && movimiento.getExecutionId().equals("2")
+                        && movimiento.getOrderId().equals("2")
                         && movimiento.getCantidad().compareTo(new BigDecimal("3")) == 0
                         && movimiento.getPrecio().compareTo(new BigDecimal("10.5")) == 0));
     }
 
     @Test
     void emiteElEventoPosicionesActualizadasConElEstadoDeLaPosicion() {
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL"))
                 .thenReturn(Optional.of(posicionConId(USUARIO, "AAPL")));
         when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
@@ -124,8 +131,8 @@ class AplicarEjecucionUseCaseTest {
         verify(outbox).registrar(eq(RoutingKeys.TIPO_AGREGADO_POSICION), eq("1"),
                 eq(RoutingKeys.POSICIONES_ACTUALIZADAS), captor.capture());
         PosicionesActualizadasPayload evento = (PosicionesActualizadasPayload) captor.getValue();
-        assertThat(evento.orderId()).isEqualTo("O-2");
-        assertThat(evento.executionId()).isEqualTo("E-2");
+        assertThat(evento.orderId()).isEqualTo("2");
+        assertThat(evento.executionId()).isEqualTo("2");
         assertThat(evento.userId()).isEqualTo(USUARIO);
         assertThat(evento.symbol()).isEqualTo("AAPL");
         assertThat(evento.side()).isEqualTo("BUY");
@@ -139,7 +146,7 @@ class AplicarEjecucionUseCaseTest {
     @Test
     void unaCompraRepetidaDevuelveAppliedFalseSinCambios() {
         Posicion existente = Posicion.abrir(USUARIO, "AAPL", T0);
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(true);
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(true);
         when(posiciones.findByUserIdAndSymbol(USUARIO, "AAPL")).thenReturn(Optional.of(existente));
 
         EjecucionResponse respuesta = caso.ejecutar(
@@ -151,12 +158,13 @@ class AplicarEjecucionUseCaseTest {
         verify(posiciones, never()).crearSiNoExiste(any(), any(), any());
         verify(posiciones, never()).save(any(Posicion.class));
         verify(outbox, never()).registrar(any(), any(), any(), any());
+        verify(ejecucionesAplicadas, never()).save(any());
     }
 
     @Test
     void repiteLaRespuestaSiLaClaveApareceDespuesDeBloquearLaPosicion() {
         Posicion existente = Posicion.abrir(USUARIO, "AAPL", T0);
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false, true);
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false, true);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL"))
                 .thenReturn(Optional.of(existente));
 
@@ -166,13 +174,13 @@ class AplicarEjecucionUseCaseTest {
 
         assertThat(respuesta.applied()).isFalse();
         assertThat(existente.getCantidad()).isEqualByComparingTo("0");
-        verify(movimientos, times(2)).existsByIdempotencyKey(CLAVE);
+        verify(ejecucionesAplicadas, times(2)).existePorClaveIdempotencia(EVENT_ID);
         verify(posiciones, never()).save(any(Posicion.class));
     }
 
     @Test
     void unaRepeticionSinPosicionRespondeConflicto() {
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(true);
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(true);
         when(posiciones.findByUserIdAndSymbol(USUARIO, "AAPL")).thenReturn(Optional.empty());
 
         EjecucionRequest peticion = peticion(USUARIO, "AAPL", LadoEjecucion.BUY, "10", "180.00", T0);
@@ -184,7 +192,7 @@ class AplicarEjecucionUseCaseTest {
 
     @Test
     void elActorSistemaOperaSobreCualquierUsuario() {
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(OTRO, "AAPL"))
                 .thenReturn(Optional.of(posicionConId(OTRO, "AAPL")));
         when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
@@ -203,7 +211,7 @@ class AplicarEjecucionUseCaseTest {
 
         assertThatThrownBy(() -> caso.ejecutar(peticion, actor))
                 .isInstanceOf(AccesoDenegadoException.class);
-        verify(movimientos, never()).existsByIdempotencyKey(any());
+        verify(ejecucionesAplicadas, never()).existePorClaveIdempotencia(any());
     }
 
     @Test
@@ -211,11 +219,11 @@ class AplicarEjecucionUseCaseTest {
         Posicion posicion = posicionConId(USUARIO, "AAPL");
         posicion.comprar(new BigDecimal("10"), new BigDecimal("185.00"), T0);
         posicion.reservar(new BigDecimal("4"), T0.plusSeconds(1));
-        ReservaPosicion reserva = ReservaPosicion.crear(1L, "O-2", new BigDecimal("4"),
-                "RSV:clave-2", T0.plusSeconds(1));
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+        ReservaPosicion reserva = ReservaPosicion.crear(1L, 2L, 4,
+                UUID.randomUUID(), T0.plusSeconds(1));
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL")).thenReturn(Optional.of(posicion));
-        when(reservas.findByOrderIdForUpdate("O-2")).thenReturn(Optional.of(reserva));
+        when(reservas.findByOrderIdForUpdate("2")).thenReturn(Optional.of(reserva));
         when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
 
         EjecucionResponse respuesta = caso.ejecutar(
@@ -226,17 +234,18 @@ class AplicarEjecucionUseCaseTest {
         assertThat(respuesta.position().quantity()).isEqualByComparingTo("6");
         assertThat(respuesta.position().reservedQuantity()).isEqualByComparingTo("0");
         assertThat(respuesta.position().realizedPnl()).isEqualByComparingTo("60.0000");
-        assertThat(reserva.getCantidadEjecutada()).isEqualByComparingTo("4");
-        assertThat(reserva.getEstado().name()).isEqualTo("CONFIRMED");
+        assertThat(reserva.getCantidadConsumida()).isEqualTo(4);
+        assertThat(reserva.getEstado().name()).isEqualTo("CONSUMIDA");
         verify(reservas).save(reserva);
         verify(movimientos).save(argThat(movimiento ->
                 movimiento.getTipo() == TipoMovimientoPosicion.VENTA
-                        && movimiento.getIdempotencyKey().equals(CLAVE)));
+                        && movimiento.getIdempotencyKey().equals(EVENT_ID.toString())));
+        verify(ejecucionesAplicadas).save(any(EjecucionAplicada.class));
     }
 
     @Test
     void unaVentaSinPosicionRespondeVentaNoDisponible() {
-        when(movimientos.existsByIdempotencyKey(CLAVE)).thenReturn(false);
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> caso.ejecutar(
@@ -246,17 +255,19 @@ class AplicarEjecucionUseCaseTest {
                 .hasMessageContaining(VentaNoDisponibleException.CODIGO);
         verify(posiciones, never()).crearSiNoExiste(any(), any(), any());
         verify(outbox, never()).registrar(any(), any(), any(), any());
+        verify(ejecucionesAplicadas, never()).save(any());
     }
 
     @Test
     void usaElRelojCuandoLaEjecucionNoTraeInstante() {
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "AAPL"))
                 .thenReturn(Optional.of(posicionConId(USUARIO, "AAPL")));
         when(posiciones.save(any(Posicion.class))).thenAnswer(invocacion -> invocacion.getArgument(0));
 
         EjecucionResponse respuesta = caso.ejecutar(
-                new EjecucionRequest("O-5", "E-5", USUARIO, "AAPL", LadoEjecucion.BUY,
-                        BigDecimal.TEN, new BigDecimal("180.00"), null),
+                new EjecucionRequest("5", "5", USUARIO, "AAPL", LadoEjecucion.BUY,
+                        BigDecimal.TEN, new BigDecimal("180.00"), null, EVENT_ID.toString()),
                 new Actor(USUARIO, false, false));
 
         assertThat(respuesta.position().priceTimestamp()).isEqualTo(Instant.now(CLOCK));
@@ -264,8 +275,8 @@ class AplicarEjecucionUseCaseTest {
 
     private static EjecucionRequest peticion(long userId, String symbol, LadoEjecucion lado,
                                              String cantidad, String precio, Instant ejecutadoEn) {
-        return new EjecucionRequest("O-2", "E-2", userId, symbol, lado,
-                new BigDecimal(cantidad), new BigDecimal(precio), ejecutadoEn);
+        return new EjecucionRequest("2", "2", userId, symbol, lado,
+                new BigDecimal(cantidad), new BigDecimal(precio), ejecutadoEn, EVENT_ID.toString());
     }
 
     private static Posicion posicionConId(long userId, String symbol) {

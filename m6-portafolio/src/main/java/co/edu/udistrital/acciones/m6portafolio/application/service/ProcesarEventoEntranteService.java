@@ -9,7 +9,7 @@ import co.edu.udistrital.acciones.m6portafolio.application.dto.OrdenEjecutadaPay
 import co.edu.udistrital.acciones.m6portafolio.application.dto.OrdenRechazadaPayload;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.EventoInvalidoException;
-import co.edu.udistrital.acciones.m6portafolio.application.port.out.EventoProcesadoPort;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.InboxEventoPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.ReservaPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.usecase.AplicarEjecucionUseCase;
@@ -22,7 +22,6 @@ import co.edu.udistrital.acciones.m6portafolio.domain.Posicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.ReservaPosicion;
 import co.edu.udistrital.acciones.m6portafolio.domain.Simbolos;
 import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.NegocioException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -47,7 +46,7 @@ public class ProcesarEventoEntranteService {
     private static final String LADO_VENTA = "SELL";
 
     private final TransactionTemplate transacciones;
-    private final EventoProcesadoPort eventosProcesados;
+    private final InboxEventoPort inboxEventos;
     private final ReservaPosicionRepositoryPort reservas;
     private final PosicionRepositoryPort posiciones;
     private final AplicarEjecucionUseCase aplicarEjecucion;
@@ -56,15 +55,15 @@ public class ProcesarEventoEntranteService {
     private final Clock clock;
 
     public ProcesarEventoEntranteService(PlatformTransactionManager gestorTransacciones,
-                                         EventoProcesadoPort eventosProcesados,
-                                         ReservaPosicionRepositoryPort reservas,
-                                         PosicionRepositoryPort posiciones,
-                                         AplicarEjecucionUseCase aplicarEjecucion,
-                                         LiberarReservaUseCase liberarReserva,
-                                         ObjectMapper json,
-                                         Clock clock) {
+                                          InboxEventoPort inboxEventos,
+                                          ReservaPosicionRepositoryPort reservas,
+                                          PosicionRepositoryPort posiciones,
+                                          AplicarEjecucionUseCase aplicarEjecucion,
+                                          LiberarReservaUseCase liberarReserva,
+                                          ObjectMapper json,
+                                          Clock clock) {
         this.transacciones = new TransactionTemplate(gestorTransacciones);
-        this.eventosProcesados = eventosProcesados;
+        this.inboxEventos = inboxEventos;
         this.reservas = reservas;
         this.posiciones = posiciones;
         this.aplicarEjecucion = aplicarEjecucion;
@@ -76,7 +75,8 @@ public class ProcesarEventoEntranteService {
     public void procesar(EventoEntrante evento) {
         try {
             transacciones.executeWithoutResult(estado -> {
-                if (!eventosProcesados.registrarSiNuevo(evento.eventId(), evento.eventType(),
+                if (!inboxEventos.registrarSiNuevo(evento.eventId(), evento.eventType(),
+                        evento.aggregateId(), evento.correlationId(), evento.payload(),
                         Instant.now(clock))) {
                     log.info("El evento {} de tipo {} ya fue procesado; se ignora",
                             evento.eventId(), evento.eventType());
@@ -87,8 +87,10 @@ public class ProcesarEventoEntranteService {
         } catch (NegocioException ex) {
             log.warn("El evento {} de tipo {} fue descartado por una regla de negocio: {}",
                     evento.eventId(), evento.eventType(), ex.getMessage());
-            transacciones.executeWithoutResult(estado -> eventosProcesados.registrarSiNuevo(
-                    evento.eventId(), evento.eventType(), Instant.now(clock)));
+            transacciones.executeWithoutResult(estado -> inboxEventos.registrarSiNuevo(
+                    evento.eventId(), evento.eventType(),
+                    evento.aggregateId(), evento.correlationId(), evento.payload(),
+                    Instant.now(clock)));
         }
     }
 
@@ -111,8 +113,8 @@ public class ProcesarEventoEntranteService {
             return;
         }
         Optional<ReservaPosicion> reserva = reservas.findByOrderId(orderId);
-        if (reserva.isEmpty() || reserva.get().getEstado() != EstadoReservaPosicion.PENDING) {
-            log.warn("El evento {} no trae userId, symbol y side y no hay reserva PENDING para la orden {};"
+        if (reserva.isEmpty() || reserva.get().getEstado() != EstadoReservaPosicion.ACTIVA) {
+            log.warn("El evento {} no trae userId, symbol y side y no hay reserva ACTIVA para la orden {};"
                     + " se descarta", evento.eventId(), orderId);
             return;
         }
@@ -144,8 +146,8 @@ public class ProcesarEventoEntranteService {
             log.warn("No existe reserva para la orden {} del evento {}; se descarta", orden, evento.eventId());
             return;
         }
-        if (reserva.get().getEstado() == EstadoReservaPosicion.CONFIRMED) {
-            log.info("La reserva de la orden {} ya fue confirmada; no se libera por el evento {}",
+        if (reserva.get().getEstado() == EstadoReservaPosicion.CONSUMIDA) {
+            log.info("La reserva de la orden {} ya fue consumida; no se libera por el evento {}",
                     orden, evento.eventId());
             return;
         }
@@ -174,7 +176,7 @@ public class ProcesarEventoEntranteService {
         BigDecimal promedio = importe.divide(cantidad, Montos.ESCALA, Montos.REDONDEO);
         LadoEjecucion lado = lado(side, evento);
         aplicarEjecucion.ejecutar(new EjecucionRequest(orderId, executionId, userId,
-                Simbolos.normalizar(symbol), lado, cantidad, promedio, evento.occurredAt()), Actor.interno());
+                Simbolos.normalizar(symbol), lado, cantidad, promedio, evento.occurredAt(), evento.eventId()), Actor.interno());
     }
 
     private LadoEjecucion lado(String side, EventoEntrante evento) {
@@ -210,7 +212,7 @@ public class ProcesarEventoEntranteService {
         }
         try {
             return json.treeToValue(payload, tipo);
-        } catch (JsonProcessingException ex) {
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
             throw new EventoInvalidoException("El payload del evento no tiene el formato esperado", ex);
         }
     }
