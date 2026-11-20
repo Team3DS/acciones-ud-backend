@@ -46,6 +46,9 @@ ALTER TABLE reserva_posicion
     RENAME COLUMN creado_en TO creada_en;
 
 ALTER TABLE reserva_posicion
+    RENAME COLUMN liberado_en TO liberada_en;
+
+ALTER TABLE reserva_posicion
     DROP COLUMN confirmado_en;
 
 ALTER TABLE reserva_posicion
