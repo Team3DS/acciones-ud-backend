@@ -29,13 +29,13 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
     void ventaCompletaConReservaCalculaElPnlRealizado() {
         long userId = 6601L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-6601", "EXE-6601", "AAPL", "20", "185.00");
+        comprar(token, userId, 6601L, "EXE-6601", "AAPL", "20", "185.00");
 
-        ResponseEntity<Map> reserva = reservar(token, userId, "ORD-6601-R", "AAPL", "10", "clave-6601");
+        ResponseEntity<Map> reserva = reservar(token, userId, 660101L, "AAPL", "10", "clave-6601");
         assertThat(reserva.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         long reservaId = idReserva(reserva);
 
-        ResponseEntity<Map> venta = updates(token, userId, "ORD-6601-R", "EXE-6601-S", "AAPL",
+        ResponseEntity<Map> venta = updates(token, userId, 660101L, "EXE-6601-S", "AAPL",
                 "SELL", "10", "200.00");
         assertThat(venta.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(venta.getBody().get("applied")).isEqualTo(true);
@@ -58,10 +58,10 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
     void ventaParcialYLuegoSegundaVentaCompletaLaReserva() {
         long userId = 6102L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-6102", "EXE-6102", "AAPL", "20", "185.00");
-        reservar(token, userId, "ORD-6102-R", "AAPL", "10", "clave-6102");
+        comprar(token, userId, 6102L, "EXE-6102", "AAPL", "20", "185.00");
+        reservar(token, userId, 610201L, "AAPL", "10", "clave-6102");
 
-        ResponseEntity<Map> primeraVenta = updates(token, userId, "ORD-6102-R", "EXE-6102-S1",
+        ResponseEntity<Map> primeraVenta = updates(token, userId, 610201L, "EXE-6102-S1",
                 "AAPL", "SELL", "4", "200.00");
         assertThat(primeraVenta.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(numero(posicion(token, userId, "AAPL"), "quantity")).isEqualByComparingTo("16");
@@ -74,7 +74,7 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
                 Integer.class, userId);
         assertThat(reservaPendiente).isEqualTo(1);
 
-        ResponseEntity<Map> segundaVenta = updates(token, userId, "ORD-6102-R", "EXE-6102-S2",
+        ResponseEntity<Map> segundaVenta = updates(token, userId, 610201L, "EXE-6102-S2",
                 "AAPL", "SELL", "6", "200.00");
         assertThat(segundaVenta.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -95,11 +95,11 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
     void ventaDesdeDisponibleDespuesDeLiberar() {
         long userId = 6103L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-6103", "EXE-6103", "AAPL", "20", "185.00");
-        ResponseEntity<Map> reserva = reservar(token, userId, "ORD-6103-R", "AAPL", "10", "clave-6103");
+        comprar(token, userId, 6103L, "EXE-6103", "AAPL", "20", "185.00");
+        ResponseEntity<Map> reserva = reservar(token, userId, 610301L, "AAPL", "10", "clave-6103");
         liberar(token, idReserva(reserva), "cancelada");
 
-        ResponseEntity<Map> venta = updates(token, userId, "ORD-6103-X", "EXE-6103-S", "AAPL",
+        ResponseEntity<Map> venta = updates(token, userId, 610302L, "EXE-6103-S", "AAPL",
                 "SELL", "5", "200.00");
         assertThat(venta.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -113,10 +113,10 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
     void ventaMayorQueLoPendienteResponde422() {
         long userId = 6104L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-6104", "EXE-6104", "AAPL", "10", "185.00");
-        reservar(token, userId, "ORD-6104-R", "AAPL", "5", "clave-6104");
+        comprar(token, userId, 6104L, "EXE-6104", "AAPL", "10", "185.00");
+        reservar(token, userId, 610401L, "AAPL", "5", "clave-6104");
 
-        ResponseEntity<Map> venta = updates(token, userId, "ORD-6104-R", "EXE-6104-S", "AAPL",
+        ResponseEntity<Map> venta = updates(token, userId, 610401L, "EXE-6104-S", "AAPL",
                 "SELL", "6", "200.00");
         assertThat(venta.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
 
@@ -129,11 +129,11 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
     void ventaRepetidaNoAplicaDobleMovimiento() {
         long userId = 6105L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-6105", "EXE-6105", "AAPL", "20", "185.00");
+        comprar(token, userId, 6105L, "EXE-6105", "AAPL", "20", "185.00");
 
-        ResponseEntity<Map> primera = updates(token, userId, "ORD-6105", "EXE-6105-S", "AAPL",
+        ResponseEntity<Map> primera = updates(token, userId, 6105L, "EXE-6105-S", "AAPL",
                 "SELL", "5", "200.00");
-        ResponseEntity<Map> repetida = updates(token, userId, "ORD-6105", "EXE-6105-S", "AAPL",
+        ResponseEntity<Map> repetida = updates(token, userId, 6105L, "EXE-6105-S", "AAPL",
                 "SELL", "5", "200.00");
 
         assertThat(primera.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -148,11 +148,11 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
     void liberarReservaConfirmadaResponde409() {
         long userId = 6106L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-6106", "EXE-6106", "AAPL", "10", "185.00");
-        ResponseEntity<Map> reserva = reservar(token, userId, "ORD-6106-R", "AAPL", "10", "clave-6106");
+        comprar(token, userId, 6106L, "EXE-6106", "AAPL", "10", "185.00");
+        ResponseEntity<Map> reserva = reservar(token, userId, 610601L, "AAPL", "10", "clave-6106");
         long reservaId = idReserva(reserva);
 
-        updates(token, userId, "ORD-6106-R", "EXE-6106-S", "AAPL", "SELL", "10", "200.00");
+        updates(token, userId, 610601L, "EXE-6106-S", "AAPL", "SELL", "10", "200.00");
 
         ResponseEntity<Map> liberacion = liberar(token, reservaId, "intento posterior");
         assertThat(liberacion.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -162,9 +162,9 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
     void portafolioMuestraElPnlRealizado() {
         long userId = 6107L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-6107", "EXE-6107", "AAPL", "20", "185.00");
-        reservar(token, userId, "ORD-6107-R", "AAPL", "10", "clave-6107");
-        updates(token, userId, "ORD-6107-R", "EXE-6107-S", "AAPL", "SELL", "10", "200.00");
+        comprar(token, userId, 6107L, "EXE-6107", "AAPL", "20", "185.00");
+        reservar(token, userId, 610701L, "AAPL", "10", "clave-6107");
+        updates(token, userId, 610701L, "EXE-6107-S", "AAPL", "SELL", "10", "200.00");
 
         ResponseEntity<Map> portafolio = rest.exchange("/api/v1/portfolio/" + userId, HttpMethod.GET,
                 new HttpEntity<>(cabeceras(token)), Map.class);
@@ -173,12 +173,12 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
         assertThat(numero(portafolio.getBody(), "realizedPnl")).isEqualByComparingTo(new BigDecimal("150.00"));
     }
 
-    private ResponseEntity<Map> comprar(String token, long userId, String orderId, String executionId,
+    private ResponseEntity<Map> comprar(String token, long userId, long orderId, String executionId,
                                         String symbol, String quantity, String price) {
         return updates(token, userId, orderId, executionId, symbol, "BUY", quantity, price);
     }
 
-    private ResponseEntity<Map> updates(String token, long userId, String orderId, String executionId,
+    private ResponseEntity<Map> updates(String token, long userId, long orderId, String executionId,
                                         String symbol, String side, String quantity, String price) {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("orderId", orderId);
@@ -193,7 +193,7 @@ class M6VentasIntegrationTest extends AbstractIntegrationTest {
                 new HttpEntity<>(cuerpo, cabeceras(token)), Map.class);
     }
 
-    private ResponseEntity<Map> reservar(String token, long userId, String orderId, String symbol,
+    private ResponseEntity<Map> reservar(String token, long userId, long orderId, String symbol,
                                          String quantity, String clave) {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("orderId", orderId);
