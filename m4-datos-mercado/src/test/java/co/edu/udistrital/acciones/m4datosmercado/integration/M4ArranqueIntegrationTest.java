@@ -21,9 +21,7 @@ class M4ArranqueIntegrationTest {
             .withPassword("acciones_ud");
 
     @Container
-    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management")
-            .withEnv("RABBITMQ_DEFAULT_USER", "acciones_ud")
-            .withEnv("RABBITMQ_DEFAULT_PASS", "acciones_ud");
+    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine");
 
     @Container
     static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
@@ -37,8 +35,8 @@ class M4ArranqueIntegrationTest {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
-        registry.add("spring.rabbitmq.username", () -> "acciones_ud");
-        registry.add("spring.rabbitmq.password", () -> "acciones_ud");
+        registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
+        registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
         registry.add("app.alpaca.api-key", () -> "test-key");
