@@ -105,8 +105,8 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
         long userId = 7001L;
         String eventoId = UUID.randomUUID().toString();
 
-        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "ORD-7001", Map.of(
-                "orderId", "ORD-7001",
+        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "7001", Map.of(
+                "orderId", 7001L,
                 "executionId", "EXE-7001",
                 "fills", List.of(fill("100.00", "10")),
                 "totalAmount", new BigDecimal("1000.00"),
@@ -124,16 +124,16 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
         long userId = 7002L;
         String eventoId = UUID.randomUUID().toString();
         Map<String, Object> payload = Map.of(
-                "orderId", "ORD-7002",
+                "orderId", 7002L,
                 "executionId", "EXE-7002",
                 "fills", List.of(fill("50.00", "8")),
                 "userId", userId,
                 "symbol", "MSFT",
                 "side", "BUY");
 
-        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "ORD-7002", payload);
+        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "7002", payload);
         esperarEventoProcesado(eventoId);
-        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "ORD-7002", payload);
+        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "7002", payload);
 
         await().atMost(Duration.ofSeconds(10)).during(Duration.ofSeconds(2))
                 .untilAsserted(() -> assertThat(movimientos("EXE:EXE-7002")).isEqualTo(1));
@@ -144,11 +144,11 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
     @Test
     void unEventoPosteriorAlRestConElMismoExecutionIdNoCambiaNada() {
         long userId = 7003L;
-        comprar(userId, "ORD-7003", "EXE-7003", "NVDA", "10", "180.00");
+        comprar(userId, 7003L, "EXE-7003", "NVDA", "10", "180.00");
         String eventoId = UUID.randomUUID().toString();
 
-        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "ORD-7003", Map.of(
-                "orderId", "ORD-7003",
+        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "7003", Map.of(
+                "orderId", 7003L,
                 "executionId", "EXE-7003",
                 "fills", List.of(fill("180.00", "10")),
                 "userId", userId,
@@ -163,12 +163,12 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
     @Test
     void unaVentaSinDatosOpcionalesUsaLaReservaPendiente() {
         long userId = 7004L;
-        comprar(userId, "ORD-7004", "EXE-COMPRA-7004", "TSLA", "10", "100.00");
-        reservar(userId, "ORD-7004-R", "TSLA", "4", "clave-7004");
+        comprar(userId, 7004L, "EXE-COMPRA-7004", "TSLA", "10", "100.00");
+        reservar(userId, 700401L, "TSLA", "4", "clave-7004");
         String eventoId = UUID.randomUUID().toString();
 
-        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "ORD-7004-R", Map.of(
-                "orderId", "ORD-7004-R",
+        publicar(RoutingKeys.M5_ORDEN_EJECUTADA, eventoId, "700401", Map.of(
+                "orderId", 700401L,
                 "executionId", "EXE-VENTA-7004",
                 "fills", List.of(fill("120.00", "4")),
                 "totalAmount", new BigDecimal("480.00")));
@@ -176,27 +176,27 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
         esperarEventoProcesado(eventoId);
         assertThat(cantidad(userId, "TSLA")).isEqualByComparingTo("6");
         assertThat(reservado(userId, "TSLA")).isEqualByComparingTo("0");
-        assertThat(estadoReserva("ORD-7004-R")).isEqualTo("CONSUMIDA");
+        assertThat(estadoReserva(700401L)).isEqualTo("CONSUMIDA");
         assertThat(movimientos("EXE:EXE-VENTA-7004")).isEqualTo(1);
     }
 
     @Test
     void unaOrdenCanceladaLiberaLaReserva() {
         long userId = 7005L;
-        comprar(userId, "ORD-7005", "EXE-7005", "AMD", "10", "120.00");
-        reservar(userId, "ORD-7005-R", "AMD", "4", "clave-7005");
+        comprar(userId, 7005L, "EXE-7005", "AMD", "10", "120.00");
+        reservar(userId, 700501L, "AMD", "4", "clave-7005");
         String eventoId = UUID.randomUUID().toString();
 
-        publicar(RoutingKeys.M5_ORDEN_CANCELADA, eventoId, "ORD-7005-R", Map.of(
-                "orderId", "ORD-7005-R",
+        publicar(RoutingKeys.M5_ORDEN_CANCELADA, eventoId, "700501", Map.of(
+                "orderId", 700501L,
                 "reason", "Cancelada por el usuario"));
 
         esperarEventoProcesado(eventoId);
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                assertThat(estadoReserva("ORD-7005-R")).isEqualTo("LIBERADA"));
+                assertThat(estadoReserva(700501L)).isEqualTo("LIBERADA"));
         assertThat(reservado(userId, "AMD")).isEqualByComparingTo("0");
         assertThat(cantidad(userId, "AMD")).isEqualByComparingTo("10");
-        assertThat(motivoLiberacion("ORD-7005-R")).isEqualTo("Cancelada por el usuario");
+        assertThat(motivoLiberacion(700501L)).isEqualTo("Cancelada por el usuario");
     }
 
     @Test
@@ -222,7 +222,7 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
     void unSobreSinEventIdTerminaEnLaColaDeMensajesMuertos() {
         Map<String, Object> sobre = new LinkedHashMap<>();
         sobre.put("eventType", RoutingKeys.M5_ORDEN_CANCELADA);
-        sobre.put("payload", Map.of("orderId", "ORD-7007"));
+        sobre.put("payload", Map.of("orderId", 7007L));
 
         rabbitTemplate.convertAndSend(RoutingKeys.EXCHANGE, RoutingKeys.M5_ORDEN_CANCELADA, sobre);
 
@@ -234,7 +234,7 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
             }
             assertThat(recibido.get()).isNotNull();
         });
-        assertThat(new String(recibido.get().getBody(), StandardCharsets.UTF_8)).contains("ORD-7007");
+        assertThat(new String(recibido.get().getBody(), StandardCharsets.UTF_8)).contains("7007");
     }
 
     private void publicar(String routingKey, String eventoId, String aggregateId, Map<String, Object> payload) {
@@ -276,17 +276,17 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
                 BigDecimal.class, userId, symbol);
     }
 
-    private String estadoReserva(String orderId) {
-        return jdbc.queryForObject("select estado from reserva_posicion where order_id = ?",
+    private String estadoReserva(long orderId) {
+        return jdbc.queryForObject("select estado_reserva from reserva_posicion where orden_id = ?",
                 String.class, orderId);
     }
 
-    private String motivoLiberacion(String orderId) {
-        return jdbc.queryForObject("select motivo_liberacion from reserva_posicion where order_id = ?",
+    private String motivoLiberacion(long orderId) {
+        return jdbc.queryForObject("select motivo_liberacion from reserva_posicion where orden_id = ?",
                 String.class, orderId);
     }
 
-    private void comprar(long userId, String orderId, String executionId, String symbol,
+    private void comprar(long userId, long orderId, String executionId, String symbol,
                          String quantity, String price) {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("orderId", orderId);
@@ -303,7 +303,7 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
         assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
-    private void reservar(long userId, String orderId, String symbol, String quantity, String clave) {
+    private void reservar(long userId, long orderId, String symbol, String quantity, String clave) {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("orderId", orderId);
         cuerpo.put("userId", userId);

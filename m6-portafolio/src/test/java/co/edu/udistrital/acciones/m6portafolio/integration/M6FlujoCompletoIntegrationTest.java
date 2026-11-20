@@ -34,9 +34,9 @@ class M6FlujoCompletoIntegrationTest extends AbstractIntegrationTest {
 
     private static final long USER_ID = 6901L;
     private static final String SYMBOL = "FLOW";
-    private static final String ORDER_COMPRA_REST = "FLOW-ORD-COMPRA";
-    private static final String ORDER_COMPRA_EVENTO = "FLOW-ORD-EVENTO";
-    private static final String ORDER_RESERVA = "FLOW-ORD-RESERVA";
+    private static final long ORDER_COMPRA_REST = 690101L;
+    private static final long ORDER_COMPRA_EVENTO = 690102L;
+    private static final long ORDER_RESERVA = 690103L;
     private static final String PREFIJO_EVENTO = "flow-";
 
     @Autowired
@@ -135,7 +135,7 @@ class M6FlujoCompletoIntegrationTest extends AbstractIntegrationTest {
         assertThat(respuesta.getBody().get("applied")).isEqualTo(true);
     }
 
-    private ResponseEntity<Map> actualizar(String orderId, String executionId, String side,
+    private ResponseEntity<Map> actualizar(long orderId, String executionId, String side,
                                            String quantity, String price) {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("orderId", orderId);
@@ -171,7 +171,7 @@ class M6FlujoCompletoIntegrationTest extends AbstractIntegrationTest {
                 new HttpEntity<>(cabeceras()), Map.class).getBody();
     }
 
-    private String publicarEjecutada(String orderId, String executionId, List<Map<String, Object>> fills) {
+    private String publicarEjecutada(long orderId, String executionId, List<Map<String, Object>> fills) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("orderId", orderId);
         payload.put("executionId", executionId);
@@ -180,14 +180,14 @@ class M6FlujoCompletoIntegrationTest extends AbstractIntegrationTest {
         payload.put("userId", USER_ID);
         payload.put("symbol", SYMBOL);
         payload.put("side", "BUY");
-        return publicar(RoutingKeys.M5_ORDEN_EJECUTADA, orderId, payload);
+        return publicar(RoutingKeys.M5_ORDEN_EJECUTADA, String.valueOf(orderId), payload);
     }
 
-    private String publicarCancelada(String orderId, String reason) {
+    private String publicarCancelada(long orderId, String reason) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("orderId", orderId);
         payload.put("reason", reason);
-        return publicar(RoutingKeys.M5_ORDEN_CANCELADA, orderId, payload);
+        return publicar(RoutingKeys.M5_ORDEN_CANCELADA, String.valueOf(orderId), payload);
     }
 
     private String publicar(String routingKey, String aggregateId, Map<String, Object> payload) {
@@ -220,7 +220,7 @@ class M6FlujoCompletoIntegrationTest extends AbstractIntegrationTest {
     }
 
     private String estadoReserva(long reservaId) {
-        return jdbc.queryForObject("select estado from reserva_posicion where id = ?",
+        return jdbc.queryForObject("select estado_reserva from reserva_posicion where id = ?",
                 String.class, reservaId);
     }
 

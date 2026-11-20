@@ -51,9 +51,9 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void reservarReduceElDisponibleYLiberarLoRestaura() {
         long userId = 5201L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-5201", "EXE-5201", "AAPL", "20", "185.00");
+        comprar(token, userId, 5201L, "EXE-5201", "AAPL", "20", "185.00");
 
-        ResponseEntity<Map> reserva = reservar(token, userId, "ORD-5201-R", "AAPL", "10", "clave-5201", null);
+        ResponseEntity<Map> reserva = reservar(token, userId, 520101L, "AAPL", "10", "clave-5201", null);
         assertThat(reserva.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(reserva.getBody().get("status")).isEqualTo("ACTIVA");
         assertThat(numero(reserva.getBody(), "quantity")).isEqualTo(10.0);
@@ -83,8 +83,8 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void liberarDosVecesResponde200SinDuplicarElMovimiento() {
         long userId = 5202L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-5202", "EXE-5202", "TSLA", "10", "200.00");
-        ResponseEntity<Map> reserva = reservar(token, userId, "ORD-5202-R", "TSLA", "5", "clave-5202", null);
+        comprar(token, userId, 5202L, "EXE-5202", "TSLA", "10", "200.00");
+        ResponseEntity<Map> reserva = reservar(token, userId, 520201L, "TSLA", "5", "clave-5202", null);
         long reservaId = idReserva(reserva);
 
         ResponseEntity<Map> primera = liberar(token, reservaId, "cancelada");
@@ -102,10 +102,10 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void laClaveRepetidaDevuelveLaMismaReserva() {
         long userId = 5203L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-5203", "EXE-5203", "MSFT", "20", "150.00");
+        comprar(token, userId, 5203L, "EXE-5203", "MSFT", "20", "150.00");
 
-        ResponseEntity<Map> primera = reservar(token, userId, "ORD-5203-R", "MSFT", "5", "clave-5203", null);
-        ResponseEntity<Map> repetida = reservar(token, userId, "ORD-5203-R", "MSFT", "5", "clave-5203", null);
+        ResponseEntity<Map> primera = reservar(token, userId, 520301L, "MSFT", "5", "clave-5203", null);
+        ResponseEntity<Map> repetida = reservar(token, userId, 520301L, "MSFT", "5", "clave-5203", null);
 
         assertThat(primera.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(repetida.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -118,10 +118,10 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void laClaveRepetidaConOtrosDatosResponde409() {
         long userId = 5208L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-5208", "EXE-5208", "MSFT", "20", "150.00");
-        reservar(token, userId, "ORD-5208-R", "MSFT", "5", "clave-5208", null);
+        comprar(token, userId, 5208L, "EXE-5208", "MSFT", "20", "150.00");
+        reservar(token, userId, 520801L, "MSFT", "5", "clave-5208", null);
 
-        ResponseEntity<Map> respuesta = reservar(token, userId, "ORD-5208-R", "MSFT", "6", "clave-5208", null);
+        ResponseEntity<Map> respuesta = reservar(token, userId, 520801L, "MSFT", "6", "clave-5208", null);
 
         assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(numero(posicion(token, userId, "MSFT"), "reservedQuantity")).isEqualTo(5.0);
@@ -131,10 +131,10 @@ class M6ReservasIntegrationTest extends AbstractIntegrationTest {
     void unaOrdenDuplicadaConOtraClaveResponde409() {
         long userId = 5209L;
         String token = TokenTestFactory.token(userId, "INVERSIONISTA");
-        comprar(token, userId, "ORD-5209", "EXE-5209", "MSFT", "20", "150.00");
-        reservar(token, userId, "ORD-5209-R", "MSFT", "5", "clave-5209", null);
+        comprar(token, userId, 5209L, "EXE-5209", "MSFT", "20", "150.00");
+        reservar(token, userId, 520901L, "MSFT", "5", "clave-5209", null);
 
-        ResponseEntity<Map> respuesta = reservar(token, userId, "ORD-5209-R", "MSFT", "5",
+        ResponseEntity<Map> respuesta = reservar(token, userId, 520901L, "MSFT", "5",
                 "otra-clave-5209", null);
 
         assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
