@@ -61,16 +61,22 @@ public class AplicarEjecucionUseCase {
         if (ejecucionesAplicadas.existePorClaveIdempotencia(claveIdempotencia)) {
             return repetida(peticion.userId(), symbol);
         }
+        if (ejecucionesAplicadas.existePorExecutionId(peticion.executionId())) {
+            return repetida(peticion.userId(), symbol);
+        }
         Instant ahora = Instant.now(clock);
         Instant ocurrido = peticion.executedAt() == null ? ahora : peticion.executedAt();
         Posicion posicion = obtenerPosicionBloqueada(peticion, symbol, ahora);
         if (ejecucionesAplicadas.existePorClaveIdempotencia(claveIdempotencia)) {
             return new EjecucionResponse(false, valoracion.valorar(posicion));
         }
+        if (ejecucionesAplicadas.existePorExecutionId(peticion.executionId())) {
+            return new EjecucionResponse(false, valoracion.valorar(posicion));
+        }
         aplicarMovimiento(peticion, posicion, ocurrido);
         posiciones.save(posicion);
         movimientos.save(crearMovimiento(peticion, posicion,
-                claveMovimiento(peticion, claveIdempotencia), ocurrido));
+                claveMovimiento(peticion), ocurrido));
         EjecucionAplicada aplicada = new EjecucionAplicada(
                 posicion.getId(),
                 peticion.executionId(),
@@ -104,11 +110,8 @@ public class AplicarEjecucionUseCase {
                 .getBytes(StandardCharsets.UTF_8));
     }
 
-    private String claveMovimiento(EjecucionRequest peticion, UUID claveIdempotencia) {
-        if (peticion.eventId() == null || peticion.eventId().isBlank()) {
-            return "EXE:" + peticion.executionId();
-        }
-        return claveIdempotencia.toString();
+    private String claveMovimiento(EjecucionRequest peticion) {
+        return "EXE:" + peticion.executionId();
     }
 
     private Posicion obtenerPosicionBloqueada(EjecucionRequest peticion, String symbol, Instant ahora) {

@@ -100,7 +100,7 @@ class AplicarEjecucionUseCaseTest {
     }
 
     @Test
-    void registraElMovimientoConLaClaveEventIdYLosDatosDeLaEjecucion() {
+    void registraElMovimientoConLaClaveExecutionIdYLosDatosDeLaEjecucion() {
         when(ejecucionesAplicadas.existePorClaveIdempotencia(EVENT_ID)).thenReturn(false);
         when(posiciones.findByUserIdAndSymbolForUpdate(USUARIO, "MSFT"))
                 .thenReturn(Optional.of(posicionConId(USUARIO, "MSFT")));
@@ -111,7 +111,7 @@ class AplicarEjecucionUseCaseTest {
 
         verify(movimientos).save(argThat(movimiento ->
                 movimiento.getTipo() == TipoMovimientoPosicion.COMPRA
-                        && movimiento.getIdempotencyKey().equals(EVENT_ID.toString())
+                        && movimiento.getIdempotencyKey().equals("EXE:2")
                         && movimiento.getExecutionId().equals("2")
                         && movimiento.getOrderId().equals("2")
                         && movimiento.getCantidad().compareTo(new BigDecimal("3")) == 0
@@ -240,7 +240,7 @@ class AplicarEjecucionUseCaseTest {
         verify(reservas).save(reserva);
         verify(movimientos).save(argThat(movimiento ->
                 movimiento.getTipo() == TipoMovimientoPosicion.VENTA
-                        && movimiento.getIdempotencyKey().equals(EVENT_ID.toString())));
+                        && movimiento.getIdempotencyKey().equals("EXE:2")));
         verify(ejecucionesAplicadas).save(any(EjecucionAplicada.class));
     }
 

@@ -5,6 +5,7 @@ import co.edu.udistrital.acciones.m6portafolio.application.dto.EjecucionRequest;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.EventoEntrante;
 import co.edu.udistrital.acciones.m6portafolio.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.EventoInvalidoException;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.EventoProcesadoPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.InboxEventoPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.ReservaPosicionRepositoryPort;
@@ -59,6 +60,9 @@ class ProcesarEventoEntranteServiceTest {
     private InboxEventoPort inboxEventos;
 
     @Mock
+    private EventoProcesadoPort eventosProcesados;
+
+    @Mock
     private ReservaPosicionRepositoryPort reservas;
 
     @Mock
@@ -79,11 +83,11 @@ class ProcesarEventoEntranteServiceTest {
 
     @BeforeEach
     void prepararServicio() {
-        org.mockito.Mockito.reset(inboxEventos, reservas, posiciones, aplicarEjecucion, liberarReserva, gestor);
+        org.mockito.Mockito.reset(inboxEventos, eventosProcesados, reservas, posiciones, aplicarEjecucion, liberarReserva, gestor);
         lenient().when(gestor.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         lenient().when(inboxEventos.registrarSiNuevo(anyString(), anyString(), anyString(), anyString(),
                 any(JsonNode.class), any())).thenReturn(true);
-        servicio = new ProcesarEventoEntranteService(gestor, inboxEventos, reservas, posiciones,
+        servicio = new ProcesarEventoEntranteService(gestor, inboxEventos, eventosProcesados, reservas, posiciones,
                 aplicarEjecucion, liberarReserva, json, CLOCK);
     }
 
@@ -112,6 +116,7 @@ class ProcesarEventoEntranteServiceTest {
         assertThat(peticion.executedAt()).isEqualTo(T0);
         assertThat(peticion.eventId()).isEqualTo("evento-1");
         verifyNoInteractions(liberarReserva);
+        verify(eventosProcesados).registrarSiNuevo("evento-1", RoutingKeys.M5_ORDEN_EJECUTADA, T0.plusSeconds(5));
     }
 
     @Test

@@ -10,6 +10,7 @@ import co.edu.udistrital.acciones.m6portafolio.application.dto.OrdenRechazadaPay
 import co.edu.udistrital.acciones.m6portafolio.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m6portafolio.application.exception.EventoInvalidoException;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.InboxEventoPort;
+import co.edu.udistrital.acciones.m6portafolio.application.port.out.EventoProcesadoPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.PosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.port.out.ReservaPosicionRepositoryPort;
 import co.edu.udistrital.acciones.m6portafolio.application.usecase.AplicarEjecucionUseCase;
@@ -47,6 +48,7 @@ public class ProcesarEventoEntranteService {
 
     private final TransactionTemplate transacciones;
     private final InboxEventoPort inboxEventos;
+    private final EventoProcesadoPort eventosProcesados;
     private final ReservaPosicionRepositoryPort reservas;
     private final PosicionRepositoryPort posiciones;
     private final AplicarEjecucionUseCase aplicarEjecucion;
@@ -56,6 +58,7 @@ public class ProcesarEventoEntranteService {
 
     public ProcesarEventoEntranteService(PlatformTransactionManager gestorTransacciones,
                                           InboxEventoPort inboxEventos,
+                                          EventoProcesadoPort eventosProcesados,
                                           ReservaPosicionRepositoryPort reservas,
                                           PosicionRepositoryPort posiciones,
                                           AplicarEjecucionUseCase aplicarEjecucion,
@@ -64,6 +67,7 @@ public class ProcesarEventoEntranteService {
                                           Clock clock) {
         this.transacciones = new TransactionTemplate(gestorTransacciones);
         this.inboxEventos = inboxEventos;
+        this.eventosProcesados = eventosProcesados;
         this.reservas = reservas;
         this.posiciones = posiciones;
         this.aplicarEjecucion = aplicarEjecucion;
@@ -83,6 +87,8 @@ public class ProcesarEventoEntranteService {
                     return;
                 }
                 despachar(evento);
+                eventosProcesados.registrarSiNuevo(evento.eventId(), evento.eventType(),
+                        Instant.now(clock));
             });
         } catch (NegocioException ex) {
             log.warn("El evento {} de tipo {} fue descartado por una regla de negocio: {}",

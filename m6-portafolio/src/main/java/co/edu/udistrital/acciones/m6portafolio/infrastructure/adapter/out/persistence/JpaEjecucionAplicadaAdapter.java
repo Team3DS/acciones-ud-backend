@@ -22,6 +22,11 @@ public class JpaEjecucionAplicadaAdapter implements EjecucionAplicadaPort {
     }
 
     @Override
+    public boolean existePorExecutionId(String executionId) {
+        return repositorio.existsByEjecucionOrdenId(executionId);
+    }
+
+    @Override
     public Optional<EjecucionAplicada> findByClaveIdempotencia(UUID claveIdempotencia) {
         return repositorio.findByClaveIdempotencia(claveIdempotencia);
     }

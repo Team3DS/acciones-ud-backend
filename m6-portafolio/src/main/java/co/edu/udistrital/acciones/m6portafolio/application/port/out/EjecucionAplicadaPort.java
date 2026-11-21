@@ -11,6 +11,8 @@ public interface EjecucionAplicadaPort {
 
     boolean existePorClaveIdempotencia(UUID claveIdempotencia);
 
+    boolean existePorExecutionId(String executionId);
+
     Optional<EjecucionAplicada> findByClaveIdempotencia(UUID claveIdempotencia);
 
     EjecucionAplicada save(EjecucionAplicada ejecucion);
