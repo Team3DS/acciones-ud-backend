@@ -4,31 +4,27 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public class ConfirmacionEjecucion {
-    private Long id;
     private Long ejecucionOrdenId;
-    private String servicioParticipante;
+    private ServicioParticipante servicioParticipante;
     private BigDecimal precioPromedioCosto;
-    private Instant confirmadoEn;
+    private Instant confirmadaEn;
 
     public ConfirmacionEjecucion() {}
 
-    public ConfirmacionEjecucion(Long id, Long ejecucionOrdenId, String servicioParticipante,
-                                 BigDecimal precioPromedioCosto, Instant confirmadoEn) {
-        this.id = id;
+    public ConfirmacionEjecucion(Long ejecucionOrdenId, ServicioParticipante servicioParticipante,
+                                 BigDecimal precioPromedioCosto, Instant confirmadaEn) {
         this.ejecucionOrdenId = ejecucionOrdenId;
         this.servicioParticipante = servicioParticipante;
         this.precioPromedioCosto = precioPromedioCosto;
-        this.confirmadoEn = confirmadoEn;
+        this.confirmadaEn = confirmadaEn != null ? confirmadaEn : Instant.now();
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public Long getEjecucionOrdenId() { return ejecucionOrdenId; }
     public void setEjecucionOrdenId(Long ejecucionOrdenId) { this.ejecucionOrdenId = ejecucionOrdenId; }
-    public String getServicioParticipante() { return servicioParticipante; }
-    public void setServicioParticipante(String servicioParticipante) { this.servicioParticipante = servicioParticipante; }
+    public ServicioParticipante getServicioParticipante() { return servicioParticipante; }
+    public void setServicioParticipante(ServicioParticipante servicioParticipante) { this.servicioParticipante = servicioParticipante; }
     public BigDecimal getPrecioPromedioCosto() { return precioPromedioCosto; }
     public void setPrecioPromedioCosto(BigDecimal precioPromedioCosto) { this.precioPromedioCosto = precioPromedioCosto; }
-    public Instant getConfirmadoEn() { return confirmadoEn; }
-    public void setConfirmadoEn(Instant confirmadoEn) { this.confirmadoEn = confirmadoEn; }
+    public Instant getConfirmadaEn() { return confirmadaEn; }
+    public void setConfirmadaEn(Instant confirmadaEn) { this.confirmadaEn = confirmadaEn; }
 }
