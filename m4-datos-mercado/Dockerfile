@@ -16,7 +16,7 @@ COPY m10-suscripciones-pagos/pom.xml ./m10-suscripciones-pagos/
 
 # Copy the specific service source and build
 COPY m4-datos-mercado/src ./m4-datos-mercado/src
-RUN mvn -q -s m4-datos-mercado/docker-settings.xml -pl m4-datos-mercado -am package -DskipTests
+RUN mvn -q -pl m4-datos-mercado -am package -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
