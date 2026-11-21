@@ -5,13 +5,14 @@ import co.edu.udistrital.acciones.m5ordenesejecucion.domain.Orden;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface OrdenRepositoryPort {
     Optional<Orden> findById(Long id);
-    Optional<Orden> findByClientOrderId(String clientOrderId);
-    Orden save(Orden orden);
+    Optional<Orden> findByClientOrderId(UUID clientOrderId);
+    Optional<Orden> findByBrokerOrderId(String brokerOrderId);
     List<Orden> findByUsuarioId(Long usuarioId);
-    List<Orden> findByEstado(EstadoOrden estado);
-    List<Orden> findByUsuarioIdAndEstado(Long usuarioId, EstadoOrden estado);
-    boolean existsById(Long id);
+    List<Orden> findByUsuarioIdAndFilters(Long usuarioId, EstadoOrden estado, String ticker);
+    List<Orden> findEncoladasListasParaEnvio();
+    Orden save(Orden orden);
 }
