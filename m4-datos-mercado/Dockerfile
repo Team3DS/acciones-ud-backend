@@ -1,4 +1,4 @@
-# Multi-stage build for SERVICE_NAME
+# Multi-stage build for M4 Datos de Mercado
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
@@ -13,8 +13,6 @@ COPY m5-ordenes-ejecucion/pom.xml ./m5-ordenes-ejecucion/
 COPY m6-portafolio/pom.xml ./m6-portafolio/
 COPY m8-notificaciones/pom.xml ./m8-notificaciones/
 COPY m10-suscripciones-pagos/pom.xml ./m10-suscripciones-pagos/
-
-# Copy common module source and install
 
 # Copy the specific service source and build
 COPY m4-datos-mercado/src ./m4-datos-mercado/src

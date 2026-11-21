@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -78,5 +79,20 @@ public class UserApplicationService {
 
     public void logout(Long userId) {
         refreshTokenService.revoke(userId);
+    }
+
+    public co.edu.udistrital.acciones.m1identidad.application.dto.UserInfoResponse getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con id: " + userId));
+        return new co.edu.udistrital.acciones.m1identidad.application.dto.UserInfoResponse(
+                user.getId(),
+                user.getCorreo(),
+                user.getNombres(),
+                user.getApellidos(),
+                user.getNivelInversionista(),
+                Set.of("INVERSIONISTA"),
+                user.getEstadoUsuario(),
+                Boolean.TRUE.equals(user.getSolicitaReporteMensual())
+        );
     }
 }

@@ -175,11 +175,41 @@ class RegistrarDepositoUseCaseTest {
     }
 
     @Test
-    void soloUnAdministradorPuedeRegistrarDepositos() {
+    void usuarioPuedeDepositarEnSuPropiaCuenta() {
+        Cuenta cuenta = cuenta(10L, 5L);
+        when(movimientos.findByIdempotencyKey("DEP:clave-1")).thenReturn(Optional.empty());
+        when(cuentas.findByUserIdForUpdate(5L)).thenReturn(Optional.of(cuenta));
+        when(movimientos.save(any(Movimiento.class))).thenAnswer(invocacion -> {
+            Movimiento movimiento = invocacion.getArgument(0);
+            ReflectionTestUtils.setField(movimiento, "id", 99L);
+            return movimiento;
+        });
+
+        DepositoResponse respuesta = casoDeUso.ejecutar(
+                new DepositoRequest(5L, new BigDecimal("100.00"), "Fondeo simulado"),
+                "clave-1", new Actor(5L, false));
+
+        assertThat(respuesta.amount()).isEqualByComparingTo("100.00");
+        verify(cuentas).save(cuenta);
+    }
+
+    @Test
+    void rechazaDepositoEnCuentaAjenaPorUsuarioNormal() {
         assertThatThrownBy(() -> casoDeUso.ejecutar(
                 new DepositoRequest(5L, new BigDecimal("100.00"), null),
-                "clave-1", new Actor(5L, false)))
+                "clave-1", new Actor(99L, false)))
                 .isInstanceOf(AccesoDenegadoException.class);
+
+        verifyNoInteractions(cuentas, movimientos);
+    }
+
+    @Test
+    void rechazaDepositoQueSuperaLimitePermitido() {
+        assertThatThrownBy(() -> casoDeUso.ejecutar(
+                new DepositoRequest(5L, new BigDecimal("1000001.00"), null),
+                "clave-1", new Actor(5L, false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("límite permitido");
 
         verifyNoInteractions(cuentas, movimientos);
     }
