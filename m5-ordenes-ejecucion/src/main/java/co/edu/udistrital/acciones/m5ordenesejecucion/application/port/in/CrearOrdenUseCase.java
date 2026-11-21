@@ -1,34 +1,27 @@
 package co.edu.udistrital.acciones.m5ordenesejecucion.application.port.in;
 
+import co.edu.udistrital.acciones.m5ordenesejecucion.domain.LadoOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.Orden;
+import co.edu.udistrital.acciones.m5ordenesejecucion.domain.TipoOrden;
+import co.edu.udistrital.acciones.m5ordenesejecucion.domain.VigenciaOrden;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public interface CrearOrdenUseCase {
     Orden ejecutar(CrearOrdenCommand comando);
 
-    OrdenResultado convertir(Orden orden);
-
     record CrearOrdenCommand(
             Long usuarioId,
-            String simbolo,
-            String lado,
-            String tipo,
+            Long accionId,
+            String ticker,
+            TipoOrden tipoOrden,
+            LadoOrden ladoOrden,
+            VigenciaOrden vigenciaOrden,
             Integer cantidad,
-            BigDecimal precio,
-            String idempotencyKey
-    ) {}
-
-    record OrdenResultado(
-            Long id,
-            String simbolo,
-            String lado,
-            String tipo,
-            Integer cantidad,
-            BigDecimal precio,
-            BigDecimal comision,
-            BigDecimal valorTotal,
-            String estado,
-            String clientOrderId
+            BigDecimal precioLimite,
+            BigDecimal precioActivacion,
+            BigDecimal precioEstimado,
+            UUID clientOrderId
     ) {}
 }
