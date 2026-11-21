@@ -3,14 +3,13 @@ package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.out
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.OrdenRepositoryPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.EstadoOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.Orden;
-
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
-@Repository
+@Component
 public class OrdenRepositoryAdapter implements OrdenRepositoryPort {
 
     private final OrdenJpaRepository jpaRepository;
@@ -25,39 +24,40 @@ public class OrdenRepositoryAdapter implements OrdenRepositoryPort {
     }
 
     @Override
-    public Optional<Orden> findByClientOrderId(String clientOrderId) {
+    public Optional<Orden> findByClientOrderId(UUID clientOrderId) {
         return jpaRepository.findByClientOrderId(clientOrderId).map(OrdenEntity::toDomain);
     }
 
     @Override
-    public Orden save(Orden orden) {
-        OrdenEntity entity = new OrdenEntity(orden);
-        return jpaRepository.save(entity).toDomain();
+    public Optional<Orden> findByBrokerOrderId(String brokerOrderId) {
+        return jpaRepository.findByBrokerOrderId(brokerOrderId).map(OrdenEntity::toDomain);
     }
 
     @Override
     public List<Orden> findByUsuarioId(Long usuarioId) {
         return jpaRepository.findByUsuarioId(usuarioId).stream()
                 .map(OrdenEntity::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
-    public List<Orden> findByEstado(EstadoOrden estado) {
-        return jpaRepository.findByEstado(estado).stream()
+    public List<Orden> findByUsuarioIdAndFilters(Long usuarioId, EstadoOrden estado, String ticker) {
+        return jpaRepository.findByUsuarioIdAndFilters(usuarioId, estado, ticker).stream()
                 .map(OrdenEntity::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
-    public List<Orden> findByUsuarioIdAndEstado(Long usuarioId, EstadoOrden estado) {
-        return jpaRepository.findByUsuarioIdAndEstado(usuarioId, estado).stream()
+    public List<Orden> findEncoladasListasParaEnvio() {
+        return jpaRepository.findEncoladasConfirmadas().stream()
                 .map(OrdenEntity::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
-    public boolean existsById(Long id) {
-        return jpaRepository.existsById(id);
+    public Orden save(Orden orden) {
+        OrdenEntity entity = OrdenEntity.fromDomain(orden);
+        OrdenEntity saved = jpaRepository.save(entity);
+        return saved.toDomain();
     }
 }

@@ -4,169 +4,194 @@ import co.edu.udistrital.acciones.m5ordenesejecucion.domain.EstadoOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.LadoOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.Orden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.TipoOrden;
-
+import co.edu.udistrital.acciones.m5ordenesejecucion.domain.VigenciaOrden;
 import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "orden")
 public class OrdenEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "usuario_id", nullable = false)
     private Long usuarioId;
 
-    @Column(nullable = false, length = 20)
-    private String simbolo;
+    @Column(name = "accion_id", nullable = false)
+    private Long accionId;
 
-    @Column(nullable = false, length = 30)
-    private String mercado = "NYSE";
+    @Column(name = "ticker", nullable = false, length = 10)
+    private String ticker;
 
-    @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
-    private LadoOrden lado;
+    @Column(name = "tipo_orden", nullable = false, length = 30)
+    private TipoOrden tipoOrden;
 
-    @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
-    private TipoOrden tipo;
+    @Column(name = "lado_orden", nullable = false, length = 30)
+    private LadoOrden ladoOrden;
 
-    @Column(nullable = false, precision = 19, scale = 4)
-    private BigDecimal cantidad;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vigencia_orden", nullable = false, length = 30)
+    private VigenciaOrden vigenciaOrden;
 
-    @Column(precision = 19, scale = 4)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_orden", nullable = false, length = 30)
+    private EstadoOrden estadoOrden;
+
+    @Column(name = "configuracion_comision_id", nullable = false)
+    private Long configuracionComisionId;
+
+    @Column(name = "cantidad", nullable = false)
+    private Integer cantidad;
+
+    @Column(name = "precio_limite", precision = 18, scale = 4)
     private BigDecimal precioLimite;
 
-    @Column(precision = 19, scale = 4)
-    private BigDecimal precioEjecutado;
+    @Column(name = "precio_activacion", precision = 18, scale = 4)
+    private BigDecimal precioActivacion;
 
-    @Column(precision = 19, scale = 4)
-    private BigDecimal comision;
+    @Column(name = "precio_estimado", nullable = false, precision = 18, scale = 4)
+    private BigDecimal precioEstimado;
 
-    @Column(precision = 19, scale = 4)
-    private BigDecimal valorTotal;
+    @Column(name = "requiere_encolamiento", nullable = false)
+    private Boolean requiereEncolamiento = false;
 
-    @Column(nullable = false, length = 30)
-    @Enumerated(EnumType.STRING)
-    private EstadoOrden estado;
+    @Column(name = "confirmado_encolamiento_en")
+    private Instant confirmadoEncolamientoEn;
 
-    @Column(length = 100)
-    private String clientOrderId;
+    @Column(name = "client_order_id", nullable = false, unique = true)
+    private UUID clientOrderId;
 
-    @Column(length = 100)
-    private String ordenExternaId;
+    @Column(name = "broker_order_id", length = 64, unique = true)
+    private String brokerOrderId;
 
-    @Column(length = 100)
-    private String reservaFondosId;
+    @Column(name = "reserva_fondos_id", unique = true)
+    private Long reservaFondosId;
 
-    @Column(length = 100)
-    private String reservaPosicionId;
+    @Column(name = "reserva_posicion_id", unique = true)
+    private Long reservaPosicionId;
 
-    private Instant creadoEn;
-    private Instant actualizadoEn;
-    private Instant enviadaEn;
-    private Instant ejecutadaEn;
-    private Integer cantidadEjecutada;
-    private Integer cantidadRemanente;
+    @Column(name = "expira_en")
+    private Instant expiraEn;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
+    @Column(name = "creada_en", nullable = false)
+    private Instant creadaEn;
+
+    @Column(name = "actualizada_en", nullable = false)
+    private Instant actualizadaEn;
 
     public OrdenEntity() {}
 
-    public OrdenEntity(Orden orden) {
-        this.id = orden.getId();
-        this.usuarioId = orden.getUsuarioId();
-        this.simbolo = orden.getSimbolo();
-        this.mercado = orden.getMercado();
-        this.lado = orden.getLado();
-        this.tipo = orden.getTipo();
-        this.cantidad = orden.getCantidad();
-        this.precioLimite = orden.getPrecioLimite();
-        this.precioEjecutado = orden.getPrecioEjecutado();
-        this.comision = orden.getComision();
-        this.valorTotal = orden.getValorTotal();
-        this.estado = orden.getEstado();
-        this.clientOrderId = orden.getClientOrderId();
-        this.ordenExternaId = orden.getOrdenExternaId();
-        this.reservaFondosId = orden.getReservaFondosId();
-        this.reservaPosicionId = orden.getReservaPosicionId();
-        this.creadoEn = orden.getCreadoEn();
-        this.actualizadoEn = orden.getActualizadoEn();
-        this.enviadaEn = orden.getEnviadaEn();
-        this.ejecutadaEn = orden.getEjecutadaEn();
-        this.cantidadEjecutada = orden.getCantidadEjecutada();
-        this.cantidadRemanente = orden.getCantidadRemanente();
+    public static OrdenEntity fromDomain(Orden orden) {
+        OrdenEntity entity = new OrdenEntity();
+        entity.id = orden.getId();
+        entity.usuarioId = orden.getUsuarioId();
+        entity.accionId = orden.getAccionId();
+        entity.ticker = orden.getTicker();
+        entity.tipoOrden = orden.getTipoOrden();
+        entity.ladoOrden = orden.getLadoOrden();
+        entity.vigenciaOrden = orden.getVigenciaOrden();
+        entity.estadoOrden = orden.getEstadoOrden();
+        entity.configuracionComisionId = orden.getConfiguracionComisionId();
+        entity.cantidad = orden.getCantidad();
+        entity.precioLimite = orden.getPrecioLimite();
+        entity.precioActivacion = orden.getPrecioActivacion();
+        entity.precioEstimado = orden.getPrecioEstimado();
+        entity.requiereEncolamiento = orden.getRequiereEncolamiento() != null ? orden.getRequiereEncolamiento() : false;
+        entity.confirmadoEncolamientoEn = orden.getConfirmadoEncolamientoEn();
+        entity.clientOrderId = orden.getClientOrderId();
+        entity.brokerOrderId = orden.getBrokerOrderId();
+        entity.reservaFondosId = orden.getReservaFondosId();
+        entity.reservaPosicionId = orden.getReservaPosicionId();
+        entity.expiraEn = orden.getExpiraEn();
+        entity.version = orden.getVersion() != null ? orden.getVersion() : 0L;
+        entity.creadaEn = orden.getCreadaEn() != null ? orden.getCreadaEn() : Instant.now();
+        entity.actualizadaEn = orden.getActualizadaEn() != null ? orden.getActualizadaEn() : Instant.now();
+        return entity;
     }
 
     public Orden toDomain() {
-        Orden orden = new Orden();
-        orden.setId(id);
-        orden.setUsuarioId(usuarioId);
-        orden.setSimbolo(simbolo);
-        orden.setMercado(mercado);
-        orden.setLado(lado);
-        orden.setTipo(tipo);
-        orden.setCantidad(cantidad);
-        orden.setPrecioLimite(precioLimite);
-        orden.setPrecioEjecutado(precioEjecutado);
-        orden.setComision(comision);
-        orden.setValorTotal(valorTotal);
-        orden.setEstado(estado);
-        orden.setClientOrderId(clientOrderId);
-        orden.setOrdenExternaId(ordenExternaId);
-        orden.setReservaFondosId(reservaFondosId);
-        orden.setReservaPosicionId(reservaPosicionId);
-        orden.setCreadoEn(creadoEn);
-        orden.setActualizadoEn(actualizadoEn);
-        orden.setEnviadaEn(enviadaEn);
-        orden.setEjecutadaEn(ejecutadaEn);
-        orden.setCantidadEjecutada(cantidadEjecutada);
-        orden.setCantidadRemanente(cantidadRemanente);
-        return orden;
+        return new Orden(
+                this.id,
+                this.usuarioId,
+                this.accionId,
+                this.ticker,
+                this.tipoOrden,
+                this.ladoOrden,
+                this.vigenciaOrden,
+                this.estadoOrden,
+                this.configuracionComisionId,
+                this.cantidad,
+                this.precioLimite,
+                this.precioActivacion,
+                this.precioEstimado,
+                this.requiereEncolamiento,
+                this.confirmadoEncolamientoEn,
+                this.clientOrderId,
+                this.brokerOrderId,
+                this.reservaFondosId,
+                this.reservaPosicionId,
+                this.expiraEn,
+                this.version,
+                this.creadaEn,
+                this.actualizadaEn
+        );
     }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getUsuarioId() { return usuarioId; }
     public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
-    public String getSimbolo() { return simbolo; }
-    public void setSimbolo(String simbolo) { this.simbolo = simbolo; }
-    public String getMercado() { return mercado; }
-    public void setMercado(String mercado) { this.mercado = mercado; }
-    public LadoOrden getLado() { return lado; }
-    public void setLado(LadoOrden lado) { this.lado = lado; }
-    public TipoOrden getTipo() { return tipo; }
-    public void setTipo(TipoOrden tipo) { this.tipo = tipo; }
-    public BigDecimal getCantidad() { return cantidad; }
-    public void setCantidad(BigDecimal cantidad) { this.cantidad = cantidad; }
+    public Long getAccionId() { return accionId; }
+    public void setAccionId(Long accionId) { this.accionId = accionId; }
+    public String getTicker() { return ticker; }
+    public void setTicker(String ticker) { this.ticker = ticker; }
+    public TipoOrden getTipoOrden() { return tipoOrden; }
+    public void setTipoOrden(TipoOrden tipoOrden) { this.tipoOrden = tipoOrden; }
+    public LadoOrden getLadoOrden() { return ladoOrden; }
+    public void setLadoOrden(LadoOrden ladoOrden) { this.ladoOrden = ladoOrden; }
+    public VigenciaOrden getVigenciaOrden() { return vigenciaOrden; }
+    public void setVigenciaOrden(VigenciaOrden vigenciaOrden) { this.vigenciaOrden = vigenciaOrden; }
+    public EstadoOrden getEstadoOrden() { return estadoOrden; }
+    public void setEstadoOrden(EstadoOrden estadoOrden) { this.estadoOrden = estadoOrden; }
+    public Long getConfiguracionComisionId() { return configuracionComisionId; }
+    public void setConfiguracionComisionId(Long configuracionComisionId) { this.configuracionComisionId = configuracionComisionId; }
+    public Integer getCantidad() { return cantidad; }
+    public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
     public BigDecimal getPrecioLimite() { return precioLimite; }
     public void setPrecioLimite(BigDecimal precioLimite) { this.precioLimite = precioLimite; }
-    public BigDecimal getPrecioEjecutado() { return precioEjecutado; }
-    public void setPrecioEjecutado(BigDecimal precioEjecutado) { this.precioEjecutado = precioEjecutado; }
-    public BigDecimal getComision() { return comision; }
-    public void setComision(BigDecimal comision) { this.comision = comision; }
-    public BigDecimal getValorTotal() { return valorTotal; }
-    public void setValorTotal(BigDecimal valorTotal) { this.valorTotal = valorTotal; }
-    public EstadoOrden getEstado() { return estado; }
-    public void setEstado(EstadoOrden estado) { this.estado = estado; }
-    public String getClientOrderId() { return clientOrderId; }
-    public void setClientOrderId(String clientOrderId) { this.clientOrderId = clientOrderId; }
-    public String getOrdenExternaId() { return ordenExternaId; }
-    public void setOrdenExternaId(String ordenExternaId) { this.ordenExternaId = ordenExternaId; }
-    public String getReservaFondosId() { return reservaFondosId; }
-    public void setReservaFondosId(String reservaFondosId) { this.reservaFondosId = reservaFondosId; }
-    public String getReservaPosicionId() { return reservaPosicionId; }
-    public void setReservaPosicionId(String reservaPosicionId) { this.reservaPosicionId = reservaPosicionId; }
-    public Instant getCreadoEn() { return creadoEn; }
-    public void setCreadoEn(Instant creadoEn) { this.creadoEn = creadoEn; }
-    public Instant getActualizadoEn() { return actualizadoEn; }
-    public void setActualizadoEn(Instant actualizadoEn) { this.actualizadoEn = actualizadoEn; }
-    public Instant getEnviadaEn() { return enviadaEn; }
-    public void setEnviadaEn(Instant enviadaEn) { this.enviadaEn = enviadaEn; }
-    public Instant getEjecutadaEn() { return ejecutadaEn; }
-    public void setEjecutadaEn(Instant ejecutadaEn) { this.ejecutadaEn = ejecutadaEn; }
-    public Integer getCantidadEjecutada() { return cantidadEjecutada; }
-    public void setCantidadEjecutada(Integer cantidadEjecutada) { this.cantidadEjecutada = cantidadEjecutada; }
-    public Integer getCantidadRemanente() { return cantidadRemanente; }
-    public void setCantidadRemanente(Integer cantidadRemanente) { this.cantidadRemanente = cantidadRemanente; }
+    public BigDecimal getPrecioActivacion() { return precioActivacion; }
+    public void setPrecioActivacion(BigDecimal precioActivacion) { this.precioActivacion = precioActivacion; }
+    public BigDecimal getPrecioEstimado() { return precioEstimado; }
+    public void setPrecioEstimado(BigDecimal precioEstimado) { this.precioEstimado = precioEstimado; }
+    public Boolean getRequiereEncolamiento() { return requiereEncolamiento; }
+    public void setRequiereEncolamiento(Boolean requiereEncolamiento) { this.requiereEncolamiento = requiereEncolamiento; }
+    public Instant getConfirmadoEncolamientoEn() { return confirmadoEncolamientoEn; }
+    public void setConfirmadoEncolamientoEn(Instant confirmadoEncolamientoEn) { this.confirmadoEncolamientoEn = confirmadoEncolamientoEn; }
+    public UUID getClientOrderId() { return clientOrderId; }
+    public void setClientOrderId(UUID clientOrderId) { this.clientOrderId = clientOrderId; }
+    public String getBrokerOrderId() { return brokerOrderId; }
+    public void setBrokerOrderId(String brokerOrderId) { this.brokerOrderId = brokerOrderId; }
+    public Long getReservaFondosId() { return reservaFondosId; }
+    public void setReservaFondosId(Long reservaFondosId) { this.reservaFondosId = reservaFondosId; }
+    public Long getReservaPosicionId() { return reservaPosicionId; }
+    public void setReservaPosicionId(Long reservaPosicionId) { this.reservaPosicionId = reservaPosicionId; }
+    public Instant getExpiraEn() { return expiraEn; }
+    public void setExpiraEn(Instant expiraEn) { this.expiraEn = expiraEn; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
+    public Instant getCreadaEn() { return creadaEn; }
+    public void setCreadaEn(Instant creadaEn) { this.creadaEn = creadaEn; }
+    public Instant getActualizadaEn() { return actualizadaEn; }
+    public void setActualizadaEn(Instant actualizadaEn) { this.actualizadaEn = actualizadaEn; }
 }

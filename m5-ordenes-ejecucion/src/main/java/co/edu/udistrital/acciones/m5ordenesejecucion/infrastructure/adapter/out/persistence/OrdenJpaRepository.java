@@ -2,16 +2,27 @@ package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.out
 
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.EstadoOrden;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-@Repository
 public interface OrdenJpaRepository extends JpaRepository<OrdenEntity, Long> {
-    Optional<OrdenEntity> findByClientOrderId(String clientOrderId);
+    Optional<OrdenEntity> findByClientOrderId(UUID clientOrderId);
+    Optional<OrdenEntity> findByBrokerOrderId(String brokerOrderId);
     List<OrdenEntity> findByUsuarioId(Long usuarioId);
-    List<OrdenEntity> findByEstado(EstadoOrden estado);
-    List<OrdenEntity> findByUsuarioIdAndEstado(Long usuarioId, EstadoOrden estado);
-    boolean existsByClientOrderId(String clientOrderId);
+
+    @Query("SELECT o FROM OrdenEntity o WHERE o.usuarioId = :usuarioId " +
+            "AND (:estado IS NULL OR o.estadoOrden = :estado) " +
+            "AND (:ticker IS NULL OR o.ticker = :ticker) " +
+            "ORDER BY o.creadaEn DESC")
+    List<OrdenEntity> findByUsuarioIdAndFilters(@Param("usuarioId") Long usuarioId,
+                                                @Param("estado") EstadoOrden estado,
+                                                @Param("ticker") String ticker);
+
+    @Query("SELECT o FROM OrdenEntity o WHERE o.estadoOrden = 'PENDIENTE' " +
+            "AND o.requiereEncolamiento = true AND o.confirmadoEncolamientoEn IS NOT NULL")
+    List<OrdenEntity> findEncoladasConfirmadas();
 }
