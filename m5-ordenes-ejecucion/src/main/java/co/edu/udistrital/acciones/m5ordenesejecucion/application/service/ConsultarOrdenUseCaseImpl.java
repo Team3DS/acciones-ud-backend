@@ -1,12 +1,13 @@
 package co.edu.udistrital.acciones.m5ordenesejecucion.application.service;
 
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.in.ConsultarOrdenUseCase;
-import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.in.CrearOrdenUseCase.OrdenResultado;
-import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.EjecucionRepositoryPort;
+import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.EjecucionOrdenRepositoryPort;
+import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.HistorialEstadoOrdenRepositoryPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.OrdenRepositoryPort;
+import co.edu.udistrital.acciones.m5ordenesejecucion.domain.EjecucionOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.EstadoOrden;
+import co.edu.udistrital.acciones.m5ordenesejecucion.domain.HistorialEstadoOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.Orden;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +18,15 @@ import java.util.List;
 public class ConsultarOrdenUseCaseImpl implements ConsultarOrdenUseCase {
 
     private final OrdenRepositoryPort ordenRepository;
-    private final EjecucionRepositoryPort ejecucionRepository;
+    private final EjecucionOrdenRepositoryPort ejecucionRepository;
+    private final HistorialEstadoOrdenRepositoryPort historialRepository;
 
     public ConsultarOrdenUseCaseImpl(OrdenRepositoryPort ordenRepository,
-                                     EjecucionRepositoryPort ejecucionRepository) {
+                                     EjecucionOrdenRepositoryPort ejecucionRepository,
+                                     HistorialEstadoOrdenRepositoryPort historialRepository) {
         this.ordenRepository = ordenRepository;
         this.ejecucionRepository = ejecucionRepository;
+        this.historialRepository = historialRepository;
     }
 
     @Override
@@ -32,30 +36,17 @@ public class ConsultarOrdenUseCaseImpl implements ConsultarOrdenUseCase {
     }
 
     @Override
-    public List<Orden> buscarPorUsuario(Long usuarioId) {
-        return ordenRepository.findByUsuarioId(usuarioId);
+    public List<Orden> buscarPorUsuario(Long usuarioId, EstadoOrden estado, String ticker) {
+        return ordenRepository.findByUsuarioIdAndFilters(usuarioId, estado, ticker);
     }
 
     @Override
-    public List<Orden> buscarPorUsuarioYEstado(Long usuarioId, String estado) {
-        EstadoOrden estadoOrden = EstadoOrden.valueOf(estado);
-        return ordenRepository.findByUsuarioIdAndEstado(usuarioId, estadoOrden);
+    public List<EjecucionOrden> buscarFillsPorOrden(Long ordenId) {
+        return ejecucionRepository.findByOrdenId(ordenId);
     }
 
     @Override
-    public OrdenResultado resumen(Long ordenId) {
-        Orden orden = buscarPorId(ordenId);
-        return new OrdenResultado(
-                orden.getId(),
-                orden.getSimbolo(),
-                orden.getLado().name(),
-                orden.getTipo().name(),
-                orden.getCantidad().intValue(),
-                orden.getPrecioLimite(),
-                orden.getComision(),
-                orden.getValorTotal(),
-                orden.getEstado().name(),
-                orden.getClientOrderId()
-        );
+    public List<HistorialEstadoOrden> buscarHistorialPorOrden(Long ordenId) {
+        return historialRepository.findByOrdenId(ordenId);
     }
 }
