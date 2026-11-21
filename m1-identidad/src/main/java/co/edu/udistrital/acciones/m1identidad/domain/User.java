@@ -65,8 +65,12 @@ public class User {
     }
 
     public Long getId() { return id; }
+    public String getNombres() { return nombres; }
+    public String getApellidos() { return apellidos; }
     public String getCorreo() { return correo; }
+    public String getNivelInversionista() { return nivelInversionista; }
     public String getEstadoUsuario() { return estadoUsuario; }
+    public Boolean getSolicitaReporteMensual() { return solicitaReporteMensual; }
 
     public void setNombres(String nombres) { this.nombres = nombres; }
     public void setApellidos(String apellidos) { this.apellidos = apellidos; }
