@@ -63,12 +63,12 @@ class ReservaPosicionTest {
     void consumosParcialesAcumulanHastaConsumirLaReserva() {
         ReservaPosicion reserva = reserva();
 
-        reserva.consumir(1L, 4);
+        reserva.consumir(4);
 
         assertThat(reserva.getCantidadConsumida()).isEqualTo(4);
         assertThat(reserva.pendiente()).isEqualTo(6);
         assertThat(reserva.getEstado()).isEqualTo(EstadoReservaPosicion.ACTIVA);
-        reserva.consumir(2L, 6);
+        reserva.consumir(6);
 
         assertThat(reserva.getCantidadConsumida()).isEqualTo(10);
         assertThat(reserva.pendiente()).isEqualTo(0);
@@ -79,10 +79,10 @@ class ReservaPosicionTest {
     void noConsumeMasDeLoPendienteNiUnaReservaLiberada() {
         ReservaPosicion reserva = reserva();
 
-        assertThatThrownBy(() -> reserva.consumir(1L, 11))
+        assertThatThrownBy(() -> reserva.consumir(11))
                 .isInstanceOf(VentaNoDisponibleException.class);
         reserva.liberar("cancelada", T1);
-        assertThatThrownBy(() -> reserva.consumir(1L, 1))
+        assertThatThrownBy(() -> reserva.consumir(1))
                 .isInstanceOf(TransicionReservaException.class);
     }
 
@@ -115,9 +115,9 @@ class ReservaPosicionTest {
     void exigeCantidadPositivaAlConsumir() {
         ReservaPosicion reserva = reserva();
 
-        assertThatThrownBy(() -> reserva.consumir(1L, 0))
+        assertThatThrownBy(() -> reserva.consumir(0))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> reserva.consumir(1L, -1))
+        assertThatThrownBy(() -> reserva.consumir(-1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

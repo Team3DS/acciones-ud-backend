@@ -69,6 +69,11 @@ class M6ValoracionIntegrationTest extends AbstractIntegrationTest {
                     select id from posicion where user_id in (?, ?)
                 )
                 """, PRIMER_USUARIO, SEGUNDO_USUARIO);
+        jdbc.update("""
+                delete from ejecucion_aplicada where posicion_id in (
+                    select id from posicion where user_id in (?, ?)
+                )
+                """, PRIMER_USUARIO, SEGUNDO_USUARIO);
         jdbc.update("delete from posicion where user_id in (?, ?)", PRIMER_USUARIO, SEGUNDO_USUARIO);
     }
 

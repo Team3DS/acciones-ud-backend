@@ -75,7 +75,7 @@ public class ReservaPosicion {
         return this.cantidadReservada - this.cantidadConsumida - this.cantidadLiberada;
     }
 
-    public void consumir(Long ejecucionId, Integer cantidad) {
+    public void consumir(Integer cantidad) {
         if (this.estado != EstadoReservaPosicion.ACTIVA) {
             throw new TransicionReservaException(
                     "No se puede consumir una reserva en estado " + this.estado);

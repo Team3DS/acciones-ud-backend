@@ -25,8 +25,8 @@ public class EjecucionAplicada {
     @Column(name = "posicion_id", nullable = false)
     private Long posicionId;
 
-    @Column(name = "ejecucion_orden_id", nullable = false, unique = true)
-    private Long ejecucionOrdenId;
+    @Column(name = "ejecucion_orden_id", nullable = false)
+    private String ejecucionOrdenId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "lado_orden", nullable = false, length = 10)
@@ -50,7 +50,7 @@ public class EjecucionAplicada {
     protected EjecucionAplicada() {
     }
 
-    public EjecucionAplicada(Long posicionId, Long ejecucionOrdenId, LadoEjecucion ladoOrden,
+    public EjecucionAplicada(Long posicionId, String ejecucionOrdenId, LadoEjecucion ladoOrden,
                               BigDecimal cantidad, BigDecimal precioEjecucion, BigDecimal precioPromedioCosto,
                               UUID claveIdempotencia, Instant aplicadoEn) {
         this.posicionId = Objects.requireNonNull(posicionId, "posicionId es obligatorio");
@@ -71,7 +71,7 @@ public class EjecucionAplicada {
         return posicionId;
     }
 
-    public Long getEjecucionOrdenId() {
+    public String getEjecucionOrdenId() {
         return ejecucionOrdenId;
     }
 

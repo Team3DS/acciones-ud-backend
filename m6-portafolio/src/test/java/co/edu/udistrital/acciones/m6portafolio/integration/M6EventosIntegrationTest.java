@@ -97,6 +97,11 @@ class M6EventosIntegrationTest extends AbstractIntegrationTest {
                     select id from posicion where user_id in (%s)
                 )
                 """.formatted(marcadores), argumentos());
+        jdbc.update("""
+                delete from ejecucion_aplicada where posicion_id in (
+                    select id from posicion where user_id in (%s)
+                )
+                """.formatted(marcadores), argumentos());
         jdbc.update("delete from posicion where user_id in (%s)".formatted(marcadores), argumentos());
     }
 

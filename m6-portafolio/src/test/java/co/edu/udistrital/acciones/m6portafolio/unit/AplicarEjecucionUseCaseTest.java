@@ -30,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -271,6 +272,23 @@ class AplicarEjecucionUseCaseTest {
                 new Actor(USUARIO, false, false));
 
         assertThat(respuesta.position().priceTimestamp()).isEqualTo(Instant.now(CLOCK));
+    }
+
+    @Test
+    void usaExecutionIdCuandoLaEjecucionRestNoTraeEventId() {
+        UUID claveEsperada = UUID.nameUUIDFromBytes(
+                "EXE:rest-1".getBytes(StandardCharsets.UTF_8));
+        when(ejecucionesAplicadas.existePorClaveIdempotencia(claveEsperada)).thenReturn(true);
+        when(posiciones.findByUserIdAndSymbol(USUARIO, "AAPL"))
+                .thenReturn(Optional.of(posicionConId(USUARIO, "AAPL")));
+
+        EjecucionResponse respuesta = caso.ejecutar(
+                new EjecucionRequest("rest-order", "rest-1", USUARIO, "AAPL", LadoEjecucion.BUY,
+                        BigDecimal.TEN, new BigDecimal("180.00"), null, null),
+                new Actor(USUARIO, false, false));
+
+        assertThat(respuesta.applied()).isFalse();
+        verify(ejecucionesAplicadas).existePorClaveIdempotencia(claveEsperada);
     }
 
     private static EjecucionRequest peticion(long userId, String symbol, LadoEjecucion lado,

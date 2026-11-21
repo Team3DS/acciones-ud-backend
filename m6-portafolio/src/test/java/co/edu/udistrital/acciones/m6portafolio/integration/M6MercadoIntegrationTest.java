@@ -51,6 +51,7 @@ class M6MercadoIntegrationTest extends AbstractIntegrationTest {
                 """);
         jdbc.update("delete from movimiento_posicion where posicion_id in (select id from posicion where user_id in (6701, 6702, 6703))");
         jdbc.update("delete from reserva_posicion where posicion_id in (select id from posicion where user_id in (6701, 6702, 6703))");
+        jdbc.update("delete from ejecucion_aplicada where posicion_id in (select id from posicion where user_id in (6701, 6702, 6703))");
         jdbc.update("delete from posicion where user_id in (6701, 6702, 6703)");
     }
 

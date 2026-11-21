@@ -24,6 +24,7 @@ import co.edu.udistrital.acciones.m6portafolio.domain.excepcion.VentaNoDisponibl
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -56,7 +57,7 @@ public class AplicarEjecucionUseCase {
     public EjecucionResponse ejecutar(EjecucionRequest peticion, Actor actor) {
         actor.verificarOperacion(peticion.userId());
         String symbol = Simbolos.normalizar(peticion.symbol());
-        UUID claveIdempotencia = UUID.fromString(peticion.eventId());
+        UUID claveIdempotencia = claveIdempotencia(peticion);
         if (ejecucionesAplicadas.existePorClaveIdempotencia(claveIdempotencia)) {
             return repetida(peticion.userId(), symbol);
         }
@@ -68,10 +69,11 @@ public class AplicarEjecucionUseCase {
         }
         aplicarMovimiento(peticion, posicion, ocurrido);
         posiciones.save(posicion);
-        movimientos.save(crearMovimiento(peticion, posicion, claveIdempotencia.toString(), ocurrido));
+        movimientos.save(crearMovimiento(peticion, posicion,
+                claveMovimiento(peticion, claveIdempotencia), ocurrido));
         EjecucionAplicada aplicada = new EjecucionAplicada(
                 posicion.getId(),
-                Long.parseLong(peticion.executionId()),
+                peticion.executionId(),
                 peticion.side(),
                 peticion.quantity(),
                 peticion.price(),
@@ -87,6 +89,26 @@ public class AplicarEjecucionUseCase {
                         peticion.price(), posicion.getCantidad(), posicion.getCostoPromedio(),
                         posicion.getPnlRealizado()));
         return new EjecucionResponse(true, valoracion.valorar(posicion));
+    }
+
+    private UUID claveIdempotencia(EjecucionRequest peticion) {
+        if (peticion.eventId() != null && !peticion.eventId().isBlank()) {
+            try {
+                return UUID.fromString(peticion.eventId());
+            } catch (IllegalArgumentException ignored) {
+                return UUID.nameUUIDFromBytes(("EVENTO:" + peticion.eventId())
+                        .getBytes(StandardCharsets.UTF_8));
+            }
+        }
+        return UUID.nameUUIDFromBytes(("EXE:" + peticion.executionId())
+                .getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String claveMovimiento(EjecucionRequest peticion, UUID claveIdempotencia) {
+        if (peticion.eventId() == null || peticion.eventId().isBlank()) {
+            return "EXE:" + peticion.executionId();
+        }
+        return claveIdempotencia.toString();
     }
 
     private Posicion obtenerPosicionBloqueada(EjecucionRequest peticion, String symbol, Instant ahora) {
@@ -115,7 +137,7 @@ public class AplicarEjecucionUseCase {
             if (!reserva.getPosicionId().equals(posicion.getId())) {
                 throw new VentaNoDisponibleException("La reserva no corresponde a la posicion de la venta");
             }
-            reserva.consumir(Long.parseLong(peticion.executionId()), peticion.quantity().intValue());
+            reserva.consumir(peticion.quantity().intValue());
             posicion.venderReservado(peticion.quantity(), peticion.price(), ocurrido);
             reservas.save(reserva);
             return;

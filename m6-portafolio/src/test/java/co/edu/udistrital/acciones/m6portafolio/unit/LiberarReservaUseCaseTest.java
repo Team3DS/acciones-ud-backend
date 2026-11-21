@@ -117,7 +117,7 @@ class LiberarReservaUseCaseTest {
     void liberarDespuesDeUnaEjecucionParcialDevuelveSoloLoPendiente() {
         Posicion posicion = posicionReservada("10");
         ReservaPosicion reserva = reservaPendiente();
-        reserva.consumir(1L, 4);
+        reserva.consumir(4);
         posicion.venderReservado(new BigDecimal("4"), new BigDecimal("200.00"), AHORA.minusSeconds(10));
         when(reservas.findById(RESERVA_ID)).thenReturn(Optional.of(reserva));
         when(posiciones.findByIdForUpdate(POSICION_ID)).thenReturn(Optional.of(posicion));

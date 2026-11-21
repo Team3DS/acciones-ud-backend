@@ -154,7 +154,7 @@ class ProcesarEventoEntranteServiceTest {
     @Test
     void unaEjecucionConReservaConfirmadaSeDescarta() {
         ReservaPosicion reserva = reserva(9L, 5L, 4L);
-        reserva.consumir(4L, 10);
+        reserva.consumir(10);
         when(reservas.findByOrderId("4")).thenReturn(Optional.of(reserva));
         EventoEntrante evento = evento(RoutingKeys.M5_ORDEN_EJECUTADA, "evento-4", Map.of(
                 "orderId", "4",

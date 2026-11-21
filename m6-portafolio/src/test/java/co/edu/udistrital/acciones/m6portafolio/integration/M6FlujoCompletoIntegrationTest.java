@@ -67,6 +67,11 @@ class M6FlujoCompletoIntegrationTest extends AbstractIntegrationTest {
                     select id from posicion where user_id = ?
                 )
                 """, USER_ID);
+        jdbc.update("""
+                delete from ejecucion_aplicada where posicion_id in (
+                    select id from posicion where user_id = ?
+                )
+                """, USER_ID);
         jdbc.update("delete from posicion where user_id = ?", USER_ID);
         jdbc.update("delete from evento_procesado where event_id like ?", PREFIJO_EVENTO + "%");
     }
