@@ -81,14 +81,14 @@ class PublicadorOrdenesAdapterTest {
         UUID eventId = UUID.randomUUID();
         Instant executedAt = Instant.parse("2026-11-22T15:30:00Z");
 
-        adapter.publicarOrdenEjecutada(eventId, 500L, 1L, 10L, "MSFT", "COMPRA", 50,
+        adapter.publicarOrdenEjecutada(eventId, "exec-500", 1L, 10L, "MSFT", "COMPRA", 50,
                 new BigDecimal("200.50"), new BigDecimal("2.00"), executedAt);
 
         Map<String, Object> sobre = sobreEnviado("m5.orden.ejecutada");
         verificarSobre(sobre, eventId, "m5.orden.ejecutada", "1");
         Map<String, Object> payload = payload(sobre);
         assertEquals("1", payload.get("orderId"));
-        assertEquals("500", payload.get("executionId"));
+        assertEquals("exec-500", payload.get("executionId"));
         assertEquals(10L, payload.get("userId"));
         assertEquals("BUY", payload.get("side"));
         assertEquals(0, new BigDecimal("10027.00").compareTo((BigDecimal) payload.get("totalAmount")));
@@ -101,7 +101,7 @@ class PublicadorOrdenesAdapterTest {
 
     @Test
     void publicarOrdenEjecutadaDeVentaDescuentaLaComision() {
-        adapter.publicarOrdenEjecutada(UUID.randomUUID(), 501L, 2L, 10L, "TSLA", "VENTA", 10,
+        adapter.publicarOrdenEjecutada(UUID.randomUUID(), "exec-501", 2L, 10L, "TSLA", "VENTA", 10,
                 new BigDecimal("100.00"), new BigDecimal("20.00"), null);
 
         Map<String, Object> payload = payload(sobreEnviado("m5.orden.ejecutada"));

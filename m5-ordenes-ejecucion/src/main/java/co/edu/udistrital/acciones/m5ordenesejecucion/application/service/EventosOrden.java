@@ -58,9 +58,10 @@ public final class EventosOrden {
     /**
      * {@code totalAmount} es el efectivo que mueve la ejecución en M2: en una compra, precio por cantidad más la
      * comisión (lo que se confirma de la reserva); en una venta, precio por cantidad menos la comisión (lo que se
-     * acredita).
+     * acredita). {@code executionId} es el id de la ejecución del broker: el mismo que M5 envía por REST a M2 y M6,
+     * para que descarten la ejecución si ya la aplicaron por ese camino.
      */
-    public static Map<String, Object> ejecutada(Long ejecucionId, Long ordenId, Long usuarioId, String symbol,
+    public static Map<String, Object> ejecutada(String ejecucionId, Long ordenId, Long usuarioId, String symbol,
                                                 String lado, Integer cantidad, BigDecimal precio,
                                                 BigDecimal comision, Instant ejecutadaEn) {
         String side = lado(lado);
@@ -71,7 +72,7 @@ public final class EventosOrden {
         fill.put("timestamp", momento.toString());
 
         Map<String, Object> payload = base(ordenId, usuarioId);
-        payload.put("executionId", String.valueOf(ejecucionId));
+        payload.put("executionId", ejecucionId);
         payload.put("symbol", symbol);
         payload.put("side", side);
         payload.put("fills", List.of(fill));

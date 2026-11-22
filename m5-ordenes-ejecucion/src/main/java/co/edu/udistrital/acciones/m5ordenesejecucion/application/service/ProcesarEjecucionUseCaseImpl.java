@@ -187,10 +187,10 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
         }
 
         // 6. Registrar en Outbox y publicar evento
-        registrarOutboxEjecutada(eventId, ejecucion, orden);
+        registrarOutboxEjecutada(eventId, comando.brokerExecutionId(), ejecucion, orden);
         publicador.publicarOrdenEjecutada(
                 eventId,
-                ejecucion.getId(),
+                comando.brokerExecutionId(),
                 orden.getId(),
                 orden.getUsuarioId(),
                 orden.getTicker(),
@@ -205,10 +205,10 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
     }
 
     /** Guarda en el outbox el evento OrdenEjecutada con el mismo sobre y eventId que el publicador directo. */
-    private void registrarOutboxEjecutada(UUID eventId, EjecucionOrden ejecucion, Orden orden) {
+    private void registrarOutboxEjecutada(UUID eventId, String executionId, EjecucionOrden ejecucion, Orden orden) {
         try {
             Map<String, Object> carga = EventosOrden.sobre(eventId, EventosOrden.ORDEN_EJECUTADA, orden.getId(),
-                    EventosOrden.ejecutada(ejecucion.getId(), orden.getId(), orden.getUsuarioId(), orden.getTicker(),
+                    EventosOrden.ejecutada(executionId, orden.getId(), orden.getUsuarioId(), orden.getTicker(),
                             orden.getLadoOrden().name(), ejecucion.getCantidad(), ejecucion.getPrecioEjecucion(),
                             ejecucion.getComision(), ejecucion.getEjecutadaEn()));
             String json = objectMapper.writeValueAsString(carga);
