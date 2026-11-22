@@ -166,7 +166,8 @@ public class StripePaymentProviderAdapter implements PaymentProviderPort {
                 suscripcion.getCustomer(),
                 lookupKey,
                 item == null ? null : aInstante(item.getCurrentPeriodStart()),
-                item == null ? null : aInstante(item.getCurrentPeriodEnd()));
+                item == null ? null : aInstante(item.getCurrentPeriodEnd()),
+                item == null ? null : item.getId());
     }
 
     private ReciboProveedor mapear(Invoice factura) {

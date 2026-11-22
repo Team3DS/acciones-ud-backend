@@ -158,6 +158,57 @@ class StripePaymentProviderAdapterTest {
     }
 
     @Test
+    void programarCancelacionEnviaCancelAtPeriodEndYLaClaveDeIdempotencia() {
+        STRIPE.stubFor(post(urlPathEqualTo("/v1/subscriptions/sub_1"))
+                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")
+                        .withBody(subscriptor("active", true, "acciones_ud_premium_mensual"))));
+
+        var suscripcion = adaptador.programarCancelacion("sub_1", "m10-cancelar-7-3");
+
+        assertThat(suscripcion.cancelarAlFinal()).isTrue();
+        STRIPE.verify(postRequestedFor(urlPathEqualTo("/v1/subscriptions/sub_1"))
+                .withHeader("Idempotency-Key", equalTo("m10-cancelar-7-3"))
+                .withRequestBody(containing("cancel_at_period_end=true")));
+    }
+
+    @Test
+    void cambiarPrecioEnviaElItemElPrecioYElProrrateo() {
+        STRIPE.stubFor(post(urlPathEqualTo("/v1/subscriptions/sub_1"))
+                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")
+                        .withBody(subscriptor("active", false, "acciones_ud_premium_anual"))));
+
+        var suscripcion = adaptador.cambiarPrecio(
+                "sub_1", "si_1", "price_anual", "m10-cambiar-intervalo-8-3");
+
+        assertThat(suscripcion.lookupKey()).isEqualTo("acciones_ud_premium_anual");
+        STRIPE.verify(postRequestedFor(urlPathEqualTo("/v1/subscriptions/sub_1"))
+                .withHeader("Idempotency-Key", equalTo("m10-cambiar-intervalo-8-3"))
+                .withRequestBody(containing("items[0][id]=si_1"))
+                .withRequestBody(containing("items[0][price]=price_anual"))
+                .withRequestBody(containing("proration_behavior=always_invoice")));
+    }
+
+    @Test
+    void unFalloAlProgramarLaCancelacionEsProveedorNoDisponible() {
+        STRIPE.stubFor(post(urlPathEqualTo("/v1/subscriptions/sub_1"))
+                .willReturn(aResponse().withStatus(500).withHeader("Content-Type", "application/json")
+                        .withBody("{\"error\":{\"type\":\"api_error\",\"message\":\"fallo interno\"}}")));
+
+        assertThatThrownBy(() -> adaptador.programarCancelacion("sub_1", "clave-error"))
+                .isInstanceOf(ProveedorPagosNoDisponibleException.class);
+    }
+
+    private static String subscriptor(String estado, boolean cancelarAlFinal, String lookupKey) {
+        return """
+                {"id":"sub_1","object":"subscription","status":"%s","cancel_at_period_end":%s,
+                 "metadata":{"userId":"42"},"customer":"cus_1",
+                 "items":{"object":"list","data":[{"id":"si_1","object":"subscription_item",
+                  "price":{"id":"price_1","object":"price","lookup_key":"%s"},
+                  "current_period_start":1800000000,"current_period_end":1800300000}]}}
+                """.formatted(estado, cancelarAlFinal, lookupKey);
+    }
+
+    @Test
     void expirarSesionLlamaAlEndpointDeExpiracion() {
         STRIPE.stubFor(post(urlPathEqualTo("/v1/checkout/sessions/cs_abc/expire"))
                 .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")

@@ -13,5 +13,6 @@ public record SuscripcionProveedor(
         String customerId,
         String lookupKey,
         Instant periodoInicio,
-        Instant periodoFin) {
+        Instant periodoFin,
+        String itemId) {
 }

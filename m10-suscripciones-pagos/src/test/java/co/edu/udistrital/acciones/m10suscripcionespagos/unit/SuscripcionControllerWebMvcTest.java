@@ -6,16 +6,22 @@ import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.PlanResp
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.PrecioPlanResponse;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.ResultadoCheckout;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.SuscripcionResponse;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.exception.RecursoNoEncontradoException;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.exception.SuscripcionAjenaException;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.exception.SuscripcionVigenteException;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.CambiarIntervaloUseCase;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.CancelarSuscripcionUseCase;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.ConsultarEntitlementUseCase;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.ConsultarMiSuscripcionUseCase;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.IniciarSuscripcionUseCase;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.ListarPlanesUseCase;
+import co.edu.udistrital.acciones.m10suscripcionespagos.domain.DatosSuscripcion;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.EstadoSuscripcion;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.IntervaloPlan;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.PrecioPlan;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.Plan;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.SesionCheckout;
+import co.edu.udistrital.acciones.m10suscripcionespagos.domain.Suscripcion;
 import co.edu.udistrital.acciones.m10suscripcionespagos.infrastructure.adapter.in.rest.EntitlementController;
 import co.edu.udistrital.acciones.m10suscripcionespagos.infrastructure.adapter.in.rest.PlanController;
 import co.edu.udistrital.acciones.m10suscripcionespagos.infrastructure.adapter.in.rest.SuscripcionController;
@@ -65,6 +71,8 @@ class SuscripcionControllerWebMvcTest {
     private final ConsultarMiSuscripcionUseCase miSuscripcion = mock(ConsultarMiSuscripcionUseCase.class);
     private final ConsultarEntitlementUseCase entitlement = mock(ConsultarEntitlementUseCase.class);
     private final IniciarSuscripcionUseCase iniciarSuscripcion = mock(IniciarSuscripcionUseCase.class);
+    private final CancelarSuscripcionUseCase cancelarSuscripcion = mock(CancelarSuscripcionUseCase.class);
+    private final CambiarIntervaloUseCase cambiarIntervalo = mock(CambiarIntervaloUseCase.class);
 
     private final ObjectMapper json = Jackson2ObjectMapperBuilder.json()
             .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
@@ -73,7 +81,8 @@ class SuscripcionControllerWebMvcTest {
     private final MockMvc mockMvc = MockMvcBuilders
             .standaloneSetup(
                     new PlanController(listarPlanes),
-                    new SuscripcionController(miSuscripcion, iniciarSuscripcion),
+                    new SuscripcionController(miSuscripcion, iniciarSuscripcion,
+                            cancelarSuscripcion, cambiarIntervalo),
                     new EntitlementController(entitlement))
             .setControllerAdvice(new GlobalExceptionHandler(
                     new EscritorProblemas(json, Clock.fixed(INICIO, ZoneOffset.UTC))))
@@ -216,6 +225,75 @@ class SuscripcionControllerWebMvcTest {
                         .content("{\"interval\":\"ANUAL\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("SUSCRIPCION_VIGENTE"));
+    }
+
+    @Test
+    void cancelarProgramaLaCancelacionYResponde200() throws Exception {
+        when(cancelarSuscripcion.ejecutar(USUARIO, 7L))
+                .thenReturn(suscripcion(IntervaloPlan.MENSUAL, true));
+
+        mockMvc.perform(post("/api/v1/subscriptions/7/cancel").with(autenticado()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(7))
+                .andExpect(jsonPath("$.status").value("ACTIVA"))
+                .andExpect(jsonPath("$.cancelAtPeriodEnd").value(true));
+    }
+
+    @Test
+    void cancelarDeOtroUsuarioResponde403() throws Exception {
+        when(cancelarSuscripcion.ejecutar(any(), eq(7L)))
+                .thenThrow(new SuscripcionAjenaException("La suscripcion no pertenece al usuario"));
+
+        mockMvc.perform(post("/api/v1/subscriptions/7/cancel").with(autenticado()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void cancelarInexistenteResponde404() throws Exception {
+        when(cancelarSuscripcion.ejecutar(any(), eq(99L)))
+                .thenThrow(new RecursoNoEncontradoException("La suscripcion no existe"));
+
+        mockMvc.perform(post("/api/v1/subscriptions/99/cancel").with(autenticado()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void cambiarIntervaloResponde200ConElNuevoIntervalo() throws Exception {
+        when(cambiarIntervalo.ejecutar(USUARIO, 7L, IntervaloPlan.ANUAL))
+                .thenReturn(suscripcion(IntervaloPlan.ANUAL, false));
+
+        mockMvc.perform(post("/api/v1/subscriptions/7/change-plan")
+                        .with(autenticado())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"interval\":\"ANUAL\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.interval").value("ANUAL"))
+                .andExpect(jsonPath("$.amount").value(12.00));
+    }
+
+    @Test
+    void cambiarIntervaloSinIntervaloResponde400() throws Exception {
+        mockMvc.perform(post("/api/v1/subscriptions/7/change-plan")
+                        .with(autenticado())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    private static Suscripcion suscripcion(IntervaloPlan intervalo, boolean cancelarAlFinal) {
+        Plan plan = Plan.crear("PREMIUM", "Acciones UD Premium", "Watchlist y alertas");
+        PrecioPlan precio = PrecioPlan.crear(plan, intervalo, new BigDecimal("12.00"),
+                "USD", "acciones_ud_premium_mensual");
+        Suscripcion suscripcion = Suscripcion.crear(USUARIO, new DatosSuscripcion(
+                "sub_1", precio, EstadoSuscripcion.ACTIVA, INICIO, FIN, cancelarAlFinal, null, null), INICIO);
+        try {
+            java.lang.reflect.Field campo = Suscripcion.class.getDeclaredField("id");
+            campo.setAccessible(true);
+            campo.set(suscripcion, 7L);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException(ex);
+        }
+        return suscripcion;
     }
 
     private static SesionCheckout sesion(String stripeSessionId, String url) {

@@ -4,6 +4,9 @@ import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.Checkout
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.MiSuscripcionResponse;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.ResultadoCheckout;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.SolicitudSuscripcion;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.dto.SuscripcionResponse;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.CambiarIntervaloUseCase;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.CancelarSuscripcionUseCase;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.ConsultarMiSuscripcionUseCase;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase.IniciarSuscripcionUseCase;
 import co.edu.udistrital.acciones.m10suscripcionespagos.infrastructure.config.OpenApiConfig;
@@ -23,6 +26,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -39,11 +43,17 @@ public class SuscripcionController {
 
     private final ConsultarMiSuscripcionUseCase consultarMiSuscripcion;
     private final IniciarSuscripcionUseCase iniciarSuscripcion;
+    private final CancelarSuscripcionUseCase cancelarSuscripcion;
+    private final CambiarIntervaloUseCase cambiarIntervalo;
 
     public SuscripcionController(ConsultarMiSuscripcionUseCase consultarMiSuscripcion,
-                                 IniciarSuscripcionUseCase iniciarSuscripcion) {
+                                 IniciarSuscripcionUseCase iniciarSuscripcion,
+                                 CancelarSuscripcionUseCase cancelarSuscripcion,
+                                 CambiarIntervaloUseCase cambiarIntervalo) {
         this.consultarMiSuscripcion = consultarMiSuscripcion;
         this.iniciarSuscripcion = iniciarSuscripcion;
+        this.cancelarSuscripcion = cancelarSuscripcion;
+        this.cambiarIntervalo = cambiarIntervalo;
     }
 
     @Operation(summary = "Inicia la suscripcion premium",
@@ -93,5 +103,66 @@ public class SuscripcionController {
     @GetMapping("/me")
     public MiSuscripcionResponse miSuscripcion(@AuthenticationPrincipal UsuarioAutenticado usuario) {
         return consultarMiSuscripcion.ejecutar(usuario.userId());
+    }
+
+    @Operation(summary = "Programa la cancelacion de la suscripcion",
+            description = "Mantiene el premium hasta el final del periodo pagado. Repetir la peticion no cambia nada.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Cancelacion programada",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SuscripcionResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o invalido",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "403", description = "La suscripcion es de otro usuario",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "La suscripcion no existe",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Estado que no permite cancelar",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "503", description = "Stripe no disponible",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/{id}/cancel")
+    public SuscripcionResponse cancelar(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                        @PathVariable Long id) {
+        return SuscripcionResponse.de(cancelarSuscripcion.ejecutar(usuario.userId(), id));
+    }
+
+    @Operation(summary = "Cambia entre el intervalo mensual y el anual",
+            description = "Stripe prorratea el periodo y devuelve el nuevo periodo pagado.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Intervalo actualizado o ya solicitado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = SuscripcionResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Intervalo invalido",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente o invalido",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "403", description = "La suscripcion es de otro usuario",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "La suscripcion no existe",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Estado que no permite el cambio",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "503", description = "Stripe no disponible o catalogo inconsistente",
+                    content = @Content(mediaType = PROBLEMA,
+                            schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/{id}/change-plan")
+    public SuscripcionResponse cambiarIntervalo(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                                @PathVariable Long id,
+                                                @Valid @RequestBody SolicitudSuscripcion solicitud) {
+        return SuscripcionResponse.de(
+                cambiarIntervalo.ejecutar(usuario.userId(), id, solicitud.interval()));
     }
 }

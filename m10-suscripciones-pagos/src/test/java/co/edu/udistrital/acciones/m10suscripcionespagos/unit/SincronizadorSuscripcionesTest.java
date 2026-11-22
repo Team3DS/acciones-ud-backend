@@ -162,12 +162,12 @@ class SincronizadorSuscripcionesTest {
     private SuscripcionProveedor remota(String id, String estado, String motivo,
                                         boolean cancelarAlFinal, Instant finalizadaEn) {
         return new SuscripcionProveedor(id, estado, cancelarAlFinal, null, finalizadaEn, motivo,
-                USUARIO, "cus_1", "acciones_ud_premium_mensual", INICIO, FIN);
+                USUARIO, "cus_1", "acciones_ud_premium_mensual", INICIO, FIN, "si_1");
     }
 
     private SuscripcionProveedor remotaConLookup(String id, String estado, String lookup) {
         return new SuscripcionProveedor(id, estado, false, null, null, null,
-                USUARIO, "cus_1", lookup, INICIO, FIN);
+                USUARIO, "cus_1", lookup, INICIO, FIN, "si_1");
     }
 
     private static PrecioPlan precio() {
