@@ -16,24 +16,28 @@ import java.util.UUID;
 @Component
 public class OutboxPublisher implements OutboxPort {
 
-    private final OutboxEventoRepositoryPort repositorio;
     private final ObjectMapper json;
-    private final Clock clock;
+    private final Clock reloj;
+    private final OutboxEventoRepositoryPort almacen;
 
     public OutboxPublisher(OutboxEventoRepositoryPort repositorio, ObjectMapper json, Clock clock) {
-        this.repositorio = repositorio;
         this.json = json;
-        this.clock = clock;
+        this.reloj = clock;
+        this.almacen = repositorio;
     }
 
     @Override
     public void registrar(String aggregateType, String aggregateId, String eventType, Object payload) {
-        String cuerpo = serializar(eventType, payload);
-        repositorio.guardar(OutboxEvento.registrar(UUID.randomUUID(), aggregateType, aggregateId,
-                eventType, cuerpo, MDC.get(CorrelationIdFilter.CLAVE_MDC), Instant.now(clock)));
+        almacen.guardar(nuevoRegistro(aggregateType, aggregateId, eventType, payload));
     }
 
-    private String serializar(String eventType, Object payload) {
+    private OutboxEvento nuevoRegistro(String aggregateType, String aggregateId,
+                                       String eventType, Object payload) {
+        return OutboxEvento.pendiente(UUID.randomUUID(), aggregateType, aggregateId, eventType,
+                convertir(payload, eventType), MDC.get(CorrelationIdFilter.CLAVE_MDC), Instant.now(reloj));
+    }
+
+    private String convertir(Object payload, String eventType) {
         try {
             return json.writeValueAsString(payload);
         } catch (JsonProcessingException ex) {

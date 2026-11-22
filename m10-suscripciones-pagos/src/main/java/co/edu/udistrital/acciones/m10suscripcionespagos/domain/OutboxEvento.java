@@ -16,16 +16,17 @@ import java.util.UUID;
 public class OutboxEvento {
 
     @Id
+    @Column(nullable = false)
     private UUID id;
+
+    @Column(name = "event_type", nullable = false, length = 100)
+    private String eventType;
 
     @Column(name = "aggregate_type", nullable = false, length = 100)
     private String aggregateType;
 
     @Column(name = "aggregate_id", nullable = false, length = 100)
     private String aggregateId;
-
-    @Column(name = "event_type", nullable = false, length = 100)
-    private String eventType;
 
     @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(nullable = false)
@@ -37,11 +38,11 @@ public class OutboxEvento {
     @Column(name = "creado_en", nullable = false)
     private Instant creadoEn;
 
-    @Column(name = "procesado_en")
-    private Instant procesadoEn;
-
     @Column(nullable = false)
     private boolean publicado;
+
+    @Column(name = "procesado_en")
+    private Instant procesadoEn;
 
     @Column(nullable = false)
     private int reintentos;
@@ -53,44 +54,57 @@ public class OutboxEvento {
     protected OutboxEvento() {
     }
 
-    public static OutboxEvento registrar(UUID id, String aggregateType, String aggregateId, String eventType,
-                                         String payload, String correlationId, Instant creadoEn) {
-        OutboxEvento evento = new OutboxEvento();
-        evento.id = Objects.requireNonNull(id, "El id del evento es obligatorio");
-        evento.aggregateType = exigirTexto(aggregateType, "El tipo de agregado es obligatorio");
-        evento.aggregateId = exigirTexto(aggregateId, "El id del agregado es obligatorio");
-        evento.eventType = exigirTexto(eventType, "El tipo de evento es obligatorio");
-        evento.payload = exigirTexto(payload, "El payload es obligatorio");
-        evento.correlationId = correlationId;
-        evento.creadoEn = Objects.requireNonNull(creadoEn, "El instante de creacion es obligatorio");
-        evento.publicado = false;
-        evento.reintentos = 0;
-        return evento;
+    public static OutboxEvento pendiente(UUID id, String aggregateType, String aggregateId,
+                                         String eventType, String payload,
+                                         String correlationId, Instant creadoEn) {
+        OutboxEvento nuevo = new OutboxEvento();
+        nuevo.id = requerido(id, "El id del evento es obligatorio");
+        nuevo.eventType = texto(agregar(eventType, "El tipo de evento es obligatorio"));
+        nuevo.aggregateType = texto(agregar(aggregateType, "El tipo de agregado es obligatorio"));
+        nuevo.aggregateId = texto(agregar(aggregateId, "El id del agregado es obligatorio"));
+        nuevo.payload = texto(agregar(payload, "El payload es obligatorio"));
+        nuevo.correlationId = correlationId;
+        nuevo.creadoEn = requerido(creadoEn, "El instante de creacion es obligatorio");
+        nuevo.publicado = false;
+        nuevo.reintentos = 0;
+        return nuevo;
     }
 
-    public void publicar(Instant ahora) {
-        if (publicado) {
+    public void confirmarPublicacion(Instant procesadoEn) {
+        if (this.publicado) {
             return;
         }
         this.publicado = true;
-        this.procesadoEn = Objects.requireNonNull(ahora, "El instante de publicacion es obligatorio");
+        this.procesadoEn = requerido(procesadoEn, "El instante de publicacion es obligatorio");
         this.ultimoError = null;
     }
 
-    public void anotarFallo(String error) {
-        this.reintentos = this.reintentos + 1;
-        this.ultimoError = error;
+    public void registrarReintento(String detalleError) {
+        this.reintentos += 1;
+        this.ultimoError = detalleError;
     }
 
-    private static String exigirTexto(String valor, String mensaje) {
+    private static String agregar(String valor, String mensaje) {
         if (valor == null || valor.isBlank()) {
             throw new IllegalArgumentException(mensaje);
         }
         return valor;
     }
 
+    private static String texto(String valor) {
+        return valor;
+    }
+
+    private static <T> T requerido(T valor, String mensaje) {
+        return Objects.requireNonNull(valor, mensaje);
+    }
+
     public UUID getId() {
         return id;
+    }
+
+    public String getEventType() {
+        return eventType;
     }
 
     public String getAggregateType() {
@@ -99,10 +113,6 @@ public class OutboxEvento {
 
     public String getAggregateId() {
         return aggregateId;
-    }
-
-    public String getEventType() {
-        return eventType;
     }
 
     public String getPayload() {
@@ -117,12 +127,12 @@ public class OutboxEvento {
         return creadoEn;
     }
 
-    public Instant getProcesadoEn() {
-        return procesadoEn;
-    }
-
     public boolean isPublicado() {
         return publicado;
+    }
+
+    public Instant getProcesadoEn() {
+        return procesadoEn;
     }
 
     public int getReintentos() {

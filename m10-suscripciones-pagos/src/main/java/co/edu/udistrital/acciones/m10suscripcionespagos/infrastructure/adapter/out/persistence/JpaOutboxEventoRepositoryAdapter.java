@@ -11,34 +11,34 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-interface SpringDataOutboxEventoRepository extends JpaRepository<OutboxEvento, UUID> {
+interface OutboxPendienteDao extends JpaRepository<OutboxEvento, UUID> {
 
     @Query(value = """
-            SELECT * FROM outbox_evento
-            WHERE publicado = FALSE
-            ORDER BY creado_en ASC
+            SELECT ev.* FROM outbox_evento ev
+            WHERE ev.publicado = FALSE
+            ORDER BY ev.creado_en ASC
             LIMIT :lote
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
-    List<OutboxEvento> buscarPendientes(@Param("lote") int lote);
+    List<OutboxEvento> leerPendientes(@Param("lote") int lote);
 }
 
 @Repository
 public class JpaOutboxEventoRepositoryAdapter implements OutboxEventoRepositoryPort {
 
-    private final SpringDataOutboxEventoRepository repositorio;
+    private final OutboxPendienteDao dao;
 
-    public JpaOutboxEventoRepositoryAdapter(SpringDataOutboxEventoRepository repositorio) {
-        this.repositorio = repositorio;
-    }
-
-    @Override
-    public OutboxEvento guardar(OutboxEvento evento) {
-        return repositorio.save(evento);
+    public JpaOutboxEventoRepositoryAdapter(OutboxPendienteDao dao) {
+        this.dao = dao;
     }
 
     @Override
     public List<OutboxEvento> buscarPendientes(int lote) {
-        return repositorio.buscarPendientes(lote);
+        return dao.leerPendientes(lote);
+    }
+
+    @Override
+    public OutboxEvento guardar(OutboxEvento evento) {
+        return dao.save(evento);
     }
 }

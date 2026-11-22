@@ -17,29 +17,41 @@ public class EmisorTokenServicio {
     private static final long MARGEN_RENOVACION_SEGUNDOS = 10;
 
     private final SecretKey clave;
-    private final ServicioProperties propiedades;
-    private final Clock clock;
+    private final ServicioProperties ajustes;
+    private final Clock reloj;
     private String token;
-    private Instant expiraEn;
+    private Instant vencimiento;
 
     public EmisorTokenServicio(JwtProperties jwtProperties, ServicioProperties propiedades, Clock clock) {
         this.clave = Keys.hmacShaKeyFor(jwtProperties.secret().getBytes(StandardCharsets.UTF_8));
-        this.propiedades = propiedades;
-        this.clock = clock;
+        this.ajustes = propiedades;
+        this.reloj = clock;
     }
 
     public synchronized String obtenerToken() {
-        Instant ahora = Instant.now(clock);
-        if (token == null || !ahora.isBefore(expiraEn.minusSeconds(MARGEN_RENOVACION_SEGUNDOS))) {
-            expiraEn = ahora.plus(propiedades.tokenTtl());
-            token = Jwts.builder()
-                    .subject(String.valueOf(propiedades.usuarioId()))
-                    .issuedAt(Date.from(ahora))
-                    .expiration(Date.from(expiraEn))
-                    .claim("roles", List.of(UsuarioAutenticado.ROL_SISTEMA))
-                    .signWith(clave, Jwts.SIG.HS256)
-                    .compact();
+        if (necesitaOtroToken()) {
+            token = firmar();
         }
         return token;
+    }
+
+    private boolean necesitaOtroToken() {
+        Instant ahora = Instant.now(reloj);
+        if (token != null && ahora.isBefore(vencimiento.minusSeconds(MARGEN_RENOVACION_SEGUNDOS))) {
+            return false;
+        }
+        vencimiento = ahora.plus(ajustes.tokenTtl());
+        return true;
+    }
+
+    private String firmar() {
+        Instant ahora = Instant.now(reloj);
+        return Jwts.builder()
+                .subject(String.valueOf(ajustes.usuarioId()))
+                .issuedAt(Date.from(ahora))
+                .expiration(Date.from(vencimiento))
+                .claim("roles", List.of(UsuarioAutenticado.ROL_SISTEMA))
+                .signWith(clave, Jwts.SIG.HS256)
+                .compact();
     }
 }

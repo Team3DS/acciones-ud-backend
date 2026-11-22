@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class VerificadorJwt {
@@ -18,29 +19,37 @@ public class VerificadorJwt {
     private static final String CLAIM_ROLES = "roles";
     private static final String PREFIJO_ROL = "ROLE_";
 
-    private final SecretKey clave;
+    private final SecretKey llave;
 
     public VerificadorJwt(JwtProperties propiedades) {
-        this.clave = Keys.hmacShaKeyFor(propiedades.secret().getBytes(StandardCharsets.UTF_8));
+        this.llave = Keys.hmacShaKeyFor(propiedades.secret().getBytes(StandardCharsets.UTF_8));
     }
 
     public UsuarioAutenticado validar(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(clave)
+        Claims datos = leerFirma(token);
+        comprobarVigencia(datos);
+        return new UsuarioAutenticado(leerIdentidad(datos), convertirRoles(datos.get(CLAIM_ROLES)));
+    }
+
+    private Claims leerFirma(String token) {
+        return Jwts.parser()
+                .verifyWith(llave)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        exigirExpiracion(claims);
-        return new UsuarioAutenticado(identidad(claims.getSubject()), rolesDe(claims.get(CLAIM_ROLES)));
     }
 
-    private static void exigirExpiracion(Claims claims) {
-        if (claims.getExpiration() == null) {
+    private static void comprobarVigencia(Claims datos) {
+        if (datos.getExpiration() == null) {
             throw new JwtException("El token debe declarar una fecha de expiracion");
         }
     }
 
-    private static long identidad(String subject) {
+    private static long leerIdentidad(Claims datos) {
+        return convertirIdentidad(datos.getSubject());
+    }
+
+    private static long convertirIdentidad(String subject) {
         long userId;
         try {
             userId = Long.parseLong(subject);
@@ -53,16 +62,20 @@ public class VerificadorJwt {
         return userId;
     }
 
-    private static Set<String> rolesDe(Object valor) {
+    private static Set<String> convertirRoles(Object valor) {
         if (!(valor instanceof Collection<?> elementos)) {
             return Set.of();
         }
         Set<String> roles = new LinkedHashSet<>();
         for (Object elemento : elementos) {
             if (elemento instanceof String rol && !rol.isBlank()) {
-                roles.add(rol.startsWith(PREFIJO_ROL) ? rol.substring(PREFIJO_ROL.length()) : rol);
+                roles.add(quitarPrefijo(rol));
             }
         }
-        return Set.copyOf(roles);
+        return Set.copyOf(roles.stream().collect(Collectors.toSet()));
+    }
+
+    private static String quitarPrefijo(String rol) {
+        return rol.startsWith(PREFIJO_ROL) ? rol.substring(PREFIJO_ROL.length()) : rol;
     }
 }

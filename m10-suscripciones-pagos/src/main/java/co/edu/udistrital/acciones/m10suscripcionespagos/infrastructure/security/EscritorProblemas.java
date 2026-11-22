@@ -14,16 +14,18 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Component
 public class EscritorProblemas {
 
     private final ObjectMapper objectMapper;
-    private final Clock clock;
+    private final Clock reloj;
 
     public EscritorProblemas(ObjectMapper objectMapper, Clock clock) {
         this.objectMapper = objectMapper;
-        this.clock = clock;
+        this.reloj = clock;
     }
 
     public ProblemDetail construir(HttpStatusCode estado, String mensaje, String ruta) {
@@ -37,11 +39,7 @@ public class EscritorProblemas {
         if (ruta != null && !ruta.isBlank()) {
             problema.setInstance(URI.create(ruta));
         }
-        problema.setProperty("timestamp", clock.instant());
-        problema.setProperty("error", titulo);
-        problema.setProperty("message", mensaje);
-        problema.setProperty("path", ruta == null ? "" : ruta);
-        problema.setProperty("traceId", traceId());
+        camposComunes(estado, mensaje, ruta, titulo).forEach(problema::setProperty);
         if (codigo != null && !codigo.isBlank()) {
             problema.setProperty("code", codigo);
         }
@@ -61,12 +59,23 @@ public class EscritorProblemas {
         objectMapper.writeValue(response.getOutputStream(), construir(estado, mensaje, ruta, codigo));
     }
 
+    private Map<String, Object> camposComunes(HttpStatusCode estado, String mensaje, String ruta, String titulo) {
+        Map<String, Object> campos = new LinkedHashMap<>();
+        campos.put("timestamp", reloj.instant());
+        campos.put("error", titulo);
+        campos.put("message", mensaje);
+        campos.put("path", ruta == null ? "" : ruta);
+        campos.put("traceId", traza());
+        campos.put("status", estado.value());
+        return campos;
+    }
+
     private static String titulo(HttpStatusCode estado) {
         HttpStatus resuelto = HttpStatus.resolve(estado.value());
         return resuelto == null ? "" : resuelto.getReasonPhrase();
     }
 
-    private static String traceId() {
+    private static String traza() {
         String correlationId = MDC.get(CorrelationIdFilter.CLAVE_MDC);
         return correlationId == null ? "" : correlationId;
     }

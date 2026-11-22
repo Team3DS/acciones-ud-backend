@@ -102,7 +102,7 @@ class OutboxRelayTest {
 
     @Test
     void omiteLaCabeceraDeCorrelacionCuandoElEventoNoLaTiene() {
-        OutboxEvento evento = OutboxEvento.registrar(UUID.randomUUID(),
+        OutboxEvento evento = OutboxEvento.pendiente(UUID.randomUUID(),
                 RoutingKeys.TIPO_AGREGADO_SUSCRIPCION, "7", RoutingKeys.SUSCRIPCION_ACTIVADA,
                 PAYLOAD, null, CREADO);
         when(repositorio.buscarPendientes(25)).thenReturn(List.of(evento));
@@ -162,7 +162,7 @@ class OutboxRelayTest {
     }
 
     private static OutboxEvento evento(String payload) {
-        return OutboxEvento.registrar(UUID.fromString("11111111-2222-3333-4444-555555555555"),
+        return OutboxEvento.pendiente(UUID.fromString("11111111-2222-3333-4444-555555555555"),
                 RoutingKeys.TIPO_AGREGADO_SUSCRIPCION, "7", RoutingKeys.SUSCRIPCION_ACTIVADA,
                 payload, "corr-1", CREADO);
     }
