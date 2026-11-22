@@ -7,4 +7,8 @@ public class ServicioExternoNoDisponibleException extends ErrorAplicacion {
     public ServicioExternoNoDisponibleException(String mensaje, String codigo) {
         super(HttpStatus.SERVICE_UNAVAILABLE, mensaje, codigo);
     }
+
+    public ServicioExternoNoDisponibleException(String mensaje, String codigo, Throwable causa) {
+        super(HttpStatus.SERVICE_UNAVAILABLE, mensaje, codigo, causa);
+    }
 }

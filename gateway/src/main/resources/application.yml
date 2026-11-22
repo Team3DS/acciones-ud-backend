@@ -37,7 +37,7 @@ spring:
         - id: m10-suscripciones-pagos
           uri: http://m10-suscripciones-pagos:8090
           predicates:
-            - Path=/api/v1/subscriptions/**,/api/v1/payments/**
+            - Path=/api/v1/subscriptions/**,/api/v1/payments/**,/api/v1/watchlist/**
       globalcors:
         cors-configurations:
           '[/**]':

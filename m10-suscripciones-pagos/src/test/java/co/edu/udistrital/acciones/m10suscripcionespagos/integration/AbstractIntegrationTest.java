@@ -47,8 +47,8 @@ public abstract class AbstractIntegrationTest {
         registry.add("app.stripe.api-key", () -> "sk_test_integracion");
         registry.add("app.stripe.webhook-secret", () -> "whsec_integracion");
         registry.add("app.webhooks.procesador-enabled", () -> "false");
-        registry.add("app.m3-client.base-url", SERVICIOS::baseUrl);
-        registry.add("app.m4-client.base-url", SERVICIOS::baseUrl);
+        registry.add("app.clientes-http.m3-base-url", SERVICIOS::baseUrl);
+        registry.add("app.clientes-http.m4-base-url", SERVICIOS::baseUrl);
     }
 
     @Autowired

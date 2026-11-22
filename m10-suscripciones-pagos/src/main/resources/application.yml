@@ -45,6 +45,14 @@ app:
     secret: ${JWT_SECRET}
   internal:
     token: ${M10_INTERNAL_TOKEN:}
+  servicio:
+    usuario-id: ${M10_SERVICE_USER_ID:900000010}
+    token-ttl: PT60S
+  clientes-http:
+    m3-base-url: ${M3_BASE_URL:http://m3-catalogo-mercados:8083}
+    m4-base-url: ${M4_BASE_URL:http://m4-datos-mercado:8084}
+    timeout-seconds: 5
+    cache-ttl-seconds: 5
   stripe:
     api-key: ${STRIPE_API_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
