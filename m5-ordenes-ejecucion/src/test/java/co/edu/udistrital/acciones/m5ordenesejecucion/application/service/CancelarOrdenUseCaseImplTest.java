@@ -77,7 +77,7 @@ class CancelarOrdenUseCaseImplTest {
         service.ejecutar(1L, 1L, "cancelar por usuario");
 
         assertEquals(EstadoOrden.CANCELADA, orden.getEstadoOrden());
-        verify(publicador).publicarOrdenCancelada(1L, "cancelar por usuario");
+        verify(publicador).publicarOrdenCancelada(any(UUID.class), eq(1L), any(), eq("cancelar por usuario"));
     }
 
     @Test

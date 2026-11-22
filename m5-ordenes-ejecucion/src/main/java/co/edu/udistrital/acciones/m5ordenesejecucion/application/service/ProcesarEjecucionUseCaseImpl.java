@@ -204,20 +204,13 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
         return ejecucion;
     }
 
+    /** Guarda en el outbox el evento OrdenEjecutada con el mismo sobre y eventId que el publicador directo. */
     private void registrarOutboxEjecutada(UUID eventId, EjecucionOrden ejecucion, Orden orden) {
         try {
-            Map<String, Object> carga = Map.of(
-                    "eventId", eventId.toString(),
-                    "executionId", ejecucion.getId(),
-                    "orderId", orden.getId(),
-                    "userId", orden.getUsuarioId(),
-                    "symbol", orden.getTicker(),
-                    "side", orden.getLadoOrden().name(),
-                    "quantity", ejecucion.getCantidad(),
-                    "price", ejecucion.getPrecioEjecucion(),
-                    "commission", ejecucion.getComision(),
-                    "executedAt", ejecucion.getEjecutadaEn().toString()
-            );
+            Map<String, Object> carga = EventosOrden.sobre(eventId, EventosOrden.ORDEN_EJECUTADA, orden.getId(),
+                    EventosOrden.ejecutada(ejecucion.getId(), orden.getId(), orden.getUsuarioId(), orden.getTicker(),
+                            orden.getLadoOrden().name(), ejecucion.getCantidad(), ejecucion.getPrecioEjecucion(),
+                            ejecucion.getComision(), ejecucion.getEjecutadaEn()));
             String json = objectMapper.writeValueAsString(carga);
             outboxRepository.save(OutboxEvento.crear("EJECUCION_ORDEN", String.valueOf(ejecucion.getId()), "OrdenEjecutada", json));
         } catch (Exception ignored) {
