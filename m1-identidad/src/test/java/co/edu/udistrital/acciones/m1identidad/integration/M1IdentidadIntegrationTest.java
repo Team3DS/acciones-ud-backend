@@ -1,7 +1,17 @@
 package co.edu.udistrital.acciones.m1identidad.integration;
 
 import co.edu.udistrital.acciones.m1identidad.Application;
+import co.edu.udistrital.acciones.m1identidad.infrastructure.config.RabbitConfig;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.core.AmqpAdmin;
+import org.springframework.amqp.core.AnonymousQueue;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -24,6 +34,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SpringBootTest(classes = Application.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -64,8 +75,23 @@ class M1IdentidadIntegrationTest {
     @Autowired
     StringRedisTemplate redisTemplate;
 
+    @Autowired
+    RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    AmqpAdmin amqpAdmin;
+
+    @Autowired
+    ObjectMapper objectMapper;
+
     @Test
-    void fullAuthFlowRegisterLoginMfaVerifyLogout() {
+    void fullAuthFlowRegisterLoginMfaVerifyLogout() throws Exception {
+        // Cola temporal enlazada como la de M8 para comprobar que el código sale por el exchange de eventos.
+        Queue mfaQueue = new AnonymousQueue();
+        amqpAdmin.declareQueue(mfaQueue);
+        amqpAdmin.declareBinding(BindingBuilder.bind(mfaQueue)
+                .to(new TopicExchange(RabbitConfig.EVENTS_EXCHANGE, true, false)).with("m1.mfa.solicitado"));
+
         String correo = "integracion@test.com";
         String password = "password123";
 
@@ -89,22 +115,32 @@ class M1IdentidadIntegrationTest {
         Map<String, Object> loginReq = Map.of("correo", correo, "password", password);
         ResponseEntity<Map> loginResp = rest.postForEntity("/api/v1/auth/login", new HttpEntity<>(loginReq, headers), Map.class);
         assertEquals(HttpStatus.OK, loginResp.getStatusCode());
-        String accessToken = (String) loginResp.getBody().get("accessToken");
-        String refreshToken = (String) loginResp.getBody().get("refreshToken");
+        assertEquals(true, loginResp.getBody().get("requiresMfa"));
+        assertNull(loginResp.getBody().get("accessToken"), "El login no debe entregar tokens antes del MFA");
         String userId = String.valueOf(loginResp.getBody().get("userId"));
+
+        String otp = redisTemplate.opsForValue().get("mfa:" + userId);
+        assertNotNull(otp, "El OTP debe existir en Redis tras el login");
+
+        Message event = rabbitTemplate.receive(mfaQueue.getName(), 5000);
+        assertNotNull(event, "El login debe publicar m1.mfa.solicitado");
+        JsonNode envelope = objectMapper.readTree(event.getBody());
+        assertEquals("m1.mfa.solicitado", envelope.get("eventType").asText());
+        assertEquals(correo, envelope.get("payload").get("email").asText());
+        assertEquals(otp, envelope.get("payload").get("code").asText());
+
+        Map<String, Object> mfaReq = Map.of("userId", Long.valueOf(userId), "code", otp);
+        ResponseEntity<Map> mfaResp = rest.postForEntity("/api/v1/auth/mfa/verify", new HttpEntity<>(mfaReq, headers), Map.class);
+        assertEquals(HttpStatus.OK, mfaResp.getStatusCode());
+        assertEquals(true, mfaResp.getBody().get("verified"));
+        String accessToken = (String) mfaResp.getBody().get("accessToken");
+        String refreshToken = (String) mfaResp.getBody().get("refreshToken");
         assertNotNull(accessToken);
         assertNotNull(refreshToken);
 
         HttpHeaders authHeaders = new HttpHeaders();
         authHeaders.setContentType(MediaType.APPLICATION_JSON);
         authHeaders.setBearerAuth(accessToken);
-
-        String otp = redisTemplate.opsForValue().get("mfa:" + userId);
-        assertNotNull(otp, "El OTP debe existir en Redis tras el login");
-        Map<String, Object> mfaReq = Map.of("userId", Long.valueOf(userId), "code", otp);
-        ResponseEntity<Map> mfaResp = rest.postForEntity("/api/v1/auth/mfa/verify", new HttpEntity<>(mfaReq, authHeaders), Map.class);
-        assertEquals(HttpStatus.OK, mfaResp.getStatusCode());
-        assertEquals(true, mfaResp.getBody().get("verified"));
 
         Map<String, Object> logoutReq = Map.of("userId", Long.valueOf(userId), "refreshToken", refreshToken);
         ResponseEntity<Map> logoutResp = rest.postForEntity("/api/v1/auth/logout", new HttpEntity<>(logoutReq, authHeaders), Map.class);
