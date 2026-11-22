@@ -27,6 +27,8 @@ interface SpringDataSesionCheckoutRepository extends JpaRepository<SesionCheckou
 
     @EntityGraph(attributePaths = {"precioPlan", "precioPlan.plan"})
     Optional<SesionCheckout> findByStripeSessionId(String stripeSessionId);
+
+    boolean existsByUserId(Long userId);
 }
 
 @Repository
@@ -58,6 +60,11 @@ public class JpaSesionCheckoutRepositoryAdapter implements SesionCheckoutReposit
     @Override
     public Optional<SesionCheckout> findByStripeSessionId(String stripeSessionId) {
         return repositorio.findByStripeSessionId(stripeSessionId);
+    }
+
+    @Override
+    public boolean existePorUserId(Long userId) {
+        return repositorio.existsByUserId(userId);
     }
 
     @Override

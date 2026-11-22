@@ -147,6 +147,17 @@ class M10WebhookIntegrationTest extends AbstractIntegrationTest {
     @Test
     void elProcesadorMarcaProcesadoUnEventoAjeno() {
         String id = PREFIJO + "ajeno";
+        STRIPE.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get(
+                com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo("/v1/subscriptions/sub_test_1"))
+                .willReturn(com.github.tomakehurst.wiremock.client.WireMock.aResponse()
+                        .withStatus(200).withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"id":"sub_test_1","object":"subscription","status":"active",
+                                 "cancel_at_period_end":false,"metadata":{},"customer":"cus_ajeno",
+                                 "items":{"object":"list","data":[{"id":"si_1",
+                                   "current_period_start":1800000000,"current_period_end":1802592000,
+                                   "price":{"id":"price_mensual","lookup_key":"acciones_ud_premium_mensual"}}]}}
+                                """)));
         String cuerpo = FirmaStripeTestFactory.evento(id, "customer.subscription.updated", "sub_test_1",
                 false);
         assertThat(enviar(cuerpo, firmar(cuerpo, Instant.now())).getStatusCode()).isEqualTo(HttpStatus.OK);

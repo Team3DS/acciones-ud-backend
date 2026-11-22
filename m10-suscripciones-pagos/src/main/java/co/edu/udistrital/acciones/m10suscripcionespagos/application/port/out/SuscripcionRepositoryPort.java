@@ -12,6 +12,8 @@ public interface SuscripcionRepositoryPort {
 
     Optional<Suscripcion> findByStripeSubscriptionId(String stripeSubscriptionId);
 
+    Optional<Suscripcion> findByStripeSubscriptionIdForUpdate(String stripeSubscriptionId);
+
     Optional<Suscripcion> findById(Long id);
 
     Suscripcion save(Suscripcion suscripcion);

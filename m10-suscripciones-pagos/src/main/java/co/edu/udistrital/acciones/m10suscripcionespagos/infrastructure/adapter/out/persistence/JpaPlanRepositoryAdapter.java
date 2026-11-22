@@ -20,12 +20,10 @@ interface SpringDataPlanRepository extends JpaRepository<Plan, Long> {
     @Query("select distinct p from Plan p where p.activo = true order by p.codigo asc")
     List<Plan> findActivosConPrecios();
 
-    @EntityGraph(attributePaths = "plan")
-    @Query("select p from PrecioPlan p where p.stripeLookupKey = :lookupKey")
+    @Query("select p from PrecioPlan p join fetch p.plan where p.stripeLookupKey = :lookupKey")
     Optional<PrecioPlan> findByStripeLookupKey(@Param("lookupKey") String lookupKey);
 
-    @EntityGraph(attributePaths = "plan")
-    @Query("select p from PrecioPlan p where p.id = :id")
+    @Query("select p from PrecioPlan p join fetch p.plan where p.id = :id")
     Optional<PrecioPlan> findPrecioConPlan(@Param("id") Long id);
 
     @Query("""

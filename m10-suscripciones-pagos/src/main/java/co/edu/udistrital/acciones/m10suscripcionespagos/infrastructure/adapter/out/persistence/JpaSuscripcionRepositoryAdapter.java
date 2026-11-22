@@ -3,8 +3,10 @@ package co.edu.udistrital.acciones.m10suscripcionespagos.infrastructure.adapter.
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.port.out.SuscripcionRepositoryPort;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.EstadoSuscripcion;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.Suscripcion;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -25,6 +27,14 @@ interface SpringDataSuscripcionRepository extends JpaRepository<Suscripcion, Lon
 
     @EntityGraph(attributePaths = {"precioPlan", "precioPlan.plan"})
     Optional<Suscripcion> findByStripeSubscriptionId(String stripeSubscriptionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select s from Suscripcion s join fetch s.precioPlan p join fetch p.plan
+            where s.stripeSubscriptionId = :stripeSubscriptionId
+            """)
+    Optional<Suscripcion> bloquearPorStripeSubscriptionId(
+            @Param("stripeSubscriptionId") String stripeSubscriptionId);
 
     @EntityGraph(attributePaths = {"precioPlan", "precioPlan.plan"})
     @Query("select s from Suscripcion s where s.id = :id")
@@ -58,6 +68,11 @@ public class JpaSuscripcionRepositoryAdapter implements SuscripcionRepositoryPor
     @Override
     public Optional<Suscripcion> findByStripeSubscriptionId(String stripeSubscriptionId) {
         return repositorio.findByStripeSubscriptionId(stripeSubscriptionId);
+    }
+
+    @Override
+    public Optional<Suscripcion> findByStripeSubscriptionIdForUpdate(String stripeSubscriptionId) {
+        return repositorio.bloquearPorStripeSubscriptionId(stripeSubscriptionId);
     }
 
     @Override

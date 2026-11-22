@@ -1,5 +1,7 @@
 package co.edu.udistrital.acciones.m10suscripcionespagos.application.usecase;
 
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.exception.RecursoProveedorNoEncontradoException;
+import co.edu.udistrital.acciones.m10suscripcionespagos.application.exception.SuscripcionAjenaException;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.port.out.EventoStripeRepositoryPort;
 import co.edu.udistrital.acciones.m10suscripcionespagos.application.port.out.ManejadorEventoStripePort;
 import co.edu.udistrital.acciones.m10suscripcionespagos.domain.EventoStripe;
@@ -71,12 +73,21 @@ public class ProcesarEventosStripeUseCase {
     private void despachar(EventoStripe evento) {
         for (ManejadorEventoStripePort manejador : manejadores) {
             if (manejador.soporta(evento.getTipo())) {
-                manejador.procesar(evento);
+                ejecutar(manejador, evento);
                 return;
             }
         }
         log.warn("El evento {} de tipo '{}' no es de interes para M10; se marca como procesado",
                 evento.getId(), evento.getTipo());
+    }
+
+    private void ejecutar(ManejadorEventoStripePort manejador, EventoStripe evento) {
+        try {
+            manejador.procesar(evento);
+        } catch (SuscripcionAjenaException | RecursoProveedorNoEncontradoException ex) {
+            log.warn("El evento {} de tipo '{}' se descarta y se marca como procesado: {}",
+                    evento.getId(), evento.getTipo(), ex.getMessage());
+        }
     }
 
     private void registrarFallo(String id, RuntimeException causa) {

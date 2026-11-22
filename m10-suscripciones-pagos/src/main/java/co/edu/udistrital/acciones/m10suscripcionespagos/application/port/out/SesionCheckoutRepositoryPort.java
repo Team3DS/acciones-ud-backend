@@ -12,6 +12,8 @@ public interface SesionCheckoutRepositoryPort {
 
     List<SesionCheckout> findAbiertasByUserId(Long userId, Instant ahora);
 
+    boolean existePorUserId(Long userId);
+
     Optional<SesionCheckout> findByIdempotencyKey(Long userId, String idempotencyKey);
 
     Optional<SesionCheckout> findByStripeSessionId(String stripeSessionId);
