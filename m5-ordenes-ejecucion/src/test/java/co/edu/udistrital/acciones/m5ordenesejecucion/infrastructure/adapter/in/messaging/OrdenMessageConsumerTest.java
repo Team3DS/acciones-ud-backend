@@ -168,7 +168,7 @@ class OrdenMessageConsumerTest {
         assertEquals(100L, orden.getReservaFondosId());
         verify(alpacaOrderPort).enviarOrden(any());
         verify(ordenRepository).save(orden);
-        verify(publicador).publicarOrdenCreada(eq(1L), eq(1L), eq("AAPL"), eq("COMPRA"), eq(10), eq("MARKET"));
+        verify(publicador).publicarOrdenCreada(any(UUID.class), eq(1L), eq(1L), eq("AAPL"), eq("COMPRA"), eq(10), eq("MARKET"));
     }
 
     @Test
@@ -184,7 +184,7 @@ class OrdenMessageConsumerTest {
         assertEquals(200L, orden.getReservaPosicionId());
         verify(alpacaOrderPort).enviarOrden(any());
         verify(ordenRepository).save(orden);
-        verify(publicador).publicarOrdenCreada(eq(2L), eq(2L), eq("TSLA"), eq("VENTA"), eq(5), eq("LIMIT"));
+        verify(publicador).publicarOrdenCreada(any(UUID.class), eq(2L), eq(2L), eq("TSLA"), eq("VENTA"), eq(5), eq("LIMIT"));
     }
 
     private Message crearMensaje(String routingKey, String cuerpo) {
@@ -297,8 +297,8 @@ class OrdenMessageConsumerTest {
         verify(alpacaOrderPort).enviarOrden(any());
         verify(ordenRepository).save(ordenOk);
         verify(ordenRepository, never()).save(ordenFalla);
-        verify(publicador).publicarOrdenCreada(eq(1L), eq(1L), eq("AAPL"), eq("COMPRA"), eq(10), eq("MARKET"));
-        verify(publicador, never()).publicarOrdenCreada(eq(2L), anyLong(), anyString(), anyString(), anyInt(), anyString());
+        verify(publicador).publicarOrdenCreada(any(UUID.class), eq(1L), eq(1L), eq("AAPL"), eq("COMPRA"), eq(10), eq("MARKET"));
+        verify(publicador, never()).publicarOrdenCreada(any(UUID.class), eq(2L), anyLong(), anyString(), anyString(), anyInt(), anyString());
     }
 
     @Test

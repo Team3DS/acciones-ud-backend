@@ -127,7 +127,7 @@ public class CrearOrdenUseCaseImpl implements CrearOrdenUseCase {
                     orden.getId(), EstadoOrden.PENDIENTE, TipoActor.SISTEMA, null,
                     "Mercado cerrado. Orden creada requiriendo confirmación de encolamiento"));
 
-            registrarOutbox(orden, "OrdenCreada");
+            registrarOutbox(UUID.randomUUID(), orden);
             return orden;
         }
 
@@ -182,9 +182,11 @@ public class CrearOrdenUseCaseImpl implements CrearOrdenUseCase {
                     orden.getId(), EstadoOrden.ENVIADA, TipoActor.SISTEMA, null,
                     "Reserva completada y enviada a Alpaca Paper Trading con brokerOrderId: " + alpacaResp.id()));
 
-            registrarOutbox(orden, "OrdenCreada");
+            UUID eventoCreada = UUID.randomUUID();
+            registrarOutbox(eventoCreada, orden);
 
             publicador.publicarOrdenCreada(
+                    eventoCreada,
                     orden.getId(),
                     orden.getUsuarioId(),
                     orden.getTicker(),
@@ -200,7 +202,8 @@ public class CrearOrdenUseCaseImpl implements CrearOrdenUseCase {
                     orden.getId(), EstadoOrden.RECHAZADA, TipoActor.SISTEMA, null,
                     "Rechazo en procesamiento: " + ex.getMessage()));
 
-            publicador.publicarOrdenRechazada(orden.getId(), "Error al reservar recursos o enviar al broker", ex.getMessage());
+            publicador.publicarOrdenRechazada(UUID.randomUUID(), orden.getId(), orden.getUsuarioId(),
+                    "Error al reservar recursos o enviar al broker", ex.getMessage());
         }
 
         return ordenRepository.save(orden);
@@ -225,20 +228,14 @@ public class CrearOrdenUseCaseImpl implements CrearOrdenUseCase {
         }
     }
 
-    private void registrarOutbox(Orden orden, String tipoEvento) {
+    /** Guarda en el outbox el evento OrdenCreada con el mismo sobre y eventId que el publicador directo. */
+    private void registrarOutbox(UUID eventId, Orden orden) {
         try {
-            Map<String, Object> carga = Map.of(
-                    "eventId", UUID.randomUUID().toString(),
-                    "orderId", orden.getId(),
-                    "userId", orden.getUsuarioId(),
-                    "symbol", orden.getTicker(),
-                    "side", orden.getLadoOrden().name(),
-                    "qty", orden.getCantidad(),
-                    "type", orden.getTipoOrden().name(),
-                    "status", orden.getEstadoOrden().name()
-            );
+            Map<String, Object> carga = EventosOrden.sobre(eventId, EventosOrden.ORDEN_CREADA, orden.getId(),
+                    EventosOrden.creada(orden.getId(), orden.getUsuarioId(), orden.getTicker(),
+                            orden.getLadoOrden().name(), orden.getCantidad(), orden.getTipoOrden().name()));
             String json = objectMapper.writeValueAsString(carga);
-            outboxRepository.save(OutboxEvento.crear("ORDEN", String.valueOf(orden.getId()), tipoEvento, json));
+            outboxRepository.save(OutboxEvento.crear("ORDEN", String.valueOf(orden.getId()), "OrdenCreada", json));
         } catch (Exception ignored) {
         }
     }

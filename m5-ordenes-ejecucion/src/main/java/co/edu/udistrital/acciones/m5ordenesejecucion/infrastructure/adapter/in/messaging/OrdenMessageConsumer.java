@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class OrdenMessageConsumer {
@@ -135,6 +136,7 @@ public class OrdenMessageConsumer {
                         "Apertura de mercado: orden encolada enviada al broker con brokerOrderId: " + resp.id()));
 
                 publicador.publicarOrdenCreada(
+                        UUID.randomUUID(),
                         orden.getId(),
                         orden.getUsuarioId(),
                         orden.getTicker(),

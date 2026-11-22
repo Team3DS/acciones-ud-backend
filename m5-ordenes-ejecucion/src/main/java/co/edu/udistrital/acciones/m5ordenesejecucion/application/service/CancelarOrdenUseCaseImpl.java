@@ -99,19 +99,16 @@ public class CancelarOrdenUseCaseImpl implements CancelarOrdenUseCase {
         historialRepository.save(HistorialEstadoOrden.registrar(
                 orden.getId(), EstadoOrden.CANCELADA, TipoActor.USUARIO, usuarioId, motivoReal));
 
-        registrarOutbox(orden, motivoReal);
-        publicador.publicarOrdenCancelada(orden.getId(), motivoReal);
+        UUID eventoCancelada = UUID.randomUUID();
+        registrarOutbox(eventoCancelada, orden, motivoReal);
+        publicador.publicarOrdenCancelada(eventoCancelada, orden.getId(), orden.getUsuarioId(), motivoReal);
     }
 
-    private void registrarOutbox(Orden orden, String motivo) {
+    /** Guarda en el outbox el evento OrdenCancelada con el mismo sobre y eventId que el publicador directo. */
+    private void registrarOutbox(UUID eventId, Orden orden, String motivo) {
         try {
-            Map<String, Object> carga = Map.of(
-                    "eventId", UUID.randomUUID().toString(),
-                    "orderId", orden.getId(),
-                    "userId", orden.getUsuarioId(),
-                    "symbol", orden.getTicker(),
-                    "reason", motivo
-            );
+            Map<String, Object> carga = EventosOrden.sobre(eventId, EventosOrden.ORDEN_CANCELADA, orden.getId(),
+                    EventosOrden.cancelada(orden.getId(), orden.getUsuarioId(), motivo));
             String json = objectMapper.writeValueAsString(carga);
             outboxRepository.save(OutboxEvento.crear("ORDEN", String.valueOf(orden.getId()), "OrdenCancelada", json));
         } catch (Exception ignored) {
