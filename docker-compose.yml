@@ -309,22 +309,29 @@ services:
       - DB_NAME=pagos_db
       - DB_USER=${DB_USER:-acciones_ud}
       - DB_PASSWORD=${DB_PASSWORD:-acciones_ud}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
       - EUREKA_URL=http://eureka:8761/eureka
-      - STRIPE_API_KEY=${STRIPE_API_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - M10_INTERNAL_TOKEN=${M8_SERVICE_TOKEN:-}
+      - STRIPE_API_KEY=${STRIPE_API_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - FRONTEND_URL=${FRONTEND_URL:-http://127.0.0.1:5173}
+      - M3_BASE_URL=http://m3-catalogo-mercados:8083
+      - M4_BASE_URL=http://m4-datos-mercado:8084
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/actuator/health/readiness >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     restart: unless-stopped
 
 volumes:
