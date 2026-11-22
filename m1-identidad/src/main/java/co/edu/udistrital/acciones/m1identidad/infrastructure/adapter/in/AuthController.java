@@ -39,8 +39,7 @@ public class AuthController {
 
     @PostMapping("/mfa/verify")
     public ResponseEntity<?> mfaVerify(@RequestBody MfaVerifyRequest req) {
-        boolean ok = service.verifyMfa(req.userId(), req.code());
-        return ResponseEntity.ok().body(Map.of("verified", ok));
+        return ResponseEntity.ok(service.verifyMfa(req.userId(), req.code()));
     }
 
     @PostMapping("/refresh")

@@ -2,6 +2,7 @@ package co.edu.udistrital.acciones.m1identidad.application.service;
 
 import co.edu.udistrital.acciones.m1identidad.application.dto.LoginRequest;
 import co.edu.udistrital.acciones.m1identidad.application.dto.RegisterUserRequest;
+import co.edu.udistrital.acciones.m1identidad.application.port.out.MfaNotificationPort;
 import co.edu.udistrital.acciones.m1identidad.application.port.out.UserRepositoryPort;
 import co.edu.udistrital.acciones.m1identidad.application.usecase.RegisterUserUseCase;
 import co.edu.udistrital.acciones.m1identidad.domain.User;
@@ -13,7 +14,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -28,6 +31,7 @@ public class UserApplicationService {
     private final RefreshTokenService refreshTokenService;
     private final MfaService mfaService;
     private final CifradoService cifradoService;
+    private final MfaNotificationPort mfaNotification;
 
     public UserApplicationService(UserRepositoryPort userRepository,
                                   RegisterUserUseCase registerUserUseCase,
@@ -35,7 +39,8 @@ public class UserApplicationService {
                                   JwtService jwtService,
                                   RefreshTokenService refreshTokenService,
                                   MfaService mfaService,
-                                  CifradoService cifradoService) {
+                                  CifradoService cifradoService,
+                                  MfaNotificationPort mfaNotification) {
         this.userRepository = userRepository;
         this.registerUserUseCase = registerUserUseCase;
         this.passwordEncoder = passwordEncoder;
@@ -43,6 +48,7 @@ public class UserApplicationService {
         this.refreshTokenService = refreshTokenService;
         this.mfaService = mfaService;
         this.cifradoService = cifradoService;
+        this.mfaNotification = mfaNotification;
     }
 
     public User register(RegisterUserRequest req) {
@@ -60,21 +66,46 @@ public class UserApplicationService {
         return registerUserUseCase.execute(user);
     }
 
-    public Map<String, String> login(LoginRequest req) {
+    /**
+     * Primer paso del inicio de sesión: valida las credenciales, genera el código MFA y lo envía al correo
+     * del usuario a través de M8. Los tokens se entregan solo después de verificar el código (RNF de MFA).
+     */
+    public Map<String, Object> login(LoginRequest req) {
         User user = userRepository.findByCorreo(req.correo())
                 .orElseThrow(() -> new IllegalArgumentException("Credenciales inválidas"));
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Credenciales inválidas");
         }
-        String accessToken = jwtService.generateAccessToken(user.getId());
-        String refreshToken = UUID.randomUUID().toString();
-        refreshTokenService.store(user.getId(), refreshToken);
-        mfaService.generateAndStore(user.getId());
-        return Map.of("accessToken", accessToken, "refreshToken", refreshToken, "userId", String.valueOf(user.getId()));
+        String code = mfaService.generateAndStore(user.getId());
+        Instant expiresAt = Instant.now().plus(MfaService.TTL);
+        mfaNotification.codigoSolicitado(user.getId(), user.getCorreo(), code, expiresAt);
+
+        Map<String, Object> challenge = new LinkedHashMap<>();
+        challenge.put("userId", user.getId());
+        challenge.put("requiresMfa", true);
+        challenge.put("expiresAt", expiresAt.toString());
+        return challenge;
     }
 
-    public boolean verifyMfa(Long userId, String code) {
-        return mfaService.verify(userId, code);
+    /**
+     * Segundo paso: si el código es correcto emite el access token y el refresh token.
+     * Si no, responde {@code verified=false} sin tokens.
+     */
+    public Map<String, Object> verifyMfa(Long userId, String code) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (userId == null || code == null || !mfaService.verify(userId, code)) {
+            result.put("verified", false);
+            return result;
+        }
+        String accessToken = jwtService.generateAccessToken(userId);
+        String refreshToken = UUID.randomUUID().toString();
+        refreshTokenService.store(userId, refreshToken);
+        result.put("verified", true);
+        result.put("userId", userId);
+        result.put("accessToken", accessToken);
+        result.put("refreshToken", refreshToken);
+        result.put("tokenType", "Bearer");
+        return result;
     }
 
     public void logout(Long userId) {

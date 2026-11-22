@@ -2,6 +2,7 @@ package co.edu.udistrital.acciones.m1identidad.unit;
 
 import co.edu.udistrital.acciones.m1identidad.application.dto.LoginRequest;
 import co.edu.udistrital.acciones.m1identidad.application.dto.RegisterUserRequest;
+import co.edu.udistrital.acciones.m1identidad.application.port.out.MfaNotificationPort;
 import co.edu.udistrital.acciones.m1identidad.application.port.out.UserRepositoryPort;
 import co.edu.udistrital.acciones.m1identidad.application.service.UserApplicationService;
 import co.edu.udistrital.acciones.m1identidad.application.usecase.RegisterUserUseCase;
@@ -18,10 +19,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -41,6 +46,7 @@ class UserApplicationServiceTest {
     private RefreshTokenService refreshTokenService;
     private MfaService mfaService;
     private CifradoService cifradoService;
+    private MfaNotificationPort mfaNotification;
     private UserApplicationService service;
 
     @BeforeEach
@@ -52,7 +58,8 @@ class UserApplicationServiceTest {
         refreshTokenService = mock(RefreshTokenService.class);
         mfaService = mock(MfaService.class);
         cifradoService = mock(CifradoService.class);
-        service = new UserApplicationService(userRepository, registerUserUseCase, passwordEncoder, jwtService, refreshTokenService, mfaService, cifradoService);
+        mfaNotification = mock(MfaNotificationPort.class);
+        service = new UserApplicationService(userRepository, registerUserUseCase, passwordEncoder, jwtService, refreshTokenService, mfaService, cifradoService, mfaNotification);
     }
 
     @Test
@@ -87,23 +94,45 @@ class UserApplicationServiceTest {
     }
 
     @Test
-    void loginGeneratesTokensWhenCredentialsValid() throws Exception {
+    void loginSendsMfaCodeAndReturnsChallengeWithoutTokens() throws Exception {
         User user = User.create();
         setId(user, 42L);
         user.setCorreo("login@test.com");
         user.setPasswordHash(passwordEncoder.encode("secret"));
 
         when(userRepository.findByCorreo("login@test.com")).thenReturn(Optional.of(user));
-        when(jwtService.generateAccessToken(42L)).thenReturn("access-token-123");
         when(mfaService.generateAndStore(42L)).thenReturn("123456");
 
-        Map<String, String> tokens = service.login(new LoginRequest("login@test.com", "secret"));
+        Instant before = Instant.now();
+        Map<String, Object> challenge = service.login(new LoginRequest("login@test.com", "secret"));
 
-        assertEquals("access-token-123", tokens.get("accessToken"));
-        assertNotNull(tokens.get("refreshToken"));
-        assertEquals("42", tokens.get("userId"));
-        verify(refreshTokenService).store(eq(42L), any(String.class));
-        verify(mfaService).generateAndStore(42L);
+        assertEquals(42L, challenge.get("userId"));
+        assertEquals(true, challenge.get("requiresMfa"));
+        assertFalse(challenge.containsKey("accessToken"), "El access token solo se entrega tras verificar el MFA");
+        assertFalse(challenge.containsKey("refreshToken"), "El refresh token solo se entrega tras verificar el MFA");
+
+        ArgumentCaptor<Instant> expiry = ArgumentCaptor.forClass(Instant.class);
+        verify(mfaNotification).codigoSolicitado(eq(42L), eq("login@test.com"), eq("123456"), expiry.capture());
+        Duration ttl = Duration.between(before, expiry.getValue());
+        assertTrue(ttl.compareTo(Duration.ofMinutes(15)) < 0, "M8 rechaza códigos con vigencia mayor a 15 minutos");
+        assertEquals(expiry.getValue().toString(), challenge.get("expiresAt"));
+        verify(jwtService, never()).generateAccessToken(anyLong());
+        verify(refreshTokenService, never()).store(anyLong(), any(String.class));
+    }
+
+    @Test
+    void loginDoesNotSendCodeWhenPasswordIsWrong() throws Exception {
+        User user = User.create();
+        setId(user, 42L);
+        user.setCorreo("login@test.com");
+        user.setPasswordHash(passwordEncoder.encode("secret"));
+        when(userRepository.findByCorreo("login@test.com")).thenReturn(Optional.of(user));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.login(new LoginRequest("login@test.com", "wrong")));
+
+        verify(mfaService, never()).generateAndStore(anyLong());
+        verify(mfaNotification, never()).codigoSolicitado(anyLong(), anyString(), anyString(), any(Instant.class));
     }
 
     @Test
@@ -132,13 +161,38 @@ class UserApplicationServiceTest {
     }
 
     @Test
-    void verifyMfaDelegatesToMfaService() {
+    void verifyMfaIssuesTokensWhenCodeIsValid() {
         when(mfaService.verify(1L, "123456")).thenReturn(true);
+        when(jwtService.generateAccessToken(1L)).thenReturn("access-token-123");
 
-        boolean result = service.verifyMfa(1L, "123456");
+        Map<String, Object> result = service.verifyMfa(1L, "123456");
 
-        assertTrue(result);
-        verify(mfaService).verify(1L, "123456");
+        assertEquals(true, result.get("verified"));
+        assertEquals(1L, result.get("userId"));
+        assertEquals("access-token-123", result.get("accessToken"));
+        assertNotNull(result.get("refreshToken"));
+        assertEquals("Bearer", result.get("tokenType"));
+        verify(refreshTokenService).store(1L, (String) result.get("refreshToken"));
+    }
+
+    @Test
+    void verifyMfaReturnsNoTokensWhenCodeIsInvalid() {
+        when(mfaService.verify(1L, "000000")).thenReturn(false);
+
+        Map<String, Object> result = service.verifyMfa(1L, "000000");
+
+        assertEquals(false, result.get("verified"));
+        assertFalse(result.containsKey("accessToken"));
+        assertFalse(result.containsKey("refreshToken"));
+        verify(jwtService, never()).generateAccessToken(anyLong());
+        verify(refreshTokenService, never()).store(anyLong(), any(String.class));
+    }
+
+    @Test
+    void verifyMfaRejectsMissingData() {
+        assertEquals(false, service.verifyMfa(null, "123456").get("verified"));
+        assertEquals(false, service.verifyMfa(1L, null).get("verified"));
+        verify(mfaService, never()).verify(any(), any());
     }
 
     @Test
