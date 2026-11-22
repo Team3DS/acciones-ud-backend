@@ -147,6 +147,26 @@ class AlpacaOrderAdapterTest {
     }
 
     @Test
+    void enviarOrden_takeProfitSinLimite_seEnviaComoLimiteEnElPrecioObjetivo() {
+        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(Map.of("id", "alpaca-124", "status", "accepted"));
+        AlpacaOrderPort.AlpacaOrderRequest request = new AlpacaOrderPort.AlpacaOrderRequest(
+                "AAPL", 5, LadoOrden.VENTA, TipoOrden.TAKE_PROFIT, VigenciaOrden.DIA,
+                null, new BigDecimal("250.00"), UUID.randomUUID());
+
+        adapter.enviarOrden(request);
+
+        ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(anyString(), captor.capture(), eq(Map.class));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) captor.getValue().getBody();
+        assertEquals("limit", body.get("type"));
+        assertEquals("250.00", body.get("limit_price"));
+        assertFalse(body.containsKey("stop_price"));
+        assertEquals("sell", body.get("side"));
+    }
+
+    @Test
     void enviarOrdin_conApiKeys_enviaBodyCorrectoStopLimit() {
         Map<String, Object> response = Map.of("id", "alpaca-123", "status", "accepted");
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))

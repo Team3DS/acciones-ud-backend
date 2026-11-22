@@ -12,6 +12,11 @@ import java.util.UUID;
 @Component
 public class OrdenRepositoryAdapter implements OrdenRepositoryPort {
 
+    /** Estados en los que la orden está en el broker y puede ejecutarse total o parcialmente. */
+    private static final List<EstadoOrden> ESTADOS_EN_BROKER = List.of(
+            EstadoOrden.ENVIADA, EstadoOrden.FIRMADA_COMISIONISTA,
+            EstadoOrden.EN_EJECUCION, EstadoOrden.PARCIALMENTE_EJECUTADA);
+
     private final OrdenJpaRepository jpaRepository;
 
     public OrdenRepositoryAdapter(OrdenJpaRepository jpaRepository) {
@@ -50,6 +55,13 @@ public class OrdenRepositoryAdapter implements OrdenRepositoryPort {
     @Override
     public List<Orden> findEncoladasListasParaEnvio() {
         return jpaRepository.findEncoladasConfirmadas().stream()
+                .map(OrdenEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Orden> findPendientesDeEjecucion() {
+        return jpaRepository.findByEstadoOrdenInAndBrokerOrderIdIsNotNull(ESTADOS_EN_BROKER).stream()
                 .map(OrdenEntity::toDomain)
                 .toList();
     }

@@ -86,4 +86,13 @@ class OrdenRepositoryAdapterTest {
         assertThat(guardada.getTicker()).isEqualTo("TSLA");
         verify(jpa).save(any(OrdenEntity.class));
     }
+
+    @Test
+    void listaLasOrdenesEnviadasAlBrokerPendientesDeEjecucion() {
+        when(jpa.findByEstadoOrdenInAndBrokerOrderIdIsNotNull(any())).thenReturn(List.of(EntidadesDePrueba.orden(4L, "AMZN")));
+
+        assertThat(adapter.findPendientesDeEjecucion()).extracting(Orden::getTicker).containsExactly("AMZN");
+        verify(jpa).findByEstadoOrdenInAndBrokerOrderIdIsNotNull(List.of(
+                EstadoOrden.ENVIADA, EstadoOrden.FIRMADA_COMISIONISTA, EstadoOrden.EN_EJECUCION, EstadoOrden.PARCIALMENTE_EJECUTADA));
+    }
 }

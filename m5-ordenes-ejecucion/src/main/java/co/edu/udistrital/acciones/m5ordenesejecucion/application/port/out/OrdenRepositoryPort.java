@@ -14,5 +14,7 @@ public interface OrdenRepositoryPort {
     List<Orden> findByUsuarioId(Long usuarioId);
     List<Orden> findByUsuarioIdAndFilters(Long usuarioId, EstadoOrden estado, String ticker);
     List<Orden> findEncoladasListasParaEnvio();
+    /** Órdenes enviadas al broker que todavía pueden recibir ejecuciones. */
+    List<Orden> findPendientesDeEjecucion();
     Orden save(Orden orden);
 }

@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface AlpacaOrderPort {
+    /** Prefijo de los ids que genera el simulador de paper trading cuando no hay claves de Alpaca o la llamada falla. */
+    String PREFIJO_SIMULADO = "alpaca-paper-";
+
     AlpacaOrderResponse enviarOrden(AlpacaOrderRequest request);
     void cancelarOrden(String brokerOrderId);
     AlpacaOrderResponse consultarOrden(String brokerOrderId);

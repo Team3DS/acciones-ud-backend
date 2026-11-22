@@ -54,6 +54,11 @@ app:
   servicio:
     usuario-id: ${M5_SERVICE_USER_ID:900000005}
     token-ttl: PT60S
+  # Sincronización de ejecuciones: consulta a Alpaca o, sin claves, simula la ejecución con el precio de M4.
+  ejecuciones:
+    habilitado: ${EJECUCIONES_HABILITADO:true}
+    intervalo-ms: ${EJECUCIONES_INTERVALO_MS:10000}
+    retraso-inicial-ms: ${EJECUCIONES_RETRASO_INICIAL_MS:15000}
   alpaca:
     api-key: ${ALPACA_API_KEY:}
     api-secret: ${ALPACA_API_SECRET:}
