@@ -63,20 +63,22 @@ public class ConfiguracionComisionEntity {
         );
     }
 
+    // Acceso a columnas (Hibernate usa acceso por campo; la conversión con el dominio está en fromDomain/toDomain).
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public String getMercadoCodigo() { return mercadoCodigo; }
-    public void setMercadoCodigo(String mercadoCodigo) { this.mercadoCodigo = mercadoCodigo; }
     public BigDecimal getPorcentaje() { return porcentaje; }
-    public void setPorcentaje(BigDecimal porcentaje) { this.porcentaje = porcentaje; }
     public Instant getVigenteDesde() { return vigenteDesde; }
-    public void setVigenteDesde(Instant vigenteDesde) { this.vigenteDesde = vigenteDesde; }
     public Instant getVigenteHasta() { return vigenteHasta; }
-    public void setVigenteHasta(Instant vigenteHasta) { this.vigenteHasta = vigenteHasta; }
     public String getMotivo() { return motivo; }
-    public void setMotivo(String motivo) { this.motivo = motivo; }
     public Long getCreadoPorUsuarioId() { return creadoPorUsuarioId; }
-    public void setCreadoPorUsuarioId(Long creadoPorUsuarioId) { this.creadoPorUsuarioId = creadoPorUsuarioId; }
     public Instant getCreadoEn() { return creadoEn; }
+
+    public void setId(Long id) { this.id = id; }
+    public void setMercadoCodigo(String mercadoCodigo) { this.mercadoCodigo = mercadoCodigo; }
+    public void setPorcentaje(BigDecimal porcentaje) { this.porcentaje = porcentaje; }
+    public void setVigenteDesde(Instant vigenteDesde) { this.vigenteDesde = vigenteDesde; }
+    public void setVigenteHasta(Instant vigenteHasta) { this.vigenteHasta = vigenteHasta; }
+    public void setMotivo(String motivo) { this.motivo = motivo; }
+    public void setCreadoPorUsuarioId(Long creadoPorUsuarioId) { this.creadoPorUsuarioId = creadoPorUsuarioId; }
     public void setCreadoEn(Instant creadoEn) { this.creadoEn = creadoEn; }
 }

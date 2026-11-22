@@ -73,22 +73,24 @@ public class OutboxEventoEntity {
         );
     }
 
+    // Acceso a columnas (Hibernate usa acceso por campo; la conversión con el dominio está en fromDomain/toDomain).
     public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
     public String getTipoAgregado() { return tipoAgregado; }
-    public void setTipoAgregado(String tipoAgregado) { this.tipoAgregado = tipoAgregado; }
     public String getAgregadoId() { return agregadoId; }
-    public void setAgregadoId(String agregadoId) { this.agregadoId = agregadoId; }
     public String getTipoEvento() { return tipoEvento; }
-    public void setTipoEvento(String tipoEvento) { this.tipoEvento = tipoEvento; }
     public String getCarga() { return carga; }
-    public void setCarga(String carga) { this.carga = carga; }
     public Instant getCreadoEn() { return creadoEn; }
-    public void setCreadoEn(Instant creadoEn) { this.creadoEn = creadoEn; }
     public Instant getPublicadoEn() { return publicadoEn; }
-    public void setPublicadoEn(Instant publicadoEn) { this.publicadoEn = publicadoEn; }
     public Integer getIntentos() { return intentos; }
-    public void setIntentos(Integer intentos) { this.intentos = intentos; }
     public String getUltimoError() { return ultimoError; }
+
+    public void setId(UUID id) { this.id = id; }
+    public void setTipoAgregado(String tipoAgregado) { this.tipoAgregado = tipoAgregado; }
+    public void setAgregadoId(String agregadoId) { this.agregadoId = agregadoId; }
+    public void setTipoEvento(String tipoEvento) { this.tipoEvento = tipoEvento; }
+    public void setCarga(String carga) { this.carga = carga; }
+    public void setCreadoEn(Instant creadoEn) { this.creadoEn = creadoEn; }
+    public void setPublicadoEn(Instant publicadoEn) { this.publicadoEn = publicadoEn; }
+    public void setIntentos(Integer intentos) { this.intentos = intentos; }
     public void setUltimoError(String ultimoError) { this.ultimoError = ultimoError; }
 }

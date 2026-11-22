@@ -61,18 +61,20 @@ public class HistorialEstadoOrdenEntity {
         );
     }
 
+    // Acceso a columnas (Hibernate usa acceso por campo; la conversión con el dominio está en fromDomain/toDomain).
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public Long getOrdenId() { return ordenId; }
-    public void setOrdenId(Long ordenId) { this.ordenId = ordenId; }
     public EstadoOrden getEstadoOrden() { return estadoOrden; }
-    public void setEstadoOrden(EstadoOrden estadoOrden) { this.estadoOrden = estadoOrden; }
     public TipoActor getTipoActor() { return tipoActor; }
-    public void setTipoActor(TipoActor tipoActor) { this.tipoActor = tipoActor; }
     public Long getActorUsuarioId() { return actorUsuarioId; }
-    public void setActorUsuarioId(Long actorUsuarioId) { this.actorUsuarioId = actorUsuarioId; }
     public String getCausa() { return causa; }
-    public void setCausa(String causa) { this.causa = causa; }
     public Instant getOcurridoEn() { return ocurridoEn; }
+
+    public void setId(Long id) { this.id = id; }
+    public void setOrdenId(Long ordenId) { this.ordenId = ordenId; }
+    public void setEstadoOrden(EstadoOrden estadoOrden) { this.estadoOrden = estadoOrden; }
+    public void setTipoActor(TipoActor tipoActor) { this.tipoActor = tipoActor; }
+    public void setActorUsuarioId(Long actorUsuarioId) { this.actorUsuarioId = actorUsuarioId; }
+    public void setCausa(String causa) { this.causa = causa; }
     public void setOcurridoEn(Instant ocurridoEn) { this.ocurridoEn = ocurridoEn; }
 }

@@ -63,20 +63,22 @@ public class EjecucionOrdenEntity {
         );
     }
 
+    // Acceso a columnas (Hibernate usa acceso por campo; la conversión con el dominio está en fromDomain/toDomain).
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public Long getOrdenId() { return ordenId; }
-    public void setOrdenId(Long ordenId) { this.ordenId = ordenId; }
     public String getBrokerExecutionId() { return brokerExecutionId; }
-    public void setBrokerExecutionId(String brokerExecutionId) { this.brokerExecutionId = brokerExecutionId; }
     public Integer getCantidad() { return cantidad; }
-    public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
     public BigDecimal getPrecioEjecucion() { return precioEjecucion; }
-    public void setPrecioEjecucion(BigDecimal precioEjecucion) { this.precioEjecucion = precioEjecucion; }
     public BigDecimal getComision() { return comision; }
-    public void setComision(BigDecimal comision) { this.comision = comision; }
     public Instant getEjecutadaEn() { return ejecutadaEn; }
-    public void setEjecutadaEn(Instant ejecutadaEn) { this.ejecutadaEn = ejecutadaEn; }
     public Instant getRegistradaEn() { return registradaEn; }
+
+    public void setId(Long id) { this.id = id; }
+    public void setOrdenId(Long ordenId) { this.ordenId = ordenId; }
+    public void setBrokerExecutionId(String brokerExecutionId) { this.brokerExecutionId = brokerExecutionId; }
+    public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
+    public void setPrecioEjecucion(BigDecimal precioEjecucion) { this.precioEjecucion = precioEjecucion; }
+    public void setComision(BigDecimal comision) { this.comision = comision; }
+    public void setEjecutadaEn(Instant ejecutadaEn) { this.ejecutadaEn = ejecutadaEn; }
     public void setRegistradaEn(Instant registradaEn) { this.registradaEn = registradaEn; }
 }

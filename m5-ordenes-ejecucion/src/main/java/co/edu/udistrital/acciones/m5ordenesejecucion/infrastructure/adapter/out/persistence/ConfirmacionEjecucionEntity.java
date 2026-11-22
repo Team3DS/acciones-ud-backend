@@ -38,10 +38,12 @@ public class ConfirmacionEjecucionEntity {
         );
     }
 
+    // Acceso a columnas (Hibernate usa acceso por campo; la conversión con el dominio está en fromDomain/toDomain).
     public ConfirmacionEjecucionId getId() { return id; }
-    public void setId(ConfirmacionEjecucionId id) { this.id = id; }
     public BigDecimal getPrecioPromedioCosto() { return precioPromedioCosto; }
-    public void setPrecioPromedioCosto(BigDecimal precioPromedioCosto) { this.precioPromedioCosto = precioPromedioCosto; }
     public Instant getConfirmadaEn() { return confirmadaEn; }
+
+    public void setId(ConfirmacionEjecucionId id) { this.id = id; }
+    public void setPrecioPromedioCosto(BigDecimal precioPromedioCosto) { this.precioPromedioCosto = precioPromedioCosto; }
     public void setConfirmadaEn(Instant confirmadaEn) { this.confirmadaEn = confirmadaEn; }
 }
