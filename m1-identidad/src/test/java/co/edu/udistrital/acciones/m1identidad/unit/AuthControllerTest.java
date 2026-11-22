@@ -18,6 +18,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -62,13 +63,13 @@ class AuthControllerTest {
     }
 
     @Test
-    void loginReturns200WithTokens() {
+    void loginReturns200WithMfaChallenge() {
         LoginRequest req = new LoginRequest("login@test.com", "secret");
 
-        when(service.login(req)).thenReturn(Map.of(
-                "accessToken", "access-123",
-                "refreshToken", "refresh-456",
-                "userId", "42"
+        when(service.login(req)).thenReturn(Map.<String, Object>of(
+                "userId", 42L,
+                "requiresMfa", true,
+                "expiresAt", "2026-11-21T22:05:00Z"
         ));
 
         ResponseEntity<?> response = controller.login(req);
@@ -76,29 +77,36 @@ class AuthControllerTest {
         assertEquals(200, response.getStatusCode().value());
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         assertNotNull(body);
-        assertEquals("access-123", body.get("accessToken"));
-        assertEquals("refresh-456", body.get("refreshToken"));
-        assertEquals("42", body.get("userId"));
+        assertEquals(42L, body.get("userId"));
+        assertEquals(true, body.get("requiresMfa"));
+        assertNull(body.get("accessToken"));
     }
 
     @Test
     void mfaVerifyReturnsVerifiedTrue() {
         MfaVerifyRequest req = new MfaVerifyRequest(1L, "123456");
 
-        when(service.verifyMfa(1L, "123456")).thenReturn(true);
+        when(service.verifyMfa(1L, "123456")).thenReturn(Map.<String, Object>of(
+                "verified", true,
+                "userId", 1L,
+                "accessToken", "access-123",
+                "refreshToken", "refresh-456"
+        ));
 
         ResponseEntity<?> response = controller.mfaVerify(req);
 
         assertEquals(200, response.getStatusCode().value());
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         assertEquals(true, body.get("verified"));
+        assertEquals("access-123", body.get("accessToken"));
+        assertEquals("refresh-456", body.get("refreshToken"));
     }
 
     @Test
     void mfaVerifyReturnsVerifiedFalse() {
         MfaVerifyRequest req = new MfaVerifyRequest(1L, "000000");
 
-        when(service.verifyMfa(1L, "000000")).thenReturn(false);
+        when(service.verifyMfa(1L, "000000")).thenReturn(Map.<String, Object>of("verified", false));
 
         ResponseEntity<?> response = controller.mfaVerify(req);
 

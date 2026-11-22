@@ -10,6 +10,8 @@ import java.time.Duration;
 public class MfaService {
     private static final int OTP_LENGTH = 6;
     private static final int TTL_MINUTES = 5;
+    /** Vigencia del código MFA. Debe ser menor a 15 minutos, el máximo que acepta M8. */
+    public static final Duration TTL = Duration.ofMinutes(TTL_MINUTES);
     private static final String KEY_PREFIX = "mfa:";
 
     private final StringRedisTemplate redis;

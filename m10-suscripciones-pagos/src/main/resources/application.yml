@@ -6,21 +6,88 @@ spring:
     username: ${DB_USER:acciones_ud}
     password: ${DB_PASSWORD:acciones_ud}
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
-    open-in-view: false
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:acciones_ud}
     password: ${RABBITMQ_PASSWORD:acciones_ud}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+  data:
+    web:
+      pageable:
+        default-page-size: 20
+        max-page-size: 100
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  internal:
+    token: ${M10_INTERNAL_TOKEN:}
+  servicio:
+    usuario-id: ${M10_SERVICE_USER_ID:900000010}
+    token-ttl: PT60S
+  clientes-http:
+    m3-base-url: ${M3_BASE_URL:http://m3-catalogo-mercados:8083}
+    m4-base-url: ${M4_BASE_URL:http://m4-datos-mercado:8084}
+    timeout-seconds: 5
+    cache-ttl-seconds: 5
+  stripe:
+    api-key: ${STRIPE_API_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    api-base: ${STRIPE_API_BASE:https://api.stripe.com}
+    connect-timeout: PT5S
+    read-timeout: PT10S
+    max-network-retries: 2
+    webhook-tolerance: PT5M
+    checkout-ttl: PT1H
+    precios-cache-ttl: PT10M
+    success-url: "${FRONTEND_URL:http://127.0.0.1:5173}/?billing=success&session_id={CHECKOUT_SESSION_ID}"
+    cancel-url: "${FRONTEND_URL:http://127.0.0.1:5173}/?billing=cancel"
+  webhooks:
+    procesador-enabled: ${WEBHOOKS_PROCESADOR_ENABLED:true}
+    fixed-delay: ${WEBHOOKS_FIXED_DELAY:PT10S}
+    lote: ${WEBHOOKS_LOTE:50}
+    max-intentos: ${WEBHOOKS_MAX_INTENTOS:10}
+    backoff-base: ${WEBHOOKS_BACKOFF_BASE:PT30S}
+    backoff-max: ${WEBHOOKS_BACKOFF_MAX:PT6H}
+  outbox:
+    intervalo-ms: ${OUTBOX_INTERVALO_MS:1000}
+    lote: ${OUTBOX_LOTE:50}
 
 server:
   port: ${SERVER_PORT:8090}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 eureka:
   client:

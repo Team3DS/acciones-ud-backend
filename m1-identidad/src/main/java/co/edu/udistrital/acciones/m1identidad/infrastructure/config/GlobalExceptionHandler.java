@@ -1,5 +1,6 @@
 package co.edu.udistrital.acciones.m1identidad.infrastructure.config;
 
+import org.springframework.amqp.AmqpException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,6 +25,12 @@ public class GlobalExceptionHandler {
             errors.put(err.getField(), err.getDefaultMessage())
         );
         return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(AmqpException.class)
+    public ResponseEntity<Map<String, String>> handleMessaging(AmqpException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "No se pudo enviar el código de verificación. Intenta de nuevo en unos minutos."));
     }
 
     @ExceptionHandler(RuntimeException.class)
