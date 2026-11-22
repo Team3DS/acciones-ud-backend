@@ -44,18 +44,18 @@ public class RestFondosClient implements FondosClientPort {
         );
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        // Sin reserva confirmada por M2 no hay orden: un error aquí hace que CrearOrden la marque RECHAZADA.
+        Map<String, Object> response;
         try {
-            Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
-            if (response != null && response.containsKey("reservationId")) {
-                Number num = (Number) response.get("reservationId");
-                return num.longValue();
-            }
-            return 1L; // Fallback id si no retorna reservationId
+            response = restTemplate.postForObject(url, request, Map.class);
         } catch (Exception ex) {
-            log.warn("Error comunicando con M2 reservarFondos ({}), usando fallback: {}", url, ex.getMessage());
-            // Generar un ID de reserva positivo determinista para permitir flujo simulado si M2 no está arriba
-            return Math.abs((long) (orderId + idempotencyKey).hashCode());
+            log.warn("M2 no reservó fondos para la orden {} ({}): {}", orderId, url, ex.getMessage());
+            throw new IllegalStateException("No se pudieron reservar los fondos: " + ex.getMessage(), ex);
         }
+        if (response != null && response.get("reservationId") instanceof Number num) {
+            return num.longValue();
+        }
+        throw new IllegalStateException("M2 no devolvió reservationId para la orden " + orderId);
     }
 
     @Override

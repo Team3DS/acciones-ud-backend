@@ -46,14 +46,22 @@ class RestPortafolioClientTest {
     }
 
     @Test
-    void reservarPosicion_retornaFallbackCuandoExcepcion() {
+    void reservarPosicion_lanzaErrorCuandoM6RechazaOFalla() {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .thenThrow(new RuntimeException("Connection refused"));
+                .thenThrow(new RuntimeException("409 Posición insuficiente"));
 
-        Long result = client.reservarPosicion("order-1", 100L, "AAPL", 10, "idem-key-1");
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> client.reservarPosicion("order-1", 100L, "AAPL", 10, "idem-key-1"));
+        assertTrue(ex.getMessage().contains("Posición insuficiente"));
+    }
 
-        assertNotNull(result);
-        assertTrue(result > 0);
+    @Test
+    void reservarPosicion_lanzaErrorSiM6NoDevuelveReservationId() {
+        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(null);
+
+        assertThrows(IllegalStateException.class,
+                () -> client.reservarPosicion("order-1", 100L, "AAPL", 10, "idem-key-1"));
     }
 
     @Test

@@ -44,14 +44,22 @@ class RestFondosClientTest {
     }
 
     @Test
-    void reservarFondos_retornaFallbackCuandoExcepcion() {
+    void reservarFondos_lanzaErrorCuandoM2RechazaOFalla() {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .thenThrow(new RuntimeException("Connection refused"));
+                .thenThrow(new RuntimeException("409 Fondos insuficientes"));
 
-        Long result = client.reservarFondos("order-1", 100L, new BigDecimal("1500.00"), "idem-key-1");
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> client.reservarFondos("order-1", 100L, new BigDecimal("1500.00"), "idem-key-1"));
+        assertTrue(ex.getMessage().contains("Fondos insuficientes"));
+    }
 
-        assertNotNull(result);
-        assertTrue(result > 0);
+    @Test
+    void reservarFondos_lanzaErrorSiM2NoDevuelveReservationId() {
+        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(Map.of("status", "ACTIVA"));
+
+        assertThrows(IllegalStateException.class,
+                () -> client.reservarFondos("order-1", 100L, new BigDecimal("1500.00"), "idem-key-1"));
     }
 
     @Test

@@ -47,17 +47,18 @@ public class RestPortafolioClient implements PortafolioClientPort {
         );
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        // Sin reserva confirmada por M6 no se puede vender: un error aquí hace que CrearOrden la marque RECHAZADA.
+        Map<String, Object> response;
         try {
-            Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
-            if (response != null && response.containsKey("reservationId")) {
-                Number num = (Number) response.get("reservationId");
-                return num.longValue();
-            }
-            return 1L;
+            response = restTemplate.postForObject(url, request, Map.class);
         } catch (Exception ex) {
-            log.warn("Error comunicando con M6 reservarPosicion ({}), usando fallback: {}", url, ex.getMessage());
-            return Math.abs((long) (orderId + idempotencyKey).hashCode());
+            log.warn("M6 no reservó la posición para la orden {} ({}): {}", orderId, url, ex.getMessage());
+            throw new IllegalStateException("No se pudo reservar la posición: " + ex.getMessage(), ex);
         }
+        if (response != null && response.get("reservationId") instanceof Number num) {
+            return num.longValue();
+        }
+        throw new IllegalStateException("M6 no devolvió reservationId para la orden " + orderId);
     }
 
     @Override
