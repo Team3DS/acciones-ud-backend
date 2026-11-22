@@ -18,6 +18,16 @@ spring:
           uri: http://m3-catalogo-mercados:8083
           predicates:
             - Path=/api/v1/markets/**,/api/v1/catalog/**,/api/v1/instruments/**
+        # WebSocket de cotizaciones (STOMP/SockJS). M4 registra el endpoint en /market/ws/quotes, sin /api/v1,
+        # así que esta ruta quita el prefijo. Va antes de m4-datos-mercado porque /api/v1/market/** también coincide.
+        - id: m4-datos-mercado-ws
+          uri: http://m4-datos-mercado:8084
+          order: -1
+          predicates:
+            - Path=/api/v1/market/ws/**
+          filters:
+            - RewritePath=/api/v1/market/ws/(?<segment>.*), /market/ws/$\{segment}
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
         - id: m4-datos-mercado
           uri: http://m4-datos-mercado:8084
           predicates:
