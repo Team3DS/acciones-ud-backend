@@ -226,4 +226,94 @@ class OrdenMessageConsumerTest {
         orden.setClientOrderId(UUID.randomUUID());
         return orden;
     }
+
+    @Test
+    void procesarConfirmacionFondosJsonInvalidoCatchIgnorado() throws Exception {
+        String routingKey = RabbitConfig.ROUTING_M2_FONDOS_CONFIRMADOS;
+        String cuerpo = "{\"executionId\": \"no-es-numero\"}";
+        JsonNode jsonNode = mock(JsonNode.class);
+        when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("executionId")).thenReturn(true);
+        JsonNode executionIdNode = mock(JsonNode.class);
+        when(jsonNode.get("executionId")).thenReturn(executionIdNode);
+        when(executionIdNode.asLong()).thenThrow(new NumberFormatException());
+
+        Message mensaje = crearMensaje(routingKey, cuerpo);
+
+        assertDoesNotThrow(() -> consumer.recibirMensaje(mensaje));
+        verify(confirmacionRepository, never()).save(any());
+    }
+
+    @Test
+    void procesarConfirmacionFondosSinExecutionIdNoGuarda() throws Exception {
+        String routingKey = RabbitConfig.ROUTING_M2_FONDOS_CONFIRMADOS;
+        String cuerpo = "{}";
+        JsonNode jsonNode = mock(JsonNode.class);
+        when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("executionId")).thenReturn(false);
+
+        Message mensaje = crearMensaje(routingKey, cuerpo);
+
+        consumer.recibirMensaje(mensaje);
+
+        verify(confirmacionRepository, never()).save(any());
+    }
+
+    @Test
+    void procesarConfirmacionPortafolioSinAverageCostNoGuarda() throws Exception {
+        String routingKey = RabbitConfig.ROUTING_M6_POSICIONES_ACTUALIZADAS;
+        String cuerpo = "{\"executionId\": 99}";
+        JsonNode jsonNode = mock(JsonNode.class);
+        when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("executionId")).thenReturn(true);
+        when(jsonNode.has("averageCost")).thenReturn(false);
+
+        Message mensaje = crearMensaje(routingKey, cuerpo);
+
+        consumer.recibirMensaje(mensaje);
+
+        verify(confirmacionRepository, never()).save(any());
+    }
+
+    @Test
+    void procesarAperturaMercadoExcepcionEnUnaOrdenContinuaConSiguiente() throws Exception {
+        Orden ordenOk = crearOrdenCompra();
+        ordenOk.setId(1L);
+        ordenOk.setClientOrderId(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+
+        Orden ordenFalla = crearOrdenCompra();
+        ordenFalla.setId(2L);
+        ordenFalla.setClientOrderId(UUID.fromString("22222222-2222-2222-2222-222222222222"));
+
+        when(ordenRepository.findEncoladasListasParaEnvio()).thenReturn(List.of(ordenOk, ordenFalla));
+        when(fondosClient.reservarFondos(eq("1"), eq(1L), any(), anyString())).thenReturn(100L);
+        when(fondosClient.reservarFondos(eq("2"), eq(1L), any(), anyString())).thenThrow(new RuntimeException("Error fondos"));
+        when(alpacaOrderPort.enviarOrden(any())).thenReturn(new AlpacaOrderPort.AlpacaOrderResponse("broker-123", null, null, null, null, null, null));
+
+        consumer.recibirMensaje(crearMensaje(RabbitConfig.ROUTING_M4_MERCADO_ABIERTO, "{}"));
+
+        verify(fondosClient).reservarFondos(eq("1"), eq(1L), any(), anyString());
+        verify(fondosClient).reservarFondos(eq("2"), eq(1L), any(), anyString());
+        verify(alpacaOrderPort).enviarOrden(any());
+        verify(ordenRepository).save(ordenOk);
+        verify(ordenRepository, never()).save(ordenFalla);
+        verify(publicador).publicarOrdenCreada(eq(1L), eq(1L), eq("AAPL"), eq("COMPRA"), eq(10), eq("MARKET"));
+        verify(publicador, never()).publicarOrdenCreada(eq(2L), anyLong(), anyString(), anyString(), anyInt(), anyString());
+    }
+
+    @Test
+    void procesarAperturaMercadoCompraConReservaFondosIdYaSeteada() throws Exception {
+        Orden orden = crearOrdenCompra();
+        orden.setReservaFondosId(999L);
+        when(ordenRepository.findEncoladasListasParaEnvio()).thenReturn(List.of(orden));
+        when(fondosClient.reservarFondos(anyString(), anyLong(), any(), anyString())).thenReturn(100L);
+        when(alpacaOrderPort.enviarOrden(any())).thenReturn(new AlpacaOrderPort.AlpacaOrderResponse("broker-123", null, null, null, null, null, null));
+
+        consumer.recibirMensaje(crearMensaje(RabbitConfig.ROUTING_M4_MERCADO_ABIERTO, "{}"));
+
+        verify(fondosClient).reservarFondos(eq("1"), eq(1L), any(), anyString());
+        assertEquals(100L, orden.getReservaFondosId());
+        verify(alpacaOrderPort).enviarOrden(any());
+        verify(ordenRepository).save(orden);
+    }
 }

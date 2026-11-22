@@ -112,4 +112,35 @@ class OutboxRelayTest {
             throw new RuntimeException(e);
         }
     }
+
+    @Test
+    void procesarOutboxEventoTipoDesconocidoUsaDefaultCase() {
+        OutboxEvento evento = OutboxEvento.crear("TipoDesconocido", "1", "TipoDesconocido", "{}");
+        when(outboxRepository.findPendientes(50)).thenReturn(List.of(evento));
+
+        relay.procesarOutbox();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(rabbitTemplate).send(eq(RabbitConfig.EXCHANGE), eq("m5.orden.tipodesconocido"), messageCaptor.capture());
+        assertTrue(evento.getPublicadoEn() != null);
+        verify(outboxRepository).save(evento);
+    }
+
+    @Test
+    void procesarOutboxMultiplesEventosUnoFallaContinuaConOtros() {
+        OutboxEvento eventoOk = OutboxEvento.crear("Orden", "1", "OrdenCreada", "{\"orderId\":1}");
+        OutboxEvento eventoFalla = OutboxEvento.crear("Orden", "2", "OrdenEjecutada", "{\"orderId\":2}");
+        when(outboxRepository.findPendientes(50)).thenReturn(List.of(eventoOk, eventoFalla));
+        doNothing().when(rabbitTemplate).send(eq(RabbitConfig.EXCHANGE), eq("m5.orden.creada"), any());
+        doThrow(new RuntimeException("Error conexión")).when(rabbitTemplate).send(eq(RabbitConfig.EXCHANGE), eq("m5.orden.ejecutada"), any());
+
+        relay.procesarOutbox();
+
+        verify(rabbitTemplate, times(2)).send(anyString(), anyString(), any());
+        assertTrue(eventoOk.getPublicadoEn() != null);
+        assertEquals(1, eventoFalla.getIntentos());
+        assertEquals("Error conexión", eventoFalla.getUltimoError());
+        verify(outboxRepository).save(eventoOk);
+        verify(outboxRepository).save(eventoFalla);
+    }
 }

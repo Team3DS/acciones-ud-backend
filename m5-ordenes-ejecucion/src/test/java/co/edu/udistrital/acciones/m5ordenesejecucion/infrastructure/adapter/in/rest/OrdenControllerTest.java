@@ -129,6 +129,265 @@ class OrdenControllerTest {
     }
 
     @Test
+    void crearOrdenConVigenciaNullDefaultDia() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", null, 10,
+                null, null, null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.vigenciaOrden() == VigenciaOrden.DIA));
+    }
+
+    @Test
+    void crearOrdenConPrecioNullUsaPrecioLimite() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "LIMIT", "DIA", 10,
+                null, new BigDecimal("150.00"), null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.precioEstimado().compareTo(new BigDecimal("150.00")) == 0));
+    }
+
+    @Test
+    void crearOrdenConPrecioNullYPrecioLimiteNullUsaPrecioEstimado() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, new BigDecimal("145.00"), null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.precioEstimado().compareTo(new BigDecimal("145.00")) == 0));
+    }
+
+    @Test
+    void crearOrdenConIdempotencyKeyHeaderInvalida() {
+        UUID clientOrderId = UUID.nameUUIDFromBytes("header-invalido".getBytes());
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, "header-invalido", usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.clientOrderId().equals(clientOrderId)));
+    }
+
+    @Test
+    void crearOrdenConHeaderBlankBodyValido() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, clientOrderId.toString()
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, "", usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.clientOrderId().equals(clientOrderId)));
+    }
+
+    @Test
+    void crearOrdenConHeaderNullBodyValido() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, clientOrderId.toString()
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.clientOrderId().equals(clientOrderId)));
+    }
+
+    @Test
+    void crearOrdenConHeaderBlankBodyInvalido() {
+        UUID clientOrderId = UUID.nameUUIDFromBytes("body-invalido".getBytes());
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, "body-invalido"
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, "", usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.clientOrderId().equals(clientOrderId)));
+    }
+
+    @Test
+    void crearOrdenConTickerNullUsaSimbolo() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                null, "GOOGL", 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.ticker().equals("GOOGL")));
+    }
+
+    @Test
+    void crearOrdenConPrecioEstimadoNullPrecioNullUsaPrecioLimite() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "LIMIT", "DIA", 10,
+                null, new BigDecimal("150.00"), null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.precioEstimado().compareTo(new BigDecimal("150.00")) == 0));
+    }
+
+    @Test
+    void crearOrdenConPrecioEstimadoNullPrecioProvistoUsaPrecio() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "LIMIT", "DIA", 10,
+                new BigDecimal("155.00"), new BigDecimal("150.00"), null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.precioEstimado().compareTo(new BigDecimal("155.00")) == 0));
+    }
+
+    @Test
+    void crearOrdenConAccionIdNullDefaultUno() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, null, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.accionId() == 1L));
+    }
+
+    @Test
+    void crearOrdenSinIdempotencyKeyGeneraRandom() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, null, usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.clientOrderId() != null));
+    }
+
+    @Test
+    void crearOrdenConTickerYSimboloBlankLanzaExcepcion() {
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                null, "", 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, null
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        assertThrows(IllegalArgumentException.class, () -> controller.crearOrden(request, null, usuario));
+        verifyNoInteractions(crearOrdenUseCase);
+    }
+
+    @Test
+    void crearOrdenConIdempotencyKeyBlankGeneraRandom() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+
+        when(crearOrdenUseCase.ejecutar(any(CrearOrdenUseCase.CrearOrdenCommand.class))).thenReturn(orden);
+
+        OrdenController.CrearOrdenRequest request = new OrdenController.CrearOrdenRequest(
+                "AAPL", null, 1L, "COMPRA", "MARKET", "DIA", 10,
+                null, null, null, null, ""
+        );
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.crearOrden(request, "", usuario);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(crearOrdenUseCase).ejecutar(argThat(cmd -> cmd.clientOrderId() != null));
+    }
+
+    @Test
     void obtenerOrdenExitoUsuarioPropietario() {
         UUID clientOrderId = UUID.randomUUID();
         Orden orden = crearOrden(clientOrderId);
@@ -190,6 +449,26 @@ class OrdenControllerTest {
     }
 
     @Test
+    void obtenerOrdenConClientOrderIdNull() {
+        UUID clientOrderId = null;
+        Orden orden = crearOrden(clientOrderId);
+        orden.setUsuarioId(1L);
+        orden.setClientOrderId(null);
+
+        when(consultarOrdenUseCase.buscarPorId(1L)).thenReturn(orden);
+        when(consultarOrdenUseCase.buscarFillsPorOrden(1L)).thenReturn(List.of());
+
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<OrdenController.OrdenDetalleResponse> response = controller.obtenerOrden(1L, usuario);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertNull(response.getBody().clientOrderId());
+        verify(consultarOrdenUseCase).buscarPorId(1L);
+    }
+
+    @Test
     void listarOrdenesConFiltros() {
         UUID clientOrderId = UUID.randomUUID();
         Orden orden = crearOrden(clientOrderId);
@@ -235,6 +514,27 @@ class OrdenControllerTest {
     }
 
     @Test
+    void listarOrdenesConStatusBlank() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+        orden.setUsuarioId(1L);
+
+        when(consultarOrdenUseCase.buscarPorUsuario(1L, null, null))
+                .thenReturn(List.of(orden));
+        when(consultarOrdenUseCase.buscarFillsPorOrden(1L)).thenReturn(List.of());
+
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<List<OrdenController.OrdenDetalleResponse>> response =
+                controller.listarOrdenes("", null, usuario);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        verify(consultarOrdenUseCase).buscarPorUsuario(1L, null, null);
+    }
+
+    @Test
     void cancelarOrdenExito() {
         doNothing().when(cancelarOrdenUseCase).ejecutar(1L, 1L, "motivo");
 
@@ -244,6 +544,18 @@ class OrdenControllerTest {
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(cancelarOrdenUseCase).ejecutar(1L, 1L, "motivo");
+    }
+
+    @Test
+    void cancelarOrdenConMotivoNull() {
+        doNothing().when(cancelarOrdenUseCase).ejecutar(1L, 1L, null);
+
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("USER"));
+
+        ResponseEntity<Void> response = controller.cancelarOrden(1L, null, usuario);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(cancelarOrdenUseCase).ejecutar(1L, 1L, null);
     }
 
     @Test
@@ -317,6 +629,29 @@ class OrdenControllerTest {
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         verify(consultarOrdenUseCase).buscarPorId(1L);
         verify(consultarOrdenUseCase, never()).buscarFillsPorOrden(anyLong());
+    }
+
+    @Test
+    void consultarFillsUsuarioAjenoEsAdmin() {
+        UUID clientOrderId = UUID.randomUUID();
+        Orden orden = crearOrden(clientOrderId);
+        orden.setUsuarioId(99L);
+
+        EjecucionOrden fill = new EjecucionOrden(1L, 1L, "BROKER-123", 5, new BigDecimal("150.00"),
+                new BigDecimal("0.30"), Instant.now(), Instant.now());
+
+        when(consultarOrdenUseCase.buscarPorId(1L)).thenReturn(orden);
+        when(consultarOrdenUseCase.buscarFillsPorOrden(1L)).thenReturn(List.of(fill));
+
+        AuthenticatedUser usuario = new AuthenticatedUser(1L, Set.of("ADMINISTRADOR"));
+
+        ResponseEntity<List<EjecucionOrden>> response = controller.consultarFills(1L, usuario);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        verify(consultarOrdenUseCase).buscarPorId(1L);
+        verify(consultarOrdenUseCase).buscarFillsPorOrden(1L);
     }
 
     private Orden crearOrden(UUID clientOrderId) {
