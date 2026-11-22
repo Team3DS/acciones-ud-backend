@@ -30,14 +30,8 @@ public class RestPortafolioClient implements PortafolioClientPort {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Long reservarPosicion(String orderId, Long userId, String symbol, Integer quantity, String idempotencyKey) {
         String url = baseUrl + "/api/v1/positions/reservations";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Id", String.valueOf(userId));
-        headers.set("X-User-Roles", "USER");
-
         Map<String, Object> body = Map.of(
                 "orderId", orderId,
                 "userId", userId,
@@ -46,19 +40,7 @@ public class RestPortafolioClient implements PortafolioClientPort {
                 "idempotencyKey", idempotencyKey
         );
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        // Sin reserva confirmada por M6 no se puede vender: un error aquí hace que CrearOrden la marque RECHAZADA.
-        Map<String, Object> response;
-        try {
-            response = restTemplate.postForObject(url, request, Map.class);
-        } catch (Exception ex) {
-            log.warn("M6 no reservó la posición para la orden {} ({}): {}", orderId, url, ex.getMessage());
-            throw new IllegalStateException("No se pudo reservar la posición: " + ex.getMessage(), ex);
-        }
-        if (response != null && response.get("reservationId") instanceof Number num) {
-            return num.longValue();
-        }
-        throw new IllegalStateException("M6 no devolvió reservationId para la orden " + orderId);
+        return ReservaRemota.solicitar(restTemplate, url, userId, body, "M6", "la posición");
     }
 
     @Override

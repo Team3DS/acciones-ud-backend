@@ -28,14 +28,8 @@ public class RestFondosClient implements FondosClientPort {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Long reservarFondos(String orderId, Long userId, BigDecimal amount, String idempotencyKey) {
         String url = baseUrl + "/api/v1/funds/reservations";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Id", String.valueOf(userId));
-        headers.set("X-User-Roles", "USER");
-
         Map<String, Object> body = Map.of(
                 "orderId", orderId,
                 "userId", userId,
@@ -43,19 +37,7 @@ public class RestFondosClient implements FondosClientPort {
                 "idempotencyKey", idempotencyKey
         );
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        // Sin reserva confirmada por M2 no hay orden: un error aquí hace que CrearOrden la marque RECHAZADA.
-        Map<String, Object> response;
-        try {
-            response = restTemplate.postForObject(url, request, Map.class);
-        } catch (Exception ex) {
-            log.warn("M2 no reservó fondos para la orden {} ({}): {}", orderId, url, ex.getMessage());
-            throw new IllegalStateException("No se pudieron reservar los fondos: " + ex.getMessage(), ex);
-        }
-        if (response != null && response.get("reservationId") instanceof Number num) {
-            return num.longValue();
-        }
-        throw new IllegalStateException("M2 no devolvió reservationId para la orden " + orderId);
+        return ReservaRemota.solicitar(restTemplate, url, userId, body, "M2", "los fondos");
     }
 
     @Override
