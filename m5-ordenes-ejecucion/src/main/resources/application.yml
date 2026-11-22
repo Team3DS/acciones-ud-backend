@@ -6,21 +6,71 @@ spring:
     username: ${DB_USER:acciones_ud}
     password: ${DB_PASSWORD:acciones_ud}
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
-    open-in-view: false
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:acciones_ud}
     password: ${RABBITMQ_PASSWORD:acciones_ud}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
 server:
   port: ${SERVER_PORT:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  servicio:
+    usuario-id: ${M5_SERVICE_USER_ID:900000005}
+    token-ttl: PT60S
+  alpaca:
+    api-key: ${ALPACA_API_KEY:}
+    api-secret: ${ALPACA_API_SECRET:}
+    base-url: ${ALPACA_BASE_URL:https://paper-api.alpaca.markets}
+    webhook-secret: ${ALPACA_WEBHOOK_SECRET:}
+  m2-client:
+    base-url: ${M2_BASE_URL:http://m2-cuentas-fondos:8082}
+    timeout-seconds: 5
+  m4-client:
+    base-url: ${M4_BASE_URL:http://m4-datos-mercado:8084}
+    timeout-seconds: 5
+  m6-client:
+    base-url: ${M6_BASE_URL:http://m6-portafolio:8086}
+    timeout-seconds: 5
+  outbox:
+    intervalo-ms: 1000
+    lote: 50
 
 eureka:
   client:
