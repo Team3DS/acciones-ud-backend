@@ -60,11 +60,11 @@ class EventosOrdenTest {
 
     @Test
     void laEjecucionSinComisionNiFechaUsaValoresPorDefecto() {
-        Map<String, Object> payload = EventosOrden.ejecutada(1L, 2L, 3L, "AAPL", "COMPRA", 1, new BigDecimal("10.00"), null, null);
+        Map<String, Object> payload = EventosOrden.ejecutada("exec-1", 2L, 3L, "AAPL", "COMPRA", 1, new BigDecimal("10.00"), null, null);
 
         assertEquals(BigDecimal.ZERO, payload.get("commission"));
         assertNotNull(payload.get("executedAt"));
-        assertEquals("1", payload.get("executionId"));
+        assertEquals("exec-1", payload.get("executionId"));
         assertEquals("2", payload.get("orderId"));
     }
 }

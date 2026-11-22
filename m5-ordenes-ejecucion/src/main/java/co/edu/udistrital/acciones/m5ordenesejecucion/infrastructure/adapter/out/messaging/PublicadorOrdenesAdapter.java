@@ -42,7 +42,7 @@ public class PublicadorOrdenesAdapter implements PublicadorOrdenesPort {
     }
 
     @Override
-    public void publicarOrdenEjecutada(UUID eventId, Long executionId, Long ordenId, Long userId,
+    public void publicarOrdenEjecutada(UUID eventId, String executionId, Long ordenId, Long userId,
                                        String symbol, String side, Integer quantity,
                                        BigDecimal price, BigDecimal commission, Instant executedAt) {
         enviar(eventId, RK_ORDEN_EJECUTADA, ordenId,
