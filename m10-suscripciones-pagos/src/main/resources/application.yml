@@ -64,6 +64,9 @@ app:
     max-intentos: ${WEBHOOKS_MAX_INTENTOS:10}
     backoff-base: ${WEBHOOKS_BACKOFF_BASE:PT30S}
     backoff-max: ${WEBHOOKS_BACKOFF_MAX:PT6H}
+  outbox:
+    intervalo-ms: ${OUTBOX_INTERVALO_MS:1000}
+    lote: ${OUTBOX_LOTE:50}
 
 server:
   port: ${SERVER_PORT:8090}
