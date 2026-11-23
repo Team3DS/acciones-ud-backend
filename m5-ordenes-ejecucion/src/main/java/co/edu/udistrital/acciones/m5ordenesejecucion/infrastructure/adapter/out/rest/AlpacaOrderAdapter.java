@@ -53,12 +53,16 @@ public class AlpacaOrderAdapter implements AlpacaOrderPort {
             body.put("symbol", request.symbol());
             body.put("qty", request.qty().toString());
             body.put("side", request.side() == LadoOrden.COMPRA ? "buy" : "sell");
-            body.put("type", mapearTipoAlpaca(request.type()));
+            // Take profit sin precio límite: orden límite en el precio objetivo (stop_limit exige limit_price).
+            boolean takeProfitSimple = request.type() == TipoOrden.TAKE_PROFIT && request.limitPrice() == null;
+            body.put("type", takeProfitSimple ? "limit" : mapearTipoAlpaca(request.type()));
             body.put("time_in_force", request.timeInForce() == VigenciaOrden.DIA ? "day" : "gtc");
             if (request.limitPrice() != null) {
                 body.put("limit_price", request.limitPrice().toString());
             }
-            if (request.stopPrice() != null) {
+            if (takeProfitSimple && request.stopPrice() != null) {
+                body.put("limit_price", request.stopPrice().toString());
+            } else if (request.stopPrice() != null) {
                 body.put("stop_price", request.stopPrice().toString());
             }
             if (request.clientOrderId() != null) {
@@ -79,7 +83,7 @@ public class AlpacaOrderAdapter implements AlpacaOrderPort {
         }
 
         // Simulador de Paper Trading determinista si no hay API keys o si la llamada externa falla
-        String simulatedId = "alpaca-paper-" + UUID.randomUUID();
+        String simulatedId = PREFIJO_SIMULADO + UUID.randomUUID();
         log.info("Simulando envío paper trading Alpaca: ordenId={}, symbol={}, qty={}, side={}",
                 simulatedId, request.symbol(), request.qty(), request.side());
 

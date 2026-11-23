@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,4 +26,6 @@ public interface OrdenJpaRepository extends JpaRepository<OrdenEntity, Long> {
     @Query("SELECT o FROM OrdenEntity o WHERE o.estadoOrden = 'PENDIENTE' " +
             "AND o.requiereEncolamiento = true AND o.confirmadoEncolamientoEn IS NOT NULL")
     List<OrdenEntity> findEncoladasConfirmadas();
+
+    List<OrdenEntity> findByEstadoOrdenInAndBrokerOrderIdIsNotNull(Collection<EstadoOrden> estados);
 }
