@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -22,17 +21,9 @@ public class JwtTokenValidator {
     private final SecretKey clave;
 
     public JwtTokenValidator(JwtProperties propiedades) {
-        String sec = propiedades.secret();
-        byte[] bytes;
-        try {
-            bytes = Base64.getDecoder().decode(sec);
-            if (bytes.length < 32) {
-                bytes = sec.getBytes(StandardCharsets.UTF_8);
-            }
-        } catch (Exception e) {
-            bytes = sec.getBytes(StandardCharsets.UTF_8);
-        }
-        this.clave = Keys.hmacShaKeyFor(bytes);
+        // Igual que M1 (quien firma) y el resto de servicios: el secreto se usa tal cual, sin decodificar Base64.
+        byte[] secreto = propiedades.secret().getBytes(StandardCharsets.UTF_8);
+        this.clave = Keys.hmacShaKeyFor(secreto);
     }
 
     public AuthenticatedUser validar(String token) {

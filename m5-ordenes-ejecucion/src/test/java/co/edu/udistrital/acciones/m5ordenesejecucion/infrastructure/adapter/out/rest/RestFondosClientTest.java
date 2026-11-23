@@ -1,5 +1,8 @@
 package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.out.rest;
 
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.EmisorTokenInterno;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.JwtProperties;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.JwtTokenValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,11 +27,13 @@ class RestFondosClientTest {
     @Mock
     RestTemplate restTemplate;
 
+    private static final String SECRETO = "clave-de-prueba-de-al-menos-32-caracteres";
+
     private RestFondosClient client;
 
     @BeforeEach
     void setUp() {
-        client = new RestFondosClient(restTemplate, "http://m2-cuentas-fondos:8082");
+        client = new RestFondosClient(restTemplate, "http://m2-cuentas-fondos:8082", new EmisorTokenInterno(new JwtProperties(SECRETO)));
     }
 
     @Test
@@ -170,5 +175,22 @@ class RestFondosClientTest {
                 .postForObject(anyString(), any(HttpEntity.class), eq(Map.class));
 
         assertDoesNotThrow(() -> client.liberarReserva(456L, "Error test"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservaVaConElTokenDelDuenoDeLaOrden() {
+        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(Map.of("reservationId", 1L));
+
+        client.reservarFondos("order-1", 100L, new BigDecimal("1500.00"), "idem-key-1");
+
+        ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(anyString(), captor.capture(), eq(Map.class));
+        String autorizacion = captor.getValue().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        assertNotNull(autorizacion);
+        assertTrue(autorizacion.startsWith("Bearer "));
+        Long usuario = new JwtTokenValidator(new JwtProperties(SECRETO)).validar(autorizacion.substring(7)).userId();
+        assertEquals(100L, usuario);
     }
 }

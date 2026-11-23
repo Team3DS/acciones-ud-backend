@@ -3,9 +3,13 @@ package co.edu.udistrital.acciones.m4datosmercado.infrastructure.adapter.out.res
 import co.edu.udistrital.acciones.m4datosmercado.application.port.out.CatalogoClientPort;
 import co.edu.udistrital.acciones.m4datosmercado.domain.EstadoMercado;
 import co.edu.udistrital.acciones.m4datosmercado.domain.HorarioMercado;
+import co.edu.udistrital.acciones.m4datosmercado.infrastructure.security.EmisorTokenServicio;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -27,9 +31,17 @@ public class CatalogoRestClient implements CatalogoClientPort {
 
     public CatalogoRestClient(WebClient.Builder builder,
                               @Value("${app.m3.base-url}") String baseUrl,
-                              @Value("${app.m3.timeout-ms}") long timeoutMs) {
-        this.webClient = builder.baseUrl(baseUrl).build();
+                              @Value("${app.m3.timeout-ms}") long timeoutMs,
+                              EmisorTokenServicio emisorToken) {
+        // M3 exige token en todas sus consultas: cada petición lleva el token de sistema de M4.
+        this.webClient = builder.baseUrl(baseUrl).filter(conToken(emisorToken)).build();
         this.timeoutMs = timeoutMs;
+    }
+
+    public static ExchangeFilterFunction conToken(EmisorTokenServicio emisorToken) {
+        return (request, next) -> next.exchange(ClientRequest.from(request)
+                .headers(headers -> headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + emisorToken.obtenerToken()))
+                .build());
     }
 
     @Override

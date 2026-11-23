@@ -36,6 +36,12 @@ app:
     api-secret: ${ALPACA_API_SECRET:}
     data-feed: ${ALPACA_DATA_FEED:iex}
     timeout-seconds: ${ALPACA_TIMEOUT_SECONDS:5}
+  # Mismo secreto que firma M1; valida los tokens de los usuarios y firma el de sistema hacia M3.
+  jwt:
+    secret: ${JWT_SECRET}
+  m3:
+    base-url: ${M3_BASE_URL:http://m3-catalogo-mercados:8083}
+    timeout-ms: ${M3_TIMEOUT_MS:3000}
   websocket:
     endpoint: /market/ws/quotes
     heartbeat-interval: 30000

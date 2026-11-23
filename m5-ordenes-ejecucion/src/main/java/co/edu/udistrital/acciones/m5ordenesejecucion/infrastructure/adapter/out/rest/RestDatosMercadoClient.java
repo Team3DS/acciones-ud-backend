@@ -1,8 +1,10 @@
 package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.out.rest;
 
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.DatosMercadoClientPort;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.config.RestClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -18,7 +20,8 @@ public class RestDatosMercadoClient implements DatosMercadoClientPort {
     private final RestTemplate restTemplate;
     private final String baseUrl;
 
-    public RestDatosMercadoClient(RestTemplate restTemplate,
+    // M4 exige token: el cliente interno agrega el de sistema.
+    public RestDatosMercadoClient(@Qualifier(RestClientConfig.REST_TEMPLATE_INTERNO) RestTemplate restTemplate,
                                   @Value("${app.m4-client.base-url:http://m4-datos-mercado:8084}") String baseUrl) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;

@@ -1,6 +1,7 @@
 package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.out.rest;
 
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.FondosClientPort;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.EmisorTokenInterno;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,11 +21,14 @@ public class RestFondosClient implements FondosClientPort {
 
     private final RestTemplate restTemplate;
     private final String baseUrl;
+    private final EmisorTokenInterno emisorToken;
 
     public RestFondosClient(RestTemplate restTemplate,
-                            @Value("${app.m2-client.base-url:http://m2-cuentas-fondos:8082}") String baseUrl) {
+                            @Value("${app.m2-client.base-url:http://m2-cuentas-fondos:8082}") String baseUrl,
+                            EmisorTokenInterno emisorToken) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;
+        this.emisorToken = emisorToken;
     }
 
     @Override
@@ -37,7 +41,7 @@ public class RestFondosClient implements FondosClientPort {
                 "idempotencyKey", idempotencyKey
         );
 
-        return ReservaRemota.solicitar(restTemplate, url, userId, body, "M2", "los fondos");
+        return ReservaRemota.solicitar(restTemplate, url, userId, emisorToken.paraUsuario(userId), body, "M2", "los fondos");
     }
 
     @Override
