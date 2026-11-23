@@ -188,4 +188,74 @@ class SincronizarEjecucionesServiceTest {
                 new BigDecimal("10.00"), 2, List.of(ejecucion(1, "50.00")), 1);
         assertEquals(new BigDecimal("10.00"), precio);
     }
+
+    @Test
+    void simuladorNoEjecutaSinPrecioDeM4() {
+        Orden orden = orden(10L, AlpacaOrderPort.PREFIJO_SIMULADO + "a", TipoOrden.MARKET, LadoOrden.COMPRA, 1);
+        when(ordenRepository.findPendientesDeEjecucion()).thenReturn(List.of(orden));
+        when(ejecucionRepository.findByOrdenId(10L)).thenReturn(List.of());
+        when(datosMercado.obtenerPrecioEstimado("AAPL")).thenReturn(null, BigDecimal.ZERO);
+
+        assertEquals(0, service.sincronizar());
+        assertEquals(0, service.sincronizar());
+        verifyNoInteractions(procesarEjecucion);
+    }
+
+    @Test
+    void conAlpacaSinDatosDeLlenadoNoRegistraNada() {
+        Orden orden = orden(10L, "alpaca-123", TipoOrden.MARKET, LadoOrden.COMPRA, 5);
+        when(ordenRepository.findPendientesDeEjecucion()).thenReturn(List.of(orden));
+        when(ejecucionRepository.findByOrdenId(10L)).thenReturn(List.of());
+        when(alpaca.consultarOrden("alpaca-123")).thenReturn(
+                null,
+                new AlpacaOrderResponse("alpaca-123", null, "new", "AAPL", 5, null, 0),
+                new AlpacaOrderResponse("alpaca-123", null, "accepted", "AAPL", 5, BigDecimal.TEN, null));
+
+        assertEquals(0, service.sincronizar());
+        assertEquals(0, service.sincronizar());
+        assertEquals(0, service.sincronizar());
+        verifyNoInteractions(procesarEjecucion);
+    }
+
+    @Test
+    void conAlpacaNoRegistraMasQueLaCantidadDeLaOrden() {
+        Orden orden = orden(10L, "alpaca-123", TipoOrden.MARKET, LadoOrden.VENTA, 5);
+        when(ordenRepository.findPendientesDeEjecucion()).thenReturn(List.of(orden));
+        when(ejecucionRepository.findByOrdenId(10L)).thenReturn(List.of());
+        when(alpaca.consultarOrden("alpaca-123")).thenReturn(
+                new AlpacaOrderResponse("alpaca-123", null, "filled", "AAPL", 5, new BigDecimal("20.00"), 8));
+
+        assertEquals(1, service.sincronizar());
+        ProcesarEjecucionCommand comando = comandoEnviado();
+        assertEquals(5, comando.cantidad());
+        assertEquals("alpaca-123-5", comando.brokerExecutionId());
+    }
+
+    @Test
+    void ignoraOrdenesSinCantidadOConIdDelBrokerVacio() {
+        Orden sinCantidad = orden(10L, "alpaca-1", TipoOrden.MARKET, LadoOrden.COMPRA, 1);
+        sinCantidad.setCantidad(null);
+        Orden idVacio = orden(11L, " ", TipoOrden.MARKET, LadoOrden.COMPRA, 1);
+        when(ordenRepository.findPendientesDeEjecucion()).thenReturn(List.of(sinCantidad, idVacio));
+
+        assertEquals(0, service.sincronizar());
+        verifyNoInteractions(ejecucionRepository, procesarEjecucion, datosMercado, alpaca);
+    }
+
+    @Test
+    void condicionesDeActivacionEnCompraYSinPrecioDeActivacion() {
+        BigDecimal precio = new BigDecimal("100");
+        Orden stopCompra = orden(1L, "x", TipoOrden.STOP_LOSS, LadoOrden.COMPRA, 1);
+        stopCompra.setPrecioActivacion(new BigDecimal("99"));
+        Orden takeProfitCompra = orden(2L, "x", TipoOrden.TAKE_PROFIT, LadoOrden.COMPRA, 1);
+        takeProfitCompra.setPrecioActivacion(new BigDecimal("101"));
+        Orden limiteVentaActiva = orden(3L, "x", TipoOrden.LIMIT, LadoOrden.VENTA, 1);
+        limiteVentaActiva.setPrecioLimite(new BigDecimal("100"));
+
+        assertTrue(SincronizarEjecucionesService.seActiva(stopCompra, precio));
+        assertTrue(SincronizarEjecucionesService.seActiva(takeProfitCompra, precio));
+        assertTrue(SincronizarEjecucionesService.seActiva(limiteVentaActiva, precio));
+        assertFalse(SincronizarEjecucionesService.seActiva(orden(4L, "x", TipoOrden.STOP_LOSS, LadoOrden.VENTA, 1), precio));
+        assertFalse(SincronizarEjecucionesService.seActiva(orden(5L, "x", TipoOrden.TAKE_PROFIT, LadoOrden.COMPRA, 1), precio));
+    }
 }
