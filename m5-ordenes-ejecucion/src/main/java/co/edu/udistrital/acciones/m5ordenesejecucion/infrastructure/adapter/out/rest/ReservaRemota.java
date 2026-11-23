@@ -21,10 +21,12 @@ final class ReservaRemota {
     }
 
     @SuppressWarnings("unchecked")
-    static Long solicitar(RestTemplate restTemplate, String url, Long userId, Map<String, Object> body,
+    static Long solicitar(RestTemplate restTemplate, String url, Long userId, String token, Map<String, Object> body,
                           String servicio, String recurso) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        // M2 y M6 solo dejan reservar al dueño de la cuenta: el token va a nombre del usuario de la orden.
+        headers.setBearerAuth(token);
         headers.set("X-User-Id", String.valueOf(userId));
         headers.set("X-User-Roles", "USER");
         Object orderId = body.get("orderId");

@@ -1,6 +1,9 @@
 package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.out.rest;
 
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.LadoOrden;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.EmisorTokenInterno;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.JwtProperties;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.JwtTokenValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +29,13 @@ class RestPortafolioClientTest {
     @Mock
     RestTemplate restTemplate;
 
+    private static final String SECRETO = "clave-de-prueba-de-al-menos-32-caracteres";
+
     private RestPortafolioClient client;
 
     @BeforeEach
     void setUp() {
-        client = new RestPortafolioClient(restTemplate, "http://m6-portafolio:8086");
+        client = new RestPortafolioClient(restTemplate, "http://m6-portafolio:8086", new EmisorTokenInterno(new JwtProperties(SECRETO)));
     }
 
     @Test
@@ -176,5 +181,22 @@ class RestPortafolioClientTest {
                 .postForObject(anyString(), any(HttpEntity.class), eq(Map.class));
 
         assertDoesNotThrow(() -> client.liberarReserva(123L, "Error test"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void reservaVaConElTokenDelDuenoDeLaOrden() {
+        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(Map.of("reservationId", 1L));
+
+        client.reservarPosicion("order-1", 100L, "AAPL", 10, "idem-key-1");
+
+        ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(anyString(), captor.capture(), eq(Map.class));
+        String autorizacion = captor.getValue().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        assertNotNull(autorizacion);
+        assertTrue(autorizacion.startsWith("Bearer "));
+        Long usuario = new JwtTokenValidator(new JwtProperties(SECRETO)).validar(autorizacion.substring(7)).userId();
+        assertEquals(100L, usuario);
     }
 }

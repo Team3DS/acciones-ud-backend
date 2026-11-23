@@ -6,4 +6,5 @@ target/
 .project
 .settings/
 .env*
+!.env.example
 *.log

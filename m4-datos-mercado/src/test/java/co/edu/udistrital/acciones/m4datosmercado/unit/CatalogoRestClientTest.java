@@ -2,6 +2,8 @@ package co.edu.udistrital.acciones.m4datosmercado.unit;
 
 import co.edu.udistrital.acciones.m4datosmercado.application.port.out.CatalogoClientPort;
 import co.edu.udistrital.acciones.m4datosmercado.infrastructure.adapter.out.rest.CatalogoRestClient;
+import co.edu.udistrital.acciones.m4datosmercado.infrastructure.security.EmisorTokenServicio;
+import co.edu.udistrital.acciones.m4datosmercado.infrastructure.security.JwtProperties;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,7 +44,8 @@ class CatalogoRestClientTest {
         WebClient.Builder builderSpy = spy(realBuilder);
         lenient().when(builderSpy.baseUrl(anyString())).thenReturn(builderSpy);
         lenient().when(builderSpy.build()).thenReturn(webClient);
-        client = new CatalogoRestClient(builderSpy, "http://m3:8083", 5000);
+        client = new CatalogoRestClient(builderSpy, "http://m3:8083", 5000,
+                new EmisorTokenServicio(new JwtProperties("clave-de-prueba-de-al-menos-32-caracteres")));
     }
 
     @Test

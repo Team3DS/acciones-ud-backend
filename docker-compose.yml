@@ -88,6 +88,8 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - JWT_SECRET=${JWT_SECRET}
+      - CIFRADO_KEY=${CIFRADO_KEY}
       - EUREKA_URL=http://eureka:8761/eureka
     depends_on:
       postgres:
@@ -183,6 +185,7 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - JWT_SECRET=${JWT_SECRET}
       - EUREKA_URL=http://eureka:8761/eureka
       - ALPACA_API_KEY=${ALPACA_API_KEY}
       - ALPACA_API_SECRET=${ALPACA_API_SECRET}
@@ -216,6 +219,7 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER:-acciones_ud}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
+      - JWT_SECRET=${JWT_SECRET}
       - EUREKA_URL=http://eureka:8761/eureka
       - ALPACA_API_KEY=${ALPACA_API_KEY}
       - ALPACA_API_SECRET=${ALPACA_API_SECRET}

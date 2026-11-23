@@ -234,11 +234,17 @@ docker compose logs -f m5-ordenes-ejecucion
 | `REDIS_HOST` / `REDIS_PORT` | Redis | `localhost` / `6379` |
 | `RABBITMQ_HOST` / `RABBITMQ_PORT` | RabbitMQ | `localhost` / `5672` |
 | `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | Credenciales RMQ | `acciones_ud` / `acciones_ud` |
-| `ALPACA_API_KEY` / `ALPACA_API_SECRET` | Alpaca Paper | **requerido** |
+| `JWT_SECRET` | Secreto compartido de los JWT (M1 firma, el resto valida; mínimo 32 caracteres) | **requerido** |
+| `CIFRADO_KEY` | Clave AES de M1, 32 bytes en Base64 | **requerido** |
+| `M8_MAIL_KEY` | Clave AES de M8, 32 bytes en Base64 | **requerido para M8** |
+| `ALPACA_API_KEY` / `ALPACA_API_SECRET` | Alpaca Paper (sin claves, M5 usa el simulador) | recomendado |
 | `ALPACA_BASE_URL` | Endpoint Alpaca | `https://paper-api.alpaca.markets` |
 | `RESEND_API_KEY` | Resend correo | **requerido para M8** |
 | `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe Test | **requerido para M10** |
+| `FRONTEND_URL` | URL pública del frontend (regreso de Stripe) | `http://127.0.0.1:5173` |
 | `EUREKA_URL` | Service Discovery (opcional) | `http://localhost:8761/eureka` |
+
+Las plantillas con todas las variables y cómo generar cada secreto están en `.env.example`. Las llamadas entre servicios (M4 → M3, M5 → M2/M4/M6) firman su propio token con `JWT_SECRET`, por eso todos los servicios deben recibir el mismo valor.
 
 > ### `Desarrollo paralelo — frentes de trabajo`
 

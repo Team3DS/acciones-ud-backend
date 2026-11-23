@@ -2,6 +2,7 @@ package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.out
 
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.PortafolioClientPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.LadoOrden;
+import co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.security.EmisorTokenInterno;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,11 +23,14 @@ public class RestPortafolioClient implements PortafolioClientPort {
 
     private final RestTemplate restTemplate;
     private final String baseUrl;
+    private final EmisorTokenInterno emisorToken;
 
     public RestPortafolioClient(RestTemplate restTemplate,
-                                @Value("${app.m6-client.base-url:http://m6-portafolio:8086}") String baseUrl) {
+                                @Value("${app.m6-client.base-url:http://m6-portafolio:8086}") String baseUrl,
+                                EmisorTokenInterno emisorToken) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;
+        this.emisorToken = emisorToken;
     }
 
     @Override
@@ -40,7 +44,7 @@ public class RestPortafolioClient implements PortafolioClientPort {
                 "idempotencyKey", idempotencyKey
         );
 
-        return ReservaRemota.solicitar(restTemplate, url, userId, body, "M6", "la posición");
+        return ReservaRemota.solicitar(restTemplate, url, userId, emisorToken.paraUsuario(userId), body, "M6", "la posición");
     }
 
     @Override
