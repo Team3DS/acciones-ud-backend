@@ -247,6 +247,13 @@ Antes del primer arranque:
 - En Stripe, registrar el webhook `https://<DOMINIO>/api/v1/payments/webhook/stripe` y copiar su secreto en `STRIPE_WEBHOOK_SECRET`.
 - Para actualizar: `git pull` en ambos repositorios y repetir el `up -d --build`.
 
+Los depósitos en M2 solo los registra un ADMINISTRADOR. Para dar ese rol a un usuario ya registrado (el rol entra en su próximo inicio de sesión):
+
+```bash
+docker compose exec postgres psql -U acciones_ud -d identidad_db -c \
+  "INSERT INTO usuario_rol (usuario_id, rol, asignado_en) SELECT id, 'ADMINISTRADOR', now() FROM usuario WHERE correo = 'admin@ejemplo.com';"
+```
+
 > ### `Variables de entorno`
 
 | Variable | Uso | Default local |

@@ -90,6 +90,8 @@ services:
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-acciones_ud}
       - JWT_SECRET=${JWT_SECRET}
       - CIFRADO_KEY=${CIFRADO_KEY}
+      # M1 aún no tiene migraciones (Flyway): Hibernate crea y actualiza sus tablas.
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${M1_DDL_AUTO:-update}
       - EUREKA_URL=http://eureka:8761/eureka
     depends_on:
       postgres:
