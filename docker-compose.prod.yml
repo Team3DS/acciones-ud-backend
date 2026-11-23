@@ -1,0 +1,64 @@
+# Despliegue en el servidor: se usa junto con docker-compose.yml.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# - Agrega el frontend (repositorio acciones-ud-frontend, al lado de este) y Caddy, que publica el sitio
+#   con HTTPS (certificado de Let's Encrypt automático) en el dominio de DOMINIO.
+# - Cierra los puertos de la base de datos, Redis, RabbitMQ, el gateway y los microservicios: desde
+#   internet solo quedan abiertos 80 y 443, y todo entra por Caddy → frontend (Nginx) → gateway.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      DOMINIO: ${DOMINIO:?Falta DOMINIO en el .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ${FRONTEND_DIR:-../acciones-ud-frontend}
+    environment:
+      GATEWAY_URL: http://gateway:8080
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  postgres:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  rabbitmq:
+    ports: !reset []
+  gateway:
+    ports: !reset []
+  m1-identidad:
+    ports: !reset []
+  m2-cuentas-fondos:
+    ports: !reset []
+  m3-catalogo-mercados:
+    ports: !reset []
+  m4-datos-mercado:
+    ports: !reset []
+  m5-ordenes-ejecucion:
+    ports: !reset []
+  m6-portafolio:
+    ports: !reset []
+  m8-notificaciones:
+    ports: !reset []
+  m10-suscripciones-pagos:
+    ports: !reset []
+    environment:
+      - FRONTEND_URL=https://${DOMINIO}
+
+volumes:
+  caddy-data:
+  caddy-config:

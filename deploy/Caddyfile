@@ -1,0 +1,6 @@
+# Caddy obtiene y renueva solo el certificado HTTPS del dominio (Let's Encrypt).
+# Requisitos: el registro A del dominio apunta a la IP pública y los puertos 80 y 443 están abiertos.
+{$DOMINIO} {
+	encode zstd gzip
+	reverse_proxy frontend:8080
+}

@@ -225,6 +225,28 @@ curl http://localhost:8090/actuator/health   # M10 Pagos
 docker compose logs -f m5-ordenes-ejecucion
 ```
 
+> ### `Despliegue en el servidor`
+
+`docker-compose.prod.yml` se usa junto con `docker-compose.yml`. Agrega el frontend y Caddy (HTTPS automático con Let's Encrypt) y cierra los puertos internos: desde internet solo quedan el 80 y el 443.
+
+```bash
+# Los dos repositorios en la misma carpeta
+git clone https://github.com/Team3DS/acciones-ud-backend.git
+git clone https://github.com/Team3DS/acciones-ud-frontend.git
+cd acciones-ud-backend
+cp .env.example .env    # completar DOMINIO, contraseñas, secretos y claves de Alpaca/Resend/Stripe
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+```
+
+Antes del primer arranque:
+
+- El registro A del dominio debe apuntar a la IP pública del servidor; si no, Caddy no puede obtener el certificado.
+- En Oracle Cloud, abrir 80 y 443 (TCP) en la lista de seguridad de la VCN y en el firewall de la instancia (`iptables`/`firewalld`).
+- Cambiar `DB_PASSWORD` y `RABBITMQ_PASSWORD` antes de crear los volúmenes: Postgres y RabbitMQ solo las leen la primera vez.
+- En Stripe, registrar el webhook `https://<DOMINIO>/api/v1/payments/webhook/stripe` y copiar su secreto en `STRIPE_WEBHOOK_SECRET`.
+- Para actualizar: `git pull` en ambos repositorios y repetir el `up -d --build`.
+
 > ### `Variables de entorno`
 
 | Variable | Uso | Default local |
