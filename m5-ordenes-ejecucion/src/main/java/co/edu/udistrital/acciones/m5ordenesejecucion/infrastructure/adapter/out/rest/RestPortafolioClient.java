@@ -30,14 +30,8 @@ public class RestPortafolioClient implements PortafolioClientPort {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Long reservarPosicion(String orderId, Long userId, String symbol, Integer quantity, String idempotencyKey) {
         String url = baseUrl + "/api/v1/positions/reservations";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Id", String.valueOf(userId));
-        headers.set("X-User-Roles", "USER");
-
         Map<String, Object> body = Map.of(
                 "orderId", orderId,
                 "userId", userId,
@@ -46,18 +40,7 @@ public class RestPortafolioClient implements PortafolioClientPort {
                 "idempotencyKey", idempotencyKey
         );
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        try {
-            Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
-            if (response != null && response.containsKey("reservationId")) {
-                Number num = (Number) response.get("reservationId");
-                return num.longValue();
-            }
-            return 1L;
-        } catch (Exception ex) {
-            log.warn("Error comunicando con M6 reservarPosicion ({}), usando fallback: {}", url, ex.getMessage());
-            return Math.abs((long) (orderId + idempotencyKey).hashCode());
-        }
+        return ReservaRemota.solicitar(restTemplate, url, userId, body, "M6", "la posición");
     }
 
     @Override

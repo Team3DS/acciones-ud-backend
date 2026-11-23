@@ -28,14 +28,8 @@ public class RestFondosClient implements FondosClientPort {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Long reservarFondos(String orderId, Long userId, BigDecimal amount, String idempotencyKey) {
         String url = baseUrl + "/api/v1/funds/reservations";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Id", String.valueOf(userId));
-        headers.set("X-User-Roles", "USER");
-
         Map<String, Object> body = Map.of(
                 "orderId", orderId,
                 "userId", userId,
@@ -43,19 +37,7 @@ public class RestFondosClient implements FondosClientPort {
                 "idempotencyKey", idempotencyKey
         );
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        try {
-            Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
-            if (response != null && response.containsKey("reservationId")) {
-                Number num = (Number) response.get("reservationId");
-                return num.longValue();
-            }
-            return 1L; // Fallback id si no retorna reservationId
-        } catch (Exception ex) {
-            log.warn("Error comunicando con M2 reservarFondos ({}), usando fallback: {}", url, ex.getMessage());
-            // Generar un ID de reserva positivo determinista para permitir flujo simulado si M2 no está arriba
-            return Math.abs((long) (orderId + idempotencyKey).hashCode());
-        }
+        return ReservaRemota.solicitar(restTemplate, url, userId, body, "M2", "los fondos");
     }
 
     @Override

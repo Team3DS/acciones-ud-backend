@@ -7,7 +7,6 @@ import co.edu.udistrital.acciones.m4datosmercado.domain.Intervalo;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -31,22 +31,25 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
     private final String apiKey;
     private final String apiSecret;
     private final String dataFeed;
+    /** Límite de espera por llamada. Reemplaza a @TimeLimiter, que solo aplica a métodos asíncronos. */
+    private final Duration timeout;
 
     public AlpacaMarketDataAdapter(WebClient.Builder builder,
                                    @Value("${app.alpaca.base-url}") String baseUrl,
                                    @Value("${app.alpaca.api-key}") String apiKey,
                                    @Value("${app.alpaca.api-secret}") String apiSecret,
-                                   @Value("${app.alpaca.data-feed}") String dataFeed) {
+                                   @Value("${app.alpaca.data-feed}") String dataFeed,
+                                   @Value("${app.alpaca.timeout-seconds:5}") long timeoutSeconds) {
         this.webClient = builder.baseUrl(baseUrl).build();
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
         this.dataFeed = dataFeed;
+        this.timeout = Duration.ofSeconds(timeoutSeconds);
     }
 
     @Override
     @CircuitBreaker(name = "alpaca", fallbackMethod = "obtenerCotizacionFallback")
     @Retry(name = "alpaca")
-    @TimeLimiter(name = "alpaca")
     public Cotizacion obtenerCotizacion(String symbol) {
         Map<String, Object> response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -59,6 +62,7 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .onErrorMap(WebClientResponseException.class, ex -> new RuntimeException("Error Alpaca: " + ex.getResponseBodyAsString(), ex))
+                .timeout(timeout)
                 .block();
 
         return parseQuote(response, symbol);
@@ -67,7 +71,6 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
     @Override
     @CircuitBreaker(name = "alpaca", fallbackMethod = "obtenerCotizacionesFallback")
     @Retry(name = "alpaca")
-    @TimeLimiter(name = "alpaca")
     public List<Cotizacion> obtenerCotizaciones(List<String> symbols) {
         String symbolsParam = String.join(",", symbols);
         Map<String, Object> response = webClient.get()
@@ -81,6 +84,7 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .onErrorMap(WebClientResponseException.class, ex -> new RuntimeException("Error Alpaca: " + ex.getResponseBodyAsString(), ex))
+                .timeout(timeout)
                 .block();
 
         return symbols.stream()
@@ -91,7 +95,6 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
     @Override
     @CircuitBreaker(name = "alpaca", fallbackMethod = "obtenerHistoricoFallback")
     @Retry(name = "alpaca")
-    @TimeLimiter(name = "alpaca")
     public List<HistoricoCotizacion> obtenerHistorico(String symbol, Instant from, Instant to, Intervalo intervalo) {
         String timeframe = mapIntervalo(intervalo);
         String start = formatAlpacaTime(from);
@@ -111,6 +114,7 @@ public class AlpacaMarketDataAdapter implements AlpacaMarketDataPort {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .onErrorMap(WebClientResponseException.class, ex -> new RuntimeException("Error Alpaca histórico: " + ex.getResponseBodyAsString(), ex))
+                .timeout(timeout)
                 .block();
 
         return parseBars(response, symbol, intervalo);
