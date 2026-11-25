@@ -4,6 +4,8 @@ El recorrido financiero QA reanudado en **Alpaca Paper** aprobó **42 comprobaci
 
 El sitio es [accionesud.site](https://accionesud.site). Se conservan los ocho microservicios propietarios de sus datos, gateway, frontend, PostgreSQL, Redis, RabbitMQ y Caddy. Las operaciones se limitaron a una cuenta QA aislada y al entorno Paper; no hubo negociación live ni cargos Stripe.
 
+La actualización posterior de **recuperación de contraseña** quedó desplegada a las **13:40:15**: nueve backends UP, sin reinicios, frontend healthy/nginx correcto y **19 comprobaciones HTTP aprobadas, sin fallos**. M1 aprobó 120 pruebas, M8 72 y frontend 54. Las pruebas del despliegue usaron una cuenta inexistente, sin cambiar contraseñas ni enviar correos a cuentas conocidas. El recorrido real lo completará su titular. Contratos, artefactos y límites se detallan en [password-recovery-20261125.md](password-recovery-20261125.md); el resultado financiero anterior conserva su alcance separado.
+
 ## Resultado operativo
 
 | Comprobación | Resultado |
@@ -20,14 +22,14 @@ La comprobación final de salud de las **12:45:33, America/Bogota**, encontró g
 
 ## Defectos corregidos
 
-- **M1:** consumo MFA atómico y control de intentos en Redis, protección de logout, validación de entrada, roles del perfil y contacto interno autenticado para M8.
+- **M1:** consumo MFA atómico y control de intentos en Redis, protección de logout, validación de entrada, roles del perfil y contacto interno autenticado para M8. Recuperación mediante enlace de un uso 5 min, respuesta neutra, claim Redis y rollback, bloqueo compartido con login/MFA/refresh, BCrypt y aviso de cambio por outbox transaccional.
 - **M2:** consumo parcial y remanente de reservas, idempotencia entre REST/Rabbit, `finalExecution`, `expectedExecutionCount` y migración V5 aditiva. Un fill final adelantado espera los parciales que faltan; una orden parcialmente ejecutada no se libera mediante el TTL de una reserva sin ejecuciones.
 - **M4 y gateway:** contratos de catálogo/horarios y transporte HTTP, SockJS y WebSocket. La ruta válida de horarios es `/api/v1/market/hours?market=NYSE` o `ALL`.
 - **M5:** autenticación y contratos con participantes, conservación de reservas ante un envío ambiguo a Alpaca, recuperación por `client_order_id`, fechas opcionales de reportes en PostgreSQL, UUID `eventId` determinista por ejecución, lectura del coste histórico de M6 y redondeo de importes.
 - **M6:** SELL conserva el coste previo a vender, aunque la posición quede en cero; BUY utiliza el promedio posterior. Respuesta, persistencia y outbox transmiten ese coste de ejecución. Los reintentos recuperan el coste persistido, incluso después de una adquisición posterior.
 - **Avisos M2 → M8:** productor ampliado con usuario/orden y campos anteriores conservados. M8 ya acepta el contrato; sus nuevas pruebas cubren AMQP real, rechazo seguro, recuperación y deduplicación. No cambió el runtime M8 ni necesita desplegarse otro JAR de ese módulo.
 - **M8:** JWT corto hacia M1/M3/M4 y token interno separado hacia M10, con propietarios validados y deduplicación por `eventId`.
-- **Frontend:** resolución dinámica del gateway mediante DNS Docker cada diez segundos, conservando ruta y query en REST y WebSocket. La prueba Docker cambió la IP del gateway sin recargar Nginx y mantuvo los mismos workers. No cambió la interfaz visual.
+- **Frontend:** resolución dinámica del gateway mediante DNS Docker cada diez segundos, conservando ruta y query en REST y WebSocket. La prueba Docker cambió la IP del gateway sin recargar Nginx y mantuvo los mismos workers. La actualización posterior incorpora recuperación por enlace, limpieza inmediata del fragmento, doble contraseña validada completa y regreso al login sin autologin.
 - **Infraestructura:** recuperación automática de PostgreSQL/Redis/RabbitMQ y healthcheck PostgreSQL con usuario/base reales, preservando los ajustes locales del despliegue.
 
 ## Recuperación QA y control de duplicados
@@ -39,17 +41,20 @@ M5 se detuvo durante el diagnóstico para contener los avisos repetidos y se des
 La limpieza final conservó el usuario QA y su historial. Solo su correo de prueba se sustituyó por un alias bajo guardas de identidad y propósito. El refresh estaba revocado; password y session se retiraron del archivo privado. Una futura ejecución QA requiere MFA nuevo. Este documento no contiene correos, credenciales, tokens ni OTP.
 Después de verificar las preferencias, la limpieza desactivó **solo el canal CORREO de los diez tipos de aviso QA**, con copia previa privada. APP permanece intacto. Se evita así continuar enviando correos de prueba, sin modificar cuentas ajenas.
 
-## Artefactos M2/M5/M6
+## Artefactos M1/M2/M5/M6/M8
 
 Los hashes siguientes corresponden a los JAR Java 21 usados en la reparación; no son hashes de imágenes Docker.
 
 | Módulo | Revisión | SHA-256 del JAR |
 | --- | --- | --- |
+| M1 | `118597a` | `de772fe3be3ad0532c582bc88fcae76e4183e5da0740e89f3dd4897f17cbbbe2` |
 | M2 | `b96cb0d` | `b6b58c9fe6094ab9415308479416f9f6bff87d2d4a4b4e809c44b706703243b8` |
 | M5 | `6bb613f` | `8b36f5a5b76e20249e90574af4fad3270ac815f1870710b3f7604b2f2c95d49f` |
 | M6 | `eb373c2` | `650d89e1d1ab0abb42240b087f73630c4d96e84f6329544808ca8f4d928fa5b8` |
+| M8 | `118597a` | `5e57edc7fca3cd04c77b430bf058d5e9ff9b7ec4ad34ba283d41f9be78c6ed8c` |
 
 M2, M5 y M6 se confirmaron UP con hashes runtime exactos. La rama de correcciones se publicó hasta `b96cb0d`. El intento anterior de crear un PR mediante el conector recibió 403, por lo que no se declara un PR existente.
+La rama backend está publicada hasta `297126f`, incluido el código de recuperación `118597a` y el [parche acumulativo frontend](../patches/frontend-password-recovery.patch). M1/M8 también están UP con hashes runtime exactos. Frontend `cc99fd8` quedó local por 403 al push; el parche conserva el cambio aplicado al servidor. No se afirma que su rama esté publicada.
 
 ## Validación
 
@@ -60,12 +65,14 @@ M2, M5 y M6 se confirmaron UP con hashes runtime exactos. La rama de correccione
 | Recuperación APP de fondos | `qa-m8-recovery-result.json`: dos eventos y dos avisos, cero propietarios incorrectos/correos nuevos, repetición idempotente y fondos sin cambio. |
 | Limpieza QA | `qa-cleanup-result.json`, sanitizado. |
 | API de lectura / autenticación HTTP | 29 PASS / 11 PASS, en etapas separadas. |
-| M1 | 89 pruebas, sin fallos/errores/omisiones; siete casos Redis reales. |
+| M1 final con recuperación | 120 pruebas, sin fallos/errores/omisiones; Redis/PostgreSQL/Rabbit reales, rollback, concurrencia y outbox. |
 | M2 | Paquete final: 275 pruebas aprobadas, 227 unitarias y 48 PostgreSQL/Rabbit; protección del TTL parcial conservada. |
 | M5 | Paquete final: 310 pruebas aprobadas; seis PostgreSQL y dos de `eventId`. |
 | M6 | Paquete: 270 pruebas aprobadas, incluidas dos PostgreSQL/Rabbit de coste histórico y reintento entre transportes. |
-| M8 | 58 pruebas aprobadas: 51 unitarias y siete PostgreSQL/Rabbit del contrato de fondos, recuperación del mismo UUID, owner inválido, deduplicación y SQL40001 con rollback/reintento. |
+| M8 final con recuperación | 72 pruebas aprobadas:62 unitarias, siete PostgreSQL/Rabbit del contrato de fondos y tres PostgreSQL/WireMock de correos de recuperación. |
 | Frontend DNS | Imagen construida, `nginx -t` y regresión Docker HTTP/WebSocket aprobadas sin reload. |
+| Frontend recuperación | 54 pruebas nativas y build correcto; sin recorrido visual automatizado. |
+| Despliegue de recuperación | `qa-password-recovery-deployment.json`:19 PASS/0 FAIL, 13:40:15; datos inexistentes/invalidación, assets, origen, binding y salud comprobados; sin reset/correo de cuenta conocida. |
 
 Los resultados pertenecen a ejecuciones distintas y **no se suman como pruebas únicas del sistema**. El pase Paper inicial tuvo 51 PASS, 1 FAIL y cuatro bloqueadas; se conserva como evidencia del diagnóstico, no como resultado del pase reanudado. No se declara un reactor global completo aprobado.
 
@@ -85,6 +92,7 @@ Contrato y recuperación **cerrados en el alcance descrito**. El resultado finan
 
 ## Límites y alcance académico
 
+- RF-04/CU-05 tienen recuperación mediante enlace de un uso 5 min, doble clave y aviso posterior. El recorrido de la cuenta real no se declara probado. Refresh/MFA se revocan, pero los accessJWT ya emitidos conservan su caducidad; la expiración por 30 min de inactividad no está acreditada. RF-02 exige bloqueo 15 min tras cinco errores; invalidar el desafío no acredita ese bloqueo del usuario.
 - Stripe devuelve 401 con la credencial configurada: Checkout, pago y webhook que dependen de ella siguen bloqueados externamente.
 - Revisión visual INCONCLUSA por la política de la herramienta al verificar la URL; no se eludió el bloqueo mediante otro canal UI.
 - No se ejecutó carga de 1.500 usuarios ni se acreditan sus umbrales de respuesta. La duración del harness no sustituye un benchmark. Un respaldo existente tampoco demuestra una restauración ensayada.
