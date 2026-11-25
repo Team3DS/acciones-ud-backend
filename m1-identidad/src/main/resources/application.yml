@@ -18,6 +18,10 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:acciones_ud}
     password: ${RABBITMQ_PASSWORD:acciones_ud}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
 
 server:
   port: ${SERVER_PORT:8081}

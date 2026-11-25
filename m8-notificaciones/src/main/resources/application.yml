@@ -53,6 +53,7 @@ management:
       enabled: false
 
 app:
+  public-url: ${APP_PUBLIC_URL:https://accionesud.site}
   jwt:
     secret: ${JWT_SECRET}
   mail:

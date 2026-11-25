@@ -49,6 +49,7 @@ public class RabbitConfig {
                     "m1.mfa.solicitado",
                     "m1.verificacion.solicitada",
                     "m1.recuperacion.solicitada",
+                    "m1.recuperacion.completada",
                     "m2.movimiento.creado",
                     "m2.fondos.reservados",
                     "m2.fondos.confirmados",

@@ -122,7 +122,7 @@ class UserApplicationServiceTest {
         user.setCorreo("login@test.com");
         user.setPasswordHash(passwordEncoder.encode("secret"));
 
-        when(userRepository.findByCorreo("login@test.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByCorreoForUpdate("login@test.com")).thenReturn(Optional.of(user));
         when(mfaService.generateAndStore(42L)).thenReturn("123456");
 
         Instant before = Instant.now();
@@ -148,7 +148,7 @@ class UserApplicationServiceTest {
         setId(user, 42L);
         user.setCorreo("login@test.com");
         user.setPasswordHash(passwordEncoder.encode("secret"));
-        when(userRepository.findByCorreo("login@test.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByCorreoForUpdate("login@test.com")).thenReturn(Optional.of(user));
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.login(new LoginRequest("login@test.com", "wrong")));
@@ -159,7 +159,7 @@ class UserApplicationServiceTest {
 
     @Test
     void loginThrowsWhenUserNotFound() {
-        when(userRepository.findByCorreo("none@test.com")).thenReturn(Optional.empty());
+        when(userRepository.findByCorreoForUpdate("none@test.com")).thenReturn(Optional.empty());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.login(new LoginRequest("none@test.com", "secret")));
@@ -174,7 +174,7 @@ class UserApplicationServiceTest {
         user.setCorreo("login@test.com");
         user.setPasswordHash(passwordEncoder.encode("correct"));
 
-        when(userRepository.findByCorreo("login@test.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByCorreoForUpdate("login@test.com")).thenReturn(Optional.of(user));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.login(new LoginRequest("login@test.com", "wrong")));
@@ -184,6 +184,7 @@ class UserApplicationServiceTest {
 
     @Test
     void verifyMfaIssuesTokensWhenCodeIsValid() {
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(User.create()));
         when(mfaService.verify(1L, "123456")).thenReturn(true);
         when(jwtService.generateAccessToken(1L)).thenReturn("access-token-123");
 
@@ -199,6 +200,7 @@ class UserApplicationServiceTest {
 
     @Test
     void verifyMfaReturnsNoTokensWhenCodeIsInvalid() {
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(User.create()));
         when(mfaService.verify(1L, "000000")).thenReturn(false);
 
         Map<String, Object> result = service.verifyMfa(1L, "000000");

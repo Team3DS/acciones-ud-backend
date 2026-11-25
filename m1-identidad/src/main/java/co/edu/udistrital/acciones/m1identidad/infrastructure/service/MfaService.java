@@ -82,6 +82,10 @@ public class MfaService {
         return Long.valueOf(1).equals(accepted);
     }
 
+    public void revoke(Long userId) {
+        redis.delete(keys(userId));
+    }
+
     private List<String> keys(Long userId) {
         return List.of(KEY_PREFIX + userId, ATTEMPTS_KEY_PREFIX + userId);
     }

@@ -1,5 +1,6 @@
 package co.edu.udistrital.acciones.m1identidad.infrastructure.config;
 
+import co.edu.udistrital.acciones.m1identidad.application.service.InvalidPasswordResetException;
 import org.springframework.amqp.AmqpException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,11 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(InvalidPasswordResetException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidPasswordReset(InvalidPasswordResetException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", ex.getMessage()));
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {

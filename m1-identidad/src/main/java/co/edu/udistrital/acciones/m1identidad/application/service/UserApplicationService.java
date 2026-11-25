@@ -72,7 +72,7 @@ public class UserApplicationService {
      * del usuario a través de M8. Los tokens se entregan solo después de verificar el código (RNF de MFA).
      */
     public Map<String, Object> login(LoginRequest req) {
-        User user = userRepository.findByCorreo(req.correo())
+        User user = userRepository.findByCorreoForUpdate(req.correo())
                 .orElseThrow(() -> new IllegalArgumentException("Credenciales inválidas"));
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Credenciales inválidas");
@@ -94,7 +94,8 @@ public class UserApplicationService {
      */
     public Map<String, Object> verifyMfa(Long userId, String code) {
         Map<String, Object> result = new LinkedHashMap<>();
-        if (userId == null || code == null || !mfaService.verify(userId, code)) {
+        if (userId == null || code == null || userRepository.findByIdForUpdate(userId).isEmpty()
+                || !mfaService.verify(userId, code)) {
             result.put("verified", false);
             return result;
         }
@@ -111,6 +112,14 @@ public class UserApplicationService {
 
     public void logout(Long userId) {
         refreshTokenService.revoke(userId);
+    }
+
+    public Optional<String> refresh(Long userId, String refreshToken) {
+        if (userId == null || userId <= 0 || refreshToken == null || refreshToken.isBlank()
+                || userRepository.findByIdForUpdate(userId).isEmpty()) return Optional.empty();
+        String stored = refreshTokenService.get(userId);
+        if (stored == null || !stored.equals(refreshToken)) return Optional.empty();
+        return Optional.of(jwtService.generateAccessToken(userId));
     }
 
     public co.edu.udistrital.acciones.m1identidad.application.dto.UserInfoResponse getUserProfile(Long userId) {

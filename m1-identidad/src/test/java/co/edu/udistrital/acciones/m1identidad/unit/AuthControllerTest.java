@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -120,8 +121,7 @@ class AuthControllerTest {
     void refreshReturns200WhenTokenValid() {
         RefreshRequest req = new RefreshRequest(42L, "valid-refresh");
 
-        when(refreshTokenService.get(42L)).thenReturn("valid-refresh");
-        when(jwtService.generateAccessToken(42L)).thenReturn("new-access-token");
+        when(service.refresh(42L, "valid-refresh")).thenReturn(Optional.of("new-access-token"));
 
         ResponseEntity<?> response = controller.refresh(req);
 
@@ -134,7 +134,7 @@ class AuthControllerTest {
     void refreshReturns401WhenTokenInvalid() {
         RefreshRequest req = new RefreshRequest(42L, "wrong-refresh");
 
-        when(refreshTokenService.get(42L)).thenReturn("valid-refresh");
+        when(service.refresh(42L, "wrong-refresh")).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = controller.refresh(req);
 
@@ -147,7 +147,7 @@ class AuthControllerTest {
     void refreshReturns401WhenTokenMissing() {
         RefreshRequest req = new RefreshRequest(42L, "any-refresh");
 
-        when(refreshTokenService.get(42L)).thenReturn(null);
+        when(service.refresh(42L, "any-refresh")).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = controller.refresh(req);
 

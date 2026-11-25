@@ -45,12 +45,11 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@RequestBody RefreshRequest req) {
-        String stored = refreshTokenService.get(req.userId());
-        if (stored == null || !stored.equals(req.refreshToken())) {
+        var accessToken = service.refresh(req.userId(), req.refreshToken());
+        if (accessToken.isEmpty()) {
             return ResponseEntity.status(401).body(Map.of("error", "invalid refresh"));
         }
-        String newAccess = jwtService.generateAccessToken(req.userId());
-        return ResponseEntity.ok().body(Map.of("accessToken", newAccess));
+        return ResponseEntity.ok().body(Map.of("accessToken", accessToken.get()));
     }
 
     @PostMapping("/logout")

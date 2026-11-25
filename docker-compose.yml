@@ -296,6 +296,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - M8_MAIL_KEY=${M8_MAIL_KEY}
       - M8_SERVICE_TOKEN=${M8_SERVICE_TOKEN:-}
+      - APP_PUBLIC_URL=${APP_PUBLIC_URL:-https://accionesud.site}
       - M8_MONTHLY_ENABLED=${M8_MONTHLY_ENABLED:-false}
     depends_on:
       postgres:

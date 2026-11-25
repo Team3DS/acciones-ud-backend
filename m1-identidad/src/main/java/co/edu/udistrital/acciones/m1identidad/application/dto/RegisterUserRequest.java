@@ -14,4 +14,7 @@ public record RegisterUserRequest(
     @NotBlank String password,
     @NotBlank String nivelInversionista,
     @JsonAlias("telefono") @NotBlank String celular
-) {}
+) {
+    @Override
+    public String toString() { return "RegisterUserRequest[redacted]"; }
+}

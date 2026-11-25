@@ -1,6 +1,7 @@
 package co.edu.udistrital.acciones.m1identidad.infrastructure.adapter.out;
 
 import co.edu.udistrital.acciones.m1identidad.application.port.out.MfaNotificationPort;
+import co.edu.udistrital.acciones.m1identidad.application.port.out.PasswordResetNotificationPort;
 import co.edu.udistrital.acciones.m1identidad.infrastructure.config.RabbitConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,7 +24,7 @@ import java.util.UUID;
  * ({@code EventoDecoder}): eventId, eventType, source, occurredAt y payload con userId, email, code y expiresAt.
  */
 @Component
-public class RabbitMfaNotificationAdapter implements MfaNotificationPort {
+public class RabbitMfaNotificationAdapter implements MfaNotificationPort, PasswordResetNotificationPort {
 
     public static final String EVENT_TYPE = "m1.mfa.solicitado";
     private static final String SOURCE = "M1";
@@ -45,6 +46,15 @@ public class RabbitMfaNotificationAdapter implements MfaNotificationPort {
 
     @Override
     public void codigoSolicitado(Long userId, String correo, String codigo, Instant expiraEn) {
+        publish(EVENT_TYPE, userId, correo, codigo, expiraEn);
+    }
+
+    @Override
+    public void recuperacionSolicitada(Long userId, String correo, String codigo, Instant expiraEn) {
+        publish("m1.recuperacion.solicitada", userId, correo, codigo, expiraEn);
+    }
+
+    private void publish(String eventType, Long userId, String correo, String codigo, Instant expiraEn) {
         String eventId = UUID.randomUUID().toString();
 
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -55,7 +65,7 @@ public class RabbitMfaNotificationAdapter implements MfaNotificationPort {
 
         Map<String, Object> envelope = new LinkedHashMap<>();
         envelope.put("eventId", eventId);
-        envelope.put("eventType", EVENT_TYPE);
+        envelope.put("eventType", eventType);
         envelope.put("source", SOURCE);
         envelope.put("occurredAt", Instant.now(clock).toString());
         envelope.put("payload", payload);
@@ -66,7 +76,7 @@ public class RabbitMfaNotificationAdapter implements MfaNotificationPort {
                 .setMessageId(eventId)
                 .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
                 .build();
-        rabbitTemplate.send(RabbitConfig.EVENTS_EXCHANGE, EVENT_TYPE, message);
+        rabbitTemplate.send(RabbitConfig.EVENTS_EXCHANGE, eventType, message);
     }
 
     private byte[] toJson(Map<String, Object> envelope) {

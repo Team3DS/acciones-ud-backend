@@ -23,12 +23,15 @@ public class EventosService {
     private final AvisosRepositoryPort repository;
     private final NotificacionesService notifications;
     private final Clock clock;
+    private final EnlaceRecuperacion recoveryLink;
 
     public EventosService(
-            AvisosRepositoryPort repository, NotificacionesService notifications, Clock clock) {
+            AvisosRepositoryPort repository, NotificacionesService notifications, Clock clock,
+            EnlaceRecuperacion recoveryLink) {
         this.repository = repository;
         this.notifications = notifications;
         this.clock = clock;
+        this.recoveryLink = recoveryLink;
     }
 
     @Transactional
@@ -73,10 +76,14 @@ public class EventosService {
         }
         String title;
         String message;
+        String link = null;
         Instant expiry = clock.instant().plus(Duration.ofHours(23));
         if (event.eventType().equals("m1.usuario.registrado")) {
             title = "Bienvenido a Acciones UD";
             message = "Tu registro en Acciones UD fue recibido.";
+        } else if (event.eventType().equals("m1.recuperacion.completada")) {
+            title = "Contraseña actualizada";
+            message = "La contraseña de tu cuenta de Acciones UD fue actualizada. Si no realizaste este cambio, contacta al soporte de Acciones UD.";
         } else {
             String code = texto(event.payload(), "code");
             if (!code.matches("[0-9]{6}")) {
@@ -102,13 +109,18 @@ public class EventosService {
                             + ". Caduca en "
                             + expiry
                             + ". Si no lo solicitaste, ignora este correo.";
+            if (event.eventType().equals("m1.recuperacion.solicitada")) {
+                link = recoveryLink.crear(email, code);
+            }
         }
         if (!expiry.isAfter(clock.instant())) {
             return;
         }
         notifications.encolar(
                 NotificacionesService.entregaId(event.eventId(), user),
-                new Correo(user, email, title, "<p>" + HtmlUtils.htmlEscape(message) + "</p>"),
+                new Correo(user, email, title, "<p>" + HtmlUtils.htmlEscape(message) + "</p>"
+                        + (link == null ? "" : "<p><a href=\"" + HtmlUtils.htmlEscape(link)
+                                + "\">Restablecer contraseña</a></p>")),
                 null,
                 null,
                 expiry);
@@ -160,7 +172,8 @@ public class EventosService {
             case "m1.usuario.registrado",
                             "m1.mfa.solicitado",
                             "m1.verificacion.solicitada",
-                            "m1.recuperacion.solicitada" ->
+                            "m1.recuperacion.solicitada",
+                            "m1.recuperacion.completada" ->
                     null;
             case "m2.movimiento.creado", "m2.fondos.confirmados", "m2.fondos.reservados" ->
                     TipoAviso.ACTUALIZACION_SALDO;
