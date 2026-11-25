@@ -21,6 +21,16 @@ spring:
         # WebSocket de cotizaciones (STOMP/SockJS). M4 registra el endpoint en /market/ws/quotes, sin /api/v1,
         # así que esta ruta quita el prefijo. Va antes de m4-datos-mercado porque /api/v1/market/** también coincide.
         - id: m4-datos-mercado-ws
+          uri: ws://m4-datos-mercado:8084
+          order: -2
+          predicates:
+            - Path=/api/v1/market/ws/**
+            - Header=Upgrade, (?i)websocket
+          filters:
+            - RewritePath=/api/v1/market/ws/(?<segment>.*), /market/ws/$\{segment}
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        # SockJS consulta /info y puede usar transportes HTTP en el mismo prefijo.
+        - id: m4-datos-mercado-sockjs
           uri: http://m4-datos-mercado:8084
           order: -1
           predicates:
