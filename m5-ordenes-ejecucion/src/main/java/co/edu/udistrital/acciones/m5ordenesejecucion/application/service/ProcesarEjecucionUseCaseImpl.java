@@ -131,7 +131,7 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
                 "Ejecución registrada (Fill: " + comando.brokerExecutionId() + ", Qty: " + comando.cantidad() + ")"));
 
         // 5. Coordinar con M2 y M6
-        UUID eventId = UUID.randomUUID();
+        UUID eventId = EventosOrden.idEjecucion(orden.getId(), comando.brokerExecutionId());
         try {
             if (orden.getLadoOrden() == LadoOrden.COMPRA) {
                 // Confirmar reserva en M2

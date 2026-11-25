@@ -4,6 +4,7 @@ import org.slf4j.MDC;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +31,12 @@ public final class EventosOrden {
     private static final String CLAVE_CORRELACION = "correlationId";
 
     private EventosOrden() {
+    }
+
+    /** La misma ejecución conserva su identidad incluso si M5 publica antes de un rollback y vuelve a intentarla. */
+    public static UUID idEjecucion(Long ordenId, String brokerExecutionId) {
+        String nombre = FUENTE + ":" + ORDEN_EJECUTADA + ":" + ordenId + ":" + brokerExecutionId;
+        return UUID.nameUUIDFromBytes(nombre.getBytes(StandardCharsets.UTF_8));
     }
 
     public static Map<String, Object> sobre(UUID eventId, String tipo, Long ordenId, Map<String, Object> payload) {

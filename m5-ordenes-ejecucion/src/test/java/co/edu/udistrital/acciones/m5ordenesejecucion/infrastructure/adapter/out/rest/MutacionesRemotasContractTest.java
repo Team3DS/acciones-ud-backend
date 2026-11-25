@@ -24,6 +24,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -122,5 +123,46 @@ class MutacionesRemotasContractTest {
             assertEquals(USUARIO, actor.userId());
             assertEquals(Set.of("INVERSIONISTA"), actor.roles());
         };
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void ventaTotalUsaCosteDeEjecucionAunqueLaPosicionQuedeEnCero(boolean applied) {
+        server.expect(requestTo("http://m6/api/v1/positions/updates"))
+                .andExpect(tokenDelDueno())
+                .andRespond(withSuccess("{\"applied\":" + applied
+                        + ",\"averageCost\":100.25,\"position\":{\"quantity\":0,\"averageCost\":0}}",
+                        MediaType.APPLICATION_JSON));
+
+        BigDecimal cost = portafolio.actualizarPosicion("1", "sell-1", USUARIO, "AAPL", LadoOrden.VENTA,
+                1, new BigDecimal("101.00"), Instant.parse("2026-11-25T15:00:00Z"), "event-1");
+
+        assertEquals(new BigDecimal("100.25"), cost);
+        server.verify();
+    }
+
+    @Test
+    void costeCeroNoSePresentaComoConfirmacionValida() {
+        server.expect(requestTo("http://m6/api/v1/positions/updates"))
+                .andRespond(withSuccess("{\"averageCost\":0,\"position\":{\"averageCost\":0}}", MediaType.APPLICATION_JSON));
+
+        assertThrows(IllegalStateException.class, () -> portafolio.actualizarPosicion("1", "sell-1", USUARIO,
+                "AAPL", LadoOrden.VENTA, 1, new BigDecimal("101.00"), Instant.now(), "event-1"));
+        server.verify();
+    }
+
+    @Test
+    void importesDelMercadoRespetanLosDosDecimalesDeM2() {
+        server.expect(requestTo("http://m2/api/v1/funds/reservations"))
+                .andExpect(jsonPath("$.amount").value(100.13))
+                .andRespond(withSuccess("{\"reservationId\":7}", MediaType.APPLICATION_JSON));
+        assertEquals(7L, fondos.reservarFondos("1", USUARIO, new BigDecimal("100.1250"), "reservation-1"));
+        server.verify();
+        server.reset();
+        server.expect(requestTo("http://m2/api/v1/funds/reservations/7/confirm"))
+                .andExpect(jsonPath("$.amount").value(100.13))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        fondos.confirmarReserva(7L, USUARIO, "fill-1", new BigDecimal("100.1250"), true, 1);
+        server.verify();
     }
 }

@@ -74,18 +74,23 @@ public class RestPortafolioClient implements PortafolioClientPort {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         try {
             Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
-            if (response != null && response.containsKey("position")) {
-                Map<String, Object> pos = (Map<String, Object>) response.get("position");
-                if (pos != null && pos.containsKey("averageCost")) {
-                    Object ac = pos.get("averageCost");
-                    return new BigDecimal(ac.toString());
+            if (response != null) {
+                Object averageCost = response.get("averageCost");
+                if (averageCost == null && response.get("position") instanceof Map<?, ?> position) {
+                    averageCost = position.get("averageCost");
+                }
+                if (averageCost != null) {
+                    BigDecimal cost = new BigDecimal(averageCost.toString());
+                    if (cost.signum() > 0) {
+                        return cost;
+                    }
                 }
             }
         } catch (Exception ex) {
             log.warn("Error comunicando con M6 actualizarPosicion ({}): {}", url, ex.getMessage());
             throw new IllegalStateException("No se pudo actualizar la posición de la ejecución " + executionId, ex);
         }
-        throw new IllegalStateException("M6 no devolvió averageCost para la ejecución " + executionId);
+        throw new IllegalStateException("M6 no devolvió un coste positivo de la ejecución " + executionId);
     }
 
     @Override

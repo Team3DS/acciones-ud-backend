@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,7 +39,7 @@ public class RestFondosClient implements FondosClientPort {
         Map<String, Object> body = Map.of(
                 "orderId", orderId,
                 "userId", userId,
-                "amount", amount,
+                "amount", amount.setScale(2, RoundingMode.HALF_UP),
                 "idempotencyKey", idempotencyKey
         );
 
@@ -55,7 +56,7 @@ public class RestFondosClient implements FondosClientPort {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("executionId", executionId);
-        body.put("amount", amount);
+        body.put("amount", amount.setScale(2, RoundingMode.HALF_UP));
         body.put("finalExecution", finalExecution);
         if (expectedExecutionCount != null) {
             body.put("expectedExecutionCount", expectedExecutionCount);
