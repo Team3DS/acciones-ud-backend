@@ -12,6 +12,8 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/**", "/api/v1/health", "/api/v1/users/me", "/actuator/health").permitAll()
+                // Este contrato valida el JWT de M8 en NotificationContactController.
+                .requestMatchers("/internal/users/*/notification-contact").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMINISTRADOR")
                 .requestMatchers("/api/v1/directivo/**").hasRole("DIRECTIVO")
                 .requestMatchers("/api/v1/comisionista/**").hasRole("COMISIONISTA")

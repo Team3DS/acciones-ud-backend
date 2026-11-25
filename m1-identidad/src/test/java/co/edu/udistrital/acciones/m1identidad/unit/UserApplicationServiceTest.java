@@ -63,6 +63,28 @@ class UserApplicationServiceTest {
     }
 
     @Test
+    void profileIncludesAssignedRoles() throws Exception {
+        User user = User.create();
+        setId(user, 7L);
+        user.setCorreo("admin@example.com");
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(jwtService.rolesDe(7L)).thenReturn(java.util.List.of("ADMINISTRADOR", "INVERSIONISTA"));
+
+        var profile = service.getUserProfile(7L);
+
+        assertEquals(java.util.Set.of("ADMINISTRADOR", "INVERSIONISTA"), profile.roles());
+    }
+
+    @Test
+    void notificationContactUsesIdentityRepository() {
+        User user = User.create();
+        user.setCorreo("usuario@example.com");
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+
+        assertEquals(Optional.of("usuario@example.com"), service.notificationEmail(7L));
+    }
+
+    @Test
     void registerEncodesPasswordAndDelegatesToUseCase() throws Exception {
         RegisterUserRequest req = new RegisterUserRequest(
                 "Juan", "Perez", "CC", "12345678", "juan@test.com", "password123", "PRINCIPIANTE", "3001234567"

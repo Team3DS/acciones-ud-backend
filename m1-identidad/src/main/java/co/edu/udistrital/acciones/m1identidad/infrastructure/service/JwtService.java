@@ -50,7 +50,7 @@ public class JwtService {
      * Roles que leen los demás servicios (claim {@code roles}). Todo usuario es INVERSIONISTA; los demás roles
      * se asignan en la tabla usuario_rol (por ejemplo, ADMINISTRADOR para registrar depósitos en M2).
      */
-    List<String> rolesDe(Long userId) {
+    public List<String> rolesDe(Long userId) {
         Set<String> asignados = new TreeSet<>();
         asignados.add(Rol.INVERSIONISTA.name());
         if (roles != null) {
@@ -66,5 +66,18 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
         return Long.valueOf(claims.getSubject());
+    }
+
+    public boolean isNotificationServiceToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        return "900000008".equals(claims.getSubject())
+                && "m8-notificaciones".equals(claims.getIssuer())
+                && claims.getExpiration() != null
+                && claims.get("roles") instanceof List<?> serviceRoles
+                && serviceRoles.contains("SISTEMA");
     }
 }

@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -121,9 +122,14 @@ public class UserApplicationService {
                 user.getNombres(),
                 user.getApellidos(),
                 user.getNivelInversionista(),
-                Set.of("INVERSIONISTA"),
+                Set.copyOf(jwtService.rolesDe(userId)),
                 user.getEstadoUsuario(),
                 Boolean.TRUE.equals(user.getSolicitaReporteMensual())
         );
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> notificationEmail(Long userId) {
+        return userRepository.findById(userId).map(User::getCorreo);
     }
 }

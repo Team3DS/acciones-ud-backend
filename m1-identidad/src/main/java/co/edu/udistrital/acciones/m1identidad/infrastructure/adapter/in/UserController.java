@@ -38,9 +38,6 @@ public class UserController {
             }
         }
         if (userId == null) {
-            userId = headerUserId;
-        }
-        if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         UserInfoResponse response = userService.getUserProfile(userId);

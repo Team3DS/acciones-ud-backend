@@ -1,5 +1,7 @@
 package co.edu.udistrital.acciones.m1identidad.application.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -11,5 +13,5 @@ public record RegisterUserRequest(
     @Email @NotBlank String correo,
     @NotBlank String password,
     @NotBlank String nivelInversionista,
-    @NotBlank String celular
+    @JsonAlias("telefono") @NotBlank String celular
 ) {}
