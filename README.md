@@ -266,6 +266,7 @@ docker compose exec postgres psql -U acciones_ud -d identidad_db -c \
 | `JWT_SECRET` | Secreto compartido de los JWT (M1 firma, el resto valida; mínimo 32 caracteres) | **requerido** |
 | `CIFRADO_KEY` | Clave AES de M1, 32 bytes en Base64 | **requerido** |
 | `M8_MAIL_KEY` | Clave AES de M8, 32 bytes en Base64 | **requerido para M8** |
+| `M8_SERVICE_TOKEN` | Token compartido M8 → M10 para consultar Premium; Compose configura ambos extremos | **requerido para alertas Premium** |
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | Alpaca Paper (sin claves, M5 usa el simulador) | recomendado |
 | `ALPACA_BASE_URL` | Endpoint Alpaca | `https://paper-api.alpaca.markets` |
 | `RESEND_API_KEY` | Resend correo | **requerido para M8** |
@@ -300,6 +301,10 @@ POST /api/v1/funds/reservations/{id}/confirm   { executionId, amount } → 200
 POST /api/v1/funds/reservations/{id}/release   { reason } → 200
 GET  /api/v1/accounts/{userId}/balance         → 200 { available, reserved, total }
 ```
+
+Para ejecuciones parciales, la confirmación también recibe `finalExecution` y, en la última parte, `expectedExecutionCount`. M5 envía los mismos campos en el evento `m5.orden.ejecutada`. M2 registra cada `executionId` una sola vez y mantiene el remanente reservado hasta recibir todas las partes esperadas. Sin esos campos se conserva el contrato de ejecución única. La migración aditiva V5 incorpora el registro de consumo y ejecuciones.
+
+El frontend debe renovar la resolución DNS del gateway cuando Docker lo recrea. El parche `deploy/patches/frontend-gateway-dns.patch` corresponde al frontend `cf64ed3` e incluye una prueba Docker que cambia la IP del gateway y comprueba HTTP y WebSocket sin recargar Nginx. Se conserva aquí porque la conexión GitHub actual tiene escritura en este repositorio y solo lectura en el frontend. La plantilla corregida también está aplicada en el servidor.
 
 **M6 ↔ M5 (Portafolio ↔ Órdenes)**
 ```

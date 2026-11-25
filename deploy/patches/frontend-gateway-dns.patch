@@ -1,0 +1,187 @@
+diff --git a/deploy/nginx.conf.template b/deploy/nginx.conf.template
+index 23508ed..8d71059 100644
+--- a/deploy/nginx.conf.template
++++ b/deploy/nginx.conf.template
+@@ -19,6 +19,10 @@ server {
+     server_tokens off;
+     client_max_body_size 2m;
+ 
++    # Docker puede cambiar la IP del gateway al recrearlo. Resolverla en cada renovación de caché.
++    resolver 127.0.0.11 valid=10s;
++    set $gateway_upstream "${GATEWAY_URL}";
++
+     gzip on;
+     gzip_types text/css application/javascript application/json image/svg+xml;
+     gzip_min_length 1024;
+@@ -36,7 +40,7 @@ server {
+ 
+     # WebSocket de cotizaciones de M4 (STOMP/SockJS) a través del gateway.
+     location /api/v1/market/ws/ {
+-        proxy_pass ${GATEWAY_URL};
++        proxy_pass $gateway_upstream$request_uri;
+         proxy_http_version 1.1;
+         proxy_set_header Upgrade $http_upgrade;
+         proxy_set_header Connection $connection_upgrade;
+@@ -49,7 +53,7 @@ server {
+ 
+     # API REST del gateway (/api/v1/...). La ruta se reenvía completa.
+     location /api/ {
+-        proxy_pass ${GATEWAY_URL};
++        proxy_pass $gateway_upstream$request_uri;
+         proxy_http_version 1.1;
+         proxy_set_header Host $host;
+         proxy_set_header X-Real-IP $remote_addr;
+diff --git a/tests/docker-gateway-dns.mjs b/tests/docker-gateway-dns.mjs
+new file mode 100644
+index 0000000..80af3a6
+--- /dev/null
++++ b/tests/docker-gateway-dns.mjs
+@@ -0,0 +1,114 @@
++// Uso: docker build -t acciones-ud-frontend:dns-test .
++//      node tests/docker-gateway-dns.mjs acciones-ud-frontend:dns-test
++// Prueba aislada: no usa el servidor ni los contenedores de producción.
++import assert from 'node:assert/strict'
++import { execFileSync } from 'node:child_process'
++import { randomUUID } from 'node:crypto'
++import { fileURLToPath } from 'node:url'
++import { setTimeout as delay } from 'node:timers/promises'
++
++const image = process.argv[2] ?? 'acciones-ud-frontend:dns-test'
++const prefix = `acciones-dns-${randomUUID().slice(0, 8)}`
++const network = `${prefix}-network`
++const frontend = `${prefix}-frontend`
++const first = `${prefix}-first`
++const second = `${prefix}-second`
++const blocker = `${prefix}-old-ip`
++const fixture = fileURLToPath(new URL('./fixtures/gateway-dns.cjs', import.meta.url))
++const containers = [frontend, first, second, blocker]
++const restPath = '/api/v1/market/status?source=dns-test&symbol=AAPL%2BMSFT'
++const socketPath = '/api/v1/market/ws/quotes/websocket?feed=iex&symbol=AAPL%2BMSFT'
++
++function docker(...args) {
++  return execFileSync('docker', args, { encoding: 'utf8', timeout: 60_000 }).trim()
++}
++
++function startGateway(name, instance) {
++  docker('run', '-d', '--name', name, '--network', network, '--network-alias', 'gateway',
++    '-e', `GATEWAY_INSTANCE=${instance}`, '--mount', `type=bind,src=${fixture},dst=/app/gateway.cjs,readonly`,
++    'node:22-alpine', 'node', '/app/gateway.cjs')
++}
++
++function address(name) {
++  const networks = JSON.parse(docker('inspect', '--format', '{{json .NetworkSettings.Networks}}', name))
++  return networks[network].IPAddress
++}
++
++function workers() {
++  return docker('top', frontend, '-eo', 'pid,args').split('\n')
++    .filter((line) => line.includes('nginx: worker process')).sort()
++}
++
++async function waitForGateway(base, instance) {
++  const deadline = Date.now() + 35_000
++  let lastError
++  while (Date.now() < deadline) {
++    try {
++      const reply = await fetch(base + restPath, { signal: AbortSignal.timeout(2500) })
++      assert.equal(reply.status, 200)
++      assert.deepEqual(await reply.json(), { instance, url: restPath })
++      return
++    } catch (error) {
++      lastError = error
++      await delay(1000)
++    }
++  }
++  throw new Error(`El frontend no recuperó el gateway ${instance}`, { cause: lastError })
++}
++
++async function checkSocket(base, instance) {
++  await new Promise((resolve, reject) => {
++    const socket = new WebSocket(base.replace('http:', 'ws:') + socketPath)
++    const timer = setTimeout(() => { socket.close(); reject(new Error('WebSocket sin respuesta')) }, 5000)
++    socket.addEventListener('message', ({ data }) => {
++      try {
++        assert.deepEqual(JSON.parse(data), { instance, url: socketPath })
++        resolve()
++      } catch (error) {
++        reject(error)
++      } finally {
++        clearTimeout(timer)
++        socket.close()
++      }
++    }, { once: true })
++    socket.addEventListener('error', () => {
++      clearTimeout(timer)
++      reject(new Error('Falló el WebSocket a través de Nginx'))
++    }, { once: true })
++  })
++}
++
++try {
++  docker('network', 'create', network)
++  startGateway(first, 'first')
++  docker('run', '-d', '--name', frontend, '--network', network, '-p', '127.0.0.1::8080',
++    '-e', 'GATEWAY_URL=http://gateway:8080', image)
++  const port = docker('port', frontend, '8080/tcp').split(':').at(-1)
++  const base = `http://127.0.0.1:${port}`
++  docker('exec', frontend, 'nginx', '-t')
++  const config = docker('exec', frontend, 'cat', '/etc/nginx/conf.d/default.conf')
++  assert.ok(config.includes('set $gateway_upstream "http://gateway:8080";'))
++  assert.equal(config.match(/proxy_pass \$gateway_upstream\$request_uri;/g)?.length, 2)
++  await waitForGateway(base, 'first')
++  await checkSocket(base, 'first')
++  const originalWorkers = workers()
++  assert.ok(originalWorkers.length > 0)
++  const oldAddress = address(first)
++
++  docker('rm', '-f', first)
++  // Ocupa la IP anterior sin escuchar en 8080, para impedir que Docker la reutilice.
++  docker('run', '-d', '--name', blocker, '--network', network, '--ip', oldAddress,
++    'node:22-alpine', 'node', '-e', 'setInterval(() => {}, 60000)')
++  startGateway(second, 'second')
++  const newAddress = address(second)
++  assert.notEqual(newAddress, oldAddress)
++  await waitForGateway(base, 'second')
++  await checkSocket(base, 'second')
++  assert.deepEqual(workers(), originalWorkers, 'Nginx debe recuperar el gateway sin recargar sus workers')
++  console.log(`OK: nginx -t; HTTP y WebSocket conservan ruta/query; gateway ${oldAddress} -> ${newAddress}; sin recarga`)
++} finally {
++  for (const name of containers) {
++    try { docker('rm', '-f', name) } catch {}
++  }
++  try { docker('network', 'rm', network) } catch {}
++}
+diff --git a/tests/fixtures/gateway-dns.cjs b/tests/fixtures/gateway-dns.cjs
+new file mode 100644
+index 0000000..f6bc965
+--- /dev/null
++++ b/tests/fixtures/gateway-dns.cjs
+@@ -0,0 +1,28 @@
++const http = require('node:http')
++const { createHash } = require('node:crypto')
++
++const response = (url) => JSON.stringify({ instance: process.env.GATEWAY_INSTANCE, url })
++const server = http.createServer((request, reply) => {
++  reply.writeHead(200, { 'Content-Type': 'application/json' })
++  reply.end(response(request.url))
++})
++
++server.on('upgrade', (request, socket) => {
++  const accept = createHash('sha1')
++    .update(request.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
++    .digest('base64')
++  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n'
++    + `Sec-WebSocket-Accept: ${accept}\r\n\r\n`)
++  const payload = Buffer.from(response(request.url))
++  const header = Buffer.alloc(payload.length < 126 ? 2 : 4)
++  header[0] = 0x81
++  header[1] = payload.length < 126 ? payload.length : 126
++  if (payload.length >= 126) header.writeUInt16BE(payload.length, 2)
++  socket.write(Buffer.concat([header, payload]))
++  socket.on('data', (data) => {
++    if ((data[0] & 0x0f) === 8) socket.end(Buffer.from([0x88, 0]))
++  })
++  socket.on('error', () => {})
++})
++
++server.listen(8080, '0.0.0.0')
