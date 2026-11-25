@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.math.BigDecimal;
 
 @Service
 public class LiberarReservaUseCase {
@@ -65,15 +66,20 @@ public class LiberarReservaUseCase {
         }
 
         Instant ahora = Instant.now(clock);
-        cuenta.liberarReserva(reserva.getMonto(), ahora);
-        cuentas.save(cuenta);
+        BigDecimal pendiente = reserva.getMontoPendiente();
+        if (pendiente.signum() > 0) {
+            cuenta.liberarReserva(pendiente, ahora);
+            cuentas.save(cuenta);
+        }
 
         reserva.liberar(request.reason(), ahora);
         reservas.save(reserva);
 
-        libro.registrar(cuenta, TipoMovimiento.LIBERACION, reserva.getMonto(), TipoMovimiento.LIBERACION.name(),
-                PREFIJO_MOVIMIENTO + reserva.getId(),
-                "Liberación de la reserva " + reserva.getId() + ": " + request.reason());
+        if (pendiente.signum() > 0) {
+            libro.registrar(cuenta, TipoMovimiento.LIBERACION, pendiente, TipoMovimiento.LIBERACION.name(),
+                    PREFIJO_MOVIMIENTO + reserva.getId(),
+                    "Liberación de la reserva " + reserva.getId() + ": " + request.reason());
+        }
 
         outbox.registrar("Reserva", reserva.getId().toString(), RoutingKeys.FONDOS_LIBERADOS,
                 new FondosLiberadosPayload(reserva.getId(), request.reason()));

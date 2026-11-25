@@ -7,6 +7,7 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.ReservaRespons
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.CuentaRepositoryPort;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.EjecucionReservaRepositoryPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.MovimientoRepositoryPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.ReservaRepositoryPort;
@@ -15,6 +16,7 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.usecase.ConfirmarR
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Cuenta;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.EstadoCuenta;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.EstadoReserva;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.EjecucionReserva;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Movimiento;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Reserva;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.TipoMovimiento;
@@ -35,6 +37,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -63,12 +67,96 @@ class ConfirmarReservaUseCaseTest {
     @Mock
     private OutboxPort outbox;
 
+    @Mock
+    private EjecucionReservaRepositoryPort ejecuciones;
+
     private ConfirmarReservaUseCase casoDeUso;
 
     @BeforeEach
     void preparar() {
         casoDeUso = new ConfirmarReservaUseCase(cuentas, reservas,
-                new LibroMovimientos(movimientos, outbox, CLOCK), outbox, CLOCK);
+                new LibroMovimientos(movimientos, outbox, CLOCK), outbox, CLOCK, ejecuciones);
+    }
+
+    @Test
+    void dosFillsConservanElRemanenteYElFinalLiberaSoloElSobrante() {
+        Cuenta cuenta = cuentaConReserva(10L, 5L, "1000.00", "300.00");
+        Reserva reserva = reserva(77L, 10L, "300.00");
+        prepararBloqueo(cuenta, reserva);
+        guardarMovimientosConId();
+        guardarEjecuciones();
+
+        ReservaResponse parcial = casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-1", new BigDecimal("100.00"), false), Actor.sistema());
+        assertThat(parcial.status()).isEqualTo("PENDING");
+        assertThat(parcial.available()).isEqualByComparingTo("700.00");
+        assertThat(parcial.reserved()).isEqualByComparingTo("200.00");
+        assertThat(parcial.total()).isEqualByComparingTo("900.00");
+        assertThat(reserva.getMonto()).isEqualByComparingTo("300.00");
+        assertThat(reserva.estaVencida(AHORA.plusSeconds(1))).isFalse();
+
+        ReservaResponse completa = casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-2", new BigDecimal("150.00"), true), Actor.sistema());
+        assertThat(completa.status()).isEqualTo("CONFIRMED");
+        assertThat(completa.available()).isEqualByComparingTo("750.00");
+        assertThat(completa.reserved()).isEqualByComparingTo("0.00");
+        assertThat(completa.total()).isEqualByComparingTo("750.00");
+        assertThat(reserva.getMontoConsumido()).isEqualByComparingTo("250.00");
+        assertThat(capturarMovimientos()).extracting(Movimiento::getMonto)
+                .containsExactly(new BigDecimal("100.00"), new BigDecimal("150.00"), new BigDecimal("50.00"));
+
+        casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-1", new BigDecimal("100.00"), false), Actor.sistema());
+        assertThat(cuenta.getSaldoContable()).isEqualByComparingTo("750.00");
+        assertThat(capturarMovimientos()).hasSize(3);
+    }
+
+    @Test
+    void laMismaEjecucionConOtroImporteOFinalidadRespondeConflicto() {
+        Cuenta cuenta = cuentaConReserva(10L, 5L, "1000.00", "300.00");
+        Reserva reserva = reserva(77L, 10L, "300.00");
+        prepararBloqueo(cuenta, reserva);
+        guardarMovimientosConId();
+        guardarEjecuciones();
+        casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-1", new BigDecimal("100.00"), false), Actor.sistema());
+
+        assertThatThrownBy(() -> casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-1", new BigDecimal("101.00"), false), Actor.sistema()))
+                .isInstanceOf(TransicionReservaInvalidaException.class);
+        assertThatThrownBy(() -> casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-1", new BigDecimal("100.00"), true), Actor.sistema()))
+                .isInstanceOf(TransicionReservaInvalidaException.class);
+        assertThat(cuenta.getSaldoReservado()).isEqualByComparingTo("200.00");
+    }
+
+    @Test
+    void unFillQueAgotaLaReservaPermiteElSiguienteContraDisponible() {
+        Cuenta cuenta = cuentaConReserva(10L, 5L, "1000.00", "300.00");
+        Reserva reserva = reserva(77L, 10L, "300.00");
+        prepararBloqueo(cuenta, reserva);
+        guardarMovimientosConId();
+        guardarEjecuciones();
+        casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-1", new BigDecimal("320.00"), false), Actor.sistema());
+        ReservaResponse finalizada = casoDeUso.ejecutar(77L,
+                new ConfirmarReservaRequest("fill-2", new BigDecimal("20.00"), true), Actor.sistema());
+        assertThat(finalizada.available()).isEqualByComparingTo("660.00");
+        assertThat(finalizada.total()).isEqualByComparingTo("660.00");
+        assertThat(finalizada.reserved()).isEqualByComparingTo("0.00");
+    }
+
+    private void guardarEjecuciones() {
+        Map<String, EjecucionReserva> aplicadas = new HashMap<>();
+        when(ejecuciones.findByReservaIdAndExecutionId(eq(77L), any())).thenAnswer(invocacion ->
+                Optional.ofNullable(aplicadas.get(invocacion.getArgument(1))));
+        when(ejecuciones.save(any())).thenAnswer(invocacion -> {
+            EjecucionReserva ejecucion = invocacion.getArgument(0);
+            ReflectionTestUtils.setField(ejecucion, "id", (long) aplicadas.size() + 1);
+            String executionId = (String) ReflectionTestUtils.getField(ejecucion, "executionId");
+            aplicadas.put(executionId, ejecucion);
+            return ejecucion;
+        });
     }
 
     @Test

@@ -101,8 +101,11 @@ public class Cuenta {
 
     public void confirmarReserva(BigDecimal montoReservado, BigDecimal montoEjecutado, Instant ahora) {
         verificarOperable();
-        BigDecimal reservado = MonetaryUtil.validarPositivo(montoReservado);
+        BigDecimal reservado = MonetaryUtil.normalizar(montoReservado);
         BigDecimal ejecutado = MonetaryUtil.validarPositivo(montoEjecutado);
+        if (reservado.signum() < 0) {
+            throw new TransicionReservaInvalidaException("El monto reservado no puede ser negativo");
+        }
         if (this.saldoReservado.compareTo(reservado) < 0) {
             throw new TransicionReservaInvalidaException("La cuenta no tiene reservado " + reservado
                     + ", tiene " + this.saldoReservado);

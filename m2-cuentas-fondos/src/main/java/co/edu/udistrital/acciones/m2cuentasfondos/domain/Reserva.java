@@ -31,6 +31,15 @@ public class Reserva {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal monto;
 
+    @Column(name = "monto_consumido", nullable = false, precision = 19, scale = 2)
+    private BigDecimal montoConsumido = MonetaryUtil.cero();
+
+    @Column(name = "ejecuciones_aplicadas", nullable = false)
+    private int ejecucionesAplicadas;
+
+    @Column(name = "ejecuciones_esperadas")
+    private Integer ejecucionesEsperadas;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EstadoReserva estado;
@@ -80,6 +89,47 @@ public class Reserva {
         this.confirmadoEn = instante;
     }
 
+    public boolean completaConEjecucion(boolean esFinal, Integer esperadas) {
+        if (esperadas != null && (!esFinal || esperadas < ejecucionesAplicadas + 1)) {
+            throw new TransicionReservaInvalidaException("Cantidad esperada de ejecuciones incompatible");
+        }
+        if (esFinal && ejecucionesEsperadas != null) {
+            throw new TransicionReservaInvalidaException("La orden ya tiene una ejecución final");
+        }
+        Integer total = ejecucionesEsperadas;
+        if (esFinal) {
+            total = esperadas == null ? Integer.valueOf(ejecucionesAplicadas + 1) : esperadas;
+        }
+        return total != null && ejecucionesAplicadas + 1 == total;
+    }
+
+    public void aplicarEjecucion(String executionId, BigDecimal ejecutado, boolean esFinal,
+                                Integer esperadas, Instant ahora) {
+        if (estado != EstadoReserva.PENDING) {
+            throw new TransicionReservaInvalidaException(
+                    "No se puede ejecutar una reserva en estado " + estado);
+        }
+        boolean completa = completaConEjecucion(esFinal, esperadas);
+        if (esFinal) {
+            this.executionId = Objects.requireNonNull(executionId, "El executionId es obligatorio");
+            this.ejecucionesEsperadas = esperadas == null ? ejecucionesAplicadas + 1 : esperadas;
+        }
+        this.montoConsumido = this.montoConsumido.add(MonetaryUtil.validarPositivo(ejecutado));
+        this.ejecucionesAplicadas++;
+        if (completa) {
+            confirmar(this.executionId, ahora);
+        }
+    }
+
+    public BigDecimal getMontoConsumido() {
+        return montoConsumido;
+    }
+
+    public BigDecimal getMontoPendiente() {
+        return estado == EstadoReserva.PENDING
+                ? monto.subtract(montoConsumido).max(MonetaryUtil.cero()) : MonetaryUtil.cero();
+    }
+
     public void liberar(String motivo, Instant ahora) {
         if (estado != EstadoReserva.PENDING) {
             throw new TransicionReservaInvalidaException(
@@ -104,7 +154,8 @@ public class Reserva {
 
     public boolean estaVencida(Instant limite) {
         Instant instante = Objects.requireNonNull(limite, "El límite de expiración es obligatorio");
-        return estado == EstadoReserva.PENDING && creadoEn.isBefore(instante);
+        // Una orden parcialmente ejecutada sigue abierta en el broker. Solo su cierre libera el remanente.
+        return estado == EstadoReserva.PENDING && montoConsumido.signum() == 0 && creadoEn.isBefore(instante);
     }
 
     public Long getId() {

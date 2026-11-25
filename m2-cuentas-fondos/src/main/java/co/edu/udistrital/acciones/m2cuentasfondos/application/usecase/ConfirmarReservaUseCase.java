@@ -8,11 +8,13 @@ import co.edu.udistrital.acciones.m2cuentasfondos.application.dto.RoutingKeys;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.AccesoDenegadoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.exception.RecursoNoEncontradoException;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.CuentaRepositoryPort;
+import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.EjecucionReservaRepositoryPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.OutboxPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.port.out.ReservaRepositoryPort;
 import co.edu.udistrital.acciones.m2cuentasfondos.application.service.LibroMovimientos;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Cuenta;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.EstadoReserva;
+import co.edu.udistrital.acciones.m2cuentasfondos.domain.EjecucionReserva;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.MonetaryUtil;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.Reserva;
 import co.edu.udistrital.acciones.m2cuentasfondos.domain.TipoMovimiento;
@@ -37,14 +39,17 @@ public class ConfirmarReservaUseCase {
     private final LibroMovimientos libro;
     private final OutboxPort outbox;
     private final Clock clock;
+    private final EjecucionReservaRepositoryPort ejecuciones;
 
     public ConfirmarReservaUseCase(CuentaRepositoryPort cuentas, ReservaRepositoryPort reservas,
-                                   LibroMovimientos libro, OutboxPort outbox, Clock clock) {
+                                   LibroMovimientos libro, OutboxPort outbox, Clock clock,
+                                   EjecucionReservaRepositoryPort ejecuciones) {
         this.cuentas = cuentas;
         this.reservas = reservas;
         this.libro = libro;
         this.outbox = outbox;
         this.clock = clock;
+        this.ejecuciones = ejecuciones;
     }
 
     @Transactional
@@ -61,7 +66,14 @@ public class ConfirmarReservaUseCase {
         Reserva reserva = reservas.findByIdForUpdate(reservaId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la reserva " + reservaId));
 
+        var aplicada = ejecuciones.findByReservaIdAndExecutionId(reservaId, request.executionId());
+        if (aplicada.isPresent()) {
+            aplicada.get().verificarRepeticion(ejecutado, request.esFinal(), request.expectedExecutionCount());
+            return respuesta(cuenta, reserva);
+        }
+
         if (reserva.getEstado() == EstadoReserva.CONFIRMED) {
+            // Compatibilidad con confirmaciones anteriores a la tabla de ejecuciones.
             return repetir(cuenta, reserva, request.executionId());
         }
         if (reserva.getEstado() != EstadoReserva.PENDING) {
@@ -70,15 +82,21 @@ public class ConfirmarReservaUseCase {
         }
 
         Instant ahora = Instant.now(clock);
-        BigDecimal reservado = reserva.getMonto();
+        BigDecimal pendiente = reserva.getMontoPendiente();
+        boolean cerrar = reserva.completaConEjecucion(request.esFinal(), request.expectedExecutionCount());
+        BigDecimal reservado = cerrar ? pendiente : pendiente.min(ejecutado);
+        boolean primera = reserva.getMontoConsumido().signum() == 0;
         cuenta.confirmarReserva(reservado, ejecutado, ahora);
         cuentas.save(cuenta);
 
-        reserva.confirmar(request.executionId(), ahora);
+        EjecucionReserva ejecucion = ejecuciones.save(EjecucionReserva.crear(
+                reservaId, request.executionId(), ejecutado, request.esFinal(), request.expectedExecutionCount(), ahora));
+        reserva.aplicarEjecucion(request.executionId(), ejecutado, request.esFinal(),
+                request.expectedExecutionCount(), ahora);
         reservas.save(reserva);
 
         libro.registrar(cuenta, TipoMovimiento.DEBITO_COMPRA, ejecutado, TipoMovimiento.DEBITO_COMPRA.name(),
-                PREFIJO_DEBITO + reserva.getId(),
+                PREFIJO_DEBITO + reserva.getId() + (primera ? "" : ":" + ejecucion.getId()),
                 "Confirmación de la reserva " + reserva.getId() + " para la orden " + reserva.getOrderId());
 
         if (reservado.compareTo(ejecutado) > 0) {
@@ -89,7 +107,7 @@ public class ConfirmarReservaUseCase {
         }
 
         outbox.registrar("Reserva", reserva.getId().toString(), RoutingKeys.FONDOS_CONFIRMADOS,
-                new FondosConfirmadosPayload(reserva.getId(), reserva.getExecutionId(), ejecutado));
+                new FondosConfirmadosPayload(reserva.getId(), request.executionId(), ejecutado));
 
         return respuesta(cuenta, reserva);
     }

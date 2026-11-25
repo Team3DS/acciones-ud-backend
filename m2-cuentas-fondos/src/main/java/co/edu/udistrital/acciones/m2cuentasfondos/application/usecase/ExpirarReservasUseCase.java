@@ -82,7 +82,7 @@ public class ExpirarReservasUseCase {
         }
 
         Instant ahora = Instant.now(clock);
-        cuenta.liberarReserva(reserva.getMonto(), ahora);
+        cuenta.liberarReserva(reserva.getMontoPendiente(), ahora);
         cuentas.save(cuenta);
 
         reserva.expirar(ahora);

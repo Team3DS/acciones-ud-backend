@@ -13,7 +13,14 @@ public record OrdenEjecutadaPayload(
         List<JsonNode> fills,
         BigDecimal totalAmount,
         String side,
-        Long userId) {
+        Long userId,
+        Boolean finalExecution,
+        Integer expectedExecutionCount) {
+
+    public OrdenEjecutadaPayload(String orderId, String executionId, List<JsonNode> fills,
+                                BigDecimal totalAmount, String side, Long userId) {
+        this(orderId, executionId, fills, totalAmount, side, userId, true, null);
+    }
 
     public boolean esVentaDelUsuario() {
         return "SELL".equalsIgnoreCase(side) && userId != null;

@@ -123,7 +123,9 @@ public class ProcesarEventoEntranteService {
                     + " no trae executionId o totalAmount para confirmar la orden " + orderId);
         }
         confirmarReserva.ejecutar(reserva.get().getId(),
-                new ConfirmarReservaRequest(payload.executionId(), payload.totalAmount()), Actor.sistema());
+                new ConfirmarReservaRequest(payload.executionId(), payload.totalAmount(), payload.finalExecution(),
+                        payload.expectedExecutionCount()),
+                Actor.sistema());
     }
 
     private void liberarOrden(EventoEntrante evento, String orderId, String motivo) {
