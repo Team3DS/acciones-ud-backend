@@ -12,12 +12,35 @@ public interface EjecucionOrdenJpaRepository extends JpaRepository<EjecucionOrde
     Optional<EjecucionOrdenEntity> findByBrokerExecutionId(String brokerExecutionId);
     List<EjecucionOrdenEntity> findByOrdenIdOrderByEjecutadaEnAsc(Long ordenId);
 
+    /** Elige únicamente predicados con límites presentes: PostgreSQL no debe inferir el tipo de un Instant nulo. */
+    default List<EjecucionOrdenEntity> findByUsuarioIdAndPeriodo(Long usuarioId, Instant desde, Instant hasta) {
+        if (desde != null && hasta != null) {
+            return findByUsuarioIdEntre(usuarioId, desde, hasta);
+        }
+        if (desde != null) {
+            return findByUsuarioIdDesde(usuarioId, desde);
+        }
+        if (hasta != null) {
+            return findByUsuarioIdHasta(usuarioId, hasta);
+        }
+        return findByUsuarioIdSinLimites(usuarioId);
+    }
+
     @Query("SELECT e FROM EjecucionOrdenEntity e JOIN OrdenEntity o ON e.ordenId = o.id " +
-            "WHERE o.usuarioId = :usuarioId " +
-            "AND (:desde IS NULL OR e.ejecutadaEn >= :desde) " +
-            "AND (:hasta IS NULL OR e.ejecutadaEn <= :hasta) " +
-            "ORDER BY e.ejecutadaEn DESC")
-    List<EjecucionOrdenEntity> findByUsuarioIdAndPeriodo(@Param("usuarioId") Long usuarioId,
-                                                          @Param("desde") Instant desde,
-                                                          @Param("hasta") Instant hasta);
+            "WHERE o.usuarioId = :usuarioId ORDER BY e.ejecutadaEn DESC, e.id DESC")
+    List<EjecucionOrdenEntity> findByUsuarioIdSinLimites(@Param("usuarioId") Long usuarioId);
+
+    @Query("SELECT e FROM EjecucionOrdenEntity e JOIN OrdenEntity o ON e.ordenId = o.id " +
+            "WHERE o.usuarioId = :usuarioId AND e.ejecutadaEn >= :desde ORDER BY e.ejecutadaEn DESC, e.id DESC")
+    List<EjecucionOrdenEntity> findByUsuarioIdDesde(@Param("usuarioId") Long usuarioId, @Param("desde") Instant desde);
+
+    @Query("SELECT e FROM EjecucionOrdenEntity e JOIN OrdenEntity o ON e.ordenId = o.id " +
+            "WHERE o.usuarioId = :usuarioId AND e.ejecutadaEn <= :hasta ORDER BY e.ejecutadaEn DESC, e.id DESC")
+    List<EjecucionOrdenEntity> findByUsuarioIdHasta(@Param("usuarioId") Long usuarioId, @Param("hasta") Instant hasta);
+
+    @Query("SELECT e FROM EjecucionOrdenEntity e JOIN OrdenEntity o ON e.ordenId = o.id " +
+            "WHERE o.usuarioId = :usuarioId AND e.ejecutadaEn >= :desde AND e.ejecutadaEn <= :hasta " +
+            "ORDER BY e.ejecutadaEn DESC, e.id DESC")
+    List<EjecucionOrdenEntity> findByUsuarioIdEntre(@Param("usuarioId") Long usuarioId,
+                                                  @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 }
