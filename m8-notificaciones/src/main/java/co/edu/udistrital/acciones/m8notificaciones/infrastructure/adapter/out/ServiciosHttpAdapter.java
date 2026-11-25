@@ -6,6 +6,9 @@ import co.edu.udistrital.acciones.m8notificaciones.domain.DireccionCorreo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -14,16 +17,23 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import javax.crypto.SecretKey;
 
 @Component
 public class ServiciosHttpAdapter implements ServiciosPort {
+    private static final Duration TOKEN_TTL = Duration.ofSeconds(60);
     private final RestClient http;
+    private final String internalToken;
+    private final SecretKey key;
     private final String m1;
     private final String m3;
     private final String m4;
@@ -40,6 +50,7 @@ public class ServiciosHttpAdapter implements ServiciosPort {
             @Value("${app.services.m6}") String m6,
             @Value("${app.services.m10}") String m10,
             @Value("${app.services.token:}") String token,
+            @Value("${app.jwt.secret}") String jwtSecret,
             Clock clock) {
         this.m1 = m1;
         this.m3 = m3;
@@ -47,6 +58,8 @@ public class ServiciosHttpAdapter implements ServiciosPort {
         this.m5 = m5;
         this.m6 = m6;
         this.m10 = m10;
+        this.internalToken = token;
+        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         this.clock = clock;
         var factory =
                 new JdkClientHttpRequestFactory(
@@ -55,16 +68,13 @@ public class ServiciosHttpAdapter implements ServiciosPort {
                                 .connectTimeout(Duration.ofSeconds(3))
                                 .build());
         factory.setReadTimeout(Duration.ofSeconds(4));
-        var builder = RestClient.builder().requestFactory(factory);
-        if (!token.isBlank()) {
-            builder.defaultHeader("Authorization", "Bearer " + token);
-        }
-        http = builder.build();
+        http = RestClient.builder().requestFactory(factory).build();
     }
 
     @Override
     public boolean premium(long user) {
-        JsonNode response = get(m10, "/internal/subscriptions/{id}/entitlement", user);
+        JsonNode response =
+                get(internalToken, m10, "/internal/subscriptions/{id}/entitlement", user);
         if (!response.path("active").isBoolean()) {
             throw unavailable();
         }
@@ -80,7 +90,7 @@ public class ServiciosHttpAdapter implements ServiciosPort {
 
     @Override
     public Instrumento instrumento(long id) {
-        JsonNode response = get(m3, "/api/v1/instruments/id/{id}", id);
+        JsonNode response = get(serviceToken(), m3, "/api/v1/instruments/id/{id}", id);
         if (response.has("type") && !"ACCION".equals(response.path("type").asText())) {
             throw new AvisoException(422, "Las alertas de este alcance requieren una acción.");
         }
@@ -95,7 +105,7 @@ public class ServiciosHttpAdapter implements ServiciosPort {
 
     @Override
     public Cotizacion cotizacion(String symbol) {
-        JsonNode response = get(m4, "/api/v1/quotes/{symbol}", symbol);
+        JsonNode response = get(serviceToken(), m4, "/api/v1/quotes/{symbol}", symbol);
         if (!symbol.equals(response.path("symbol").asText())
                 || !response.path("price").isNumber()
                 || response.path("price").decimalValue().signum() <= 0) {
@@ -113,7 +123,9 @@ public class ServiciosHttpAdapter implements ServiciosPort {
     @Override
     public String correoUsuario(long user) {
         String email =
-                required(get(m1, "/internal/users/{id}/notification-contact", user), "email");
+                required(
+                        get(serviceToken(), m1, "/internal/users/{id}/notification-contact", user),
+                        "email");
         if (!DireccionCorreo.valida(email)) {
             throw unavailable();
         }
@@ -123,7 +135,11 @@ public class ServiciosHttpAdapter implements ServiciosPort {
     @Override
     public List<Destinatario> suscriptoresReporte(int page) {
         JsonNode content =
-                get(m1, "/internal/users/monthly-report-subscribers?page={page}&size=100", page)
+                get(
+                                serviceToken(),
+                                m1,
+                                "/internal/users/monthly-report-subscribers?page={page}&size=100",
+                                page)
                         .path("content");
         if (!content.isArray() || content.size() > 100) {
             throw unavailable();
@@ -143,9 +159,19 @@ public class ServiciosHttpAdapter implements ServiciosPort {
     @Override
     public ResumenMensual resumen(long user, YearMonth month) {
         JsonNode financials =
-                get(m5, "/internal/reports/monthly/{id}?period={period}", user, month.toString());
+                get(
+                        serviceToken(),
+                        m5,
+                        "/internal/reports/monthly/{id}?period={period}",
+                        user,
+                        month.toString());
         JsonNode portfolio =
-                get(m6, "/internal/portfolio/{id}/summary?period={period}", user, month.toString());
+                get(
+                        serviceToken(),
+                        m6,
+                        "/internal/portfolio/{id}/summary?period={period}",
+                        user,
+                        month.toString());
         if (!financials.path("grossProfit").isNumber()
                 || !financials.path("commissions").isNumber()) {
             throw unavailable();
@@ -157,7 +183,19 @@ public class ServiciosHttpAdapter implements ServiciosPort {
                 required(portfolio, "assetsSummary"));
     }
 
-    private JsonNode get(String base, String path, Object... values) {
+    private String serviceToken() {
+        Instant now = clock.instant();
+        return Jwts.builder()
+                .subject("900000008")
+                .issuer("m8-notificaciones")
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(TOKEN_TTL)))
+                .claim("roles", List.of("SISTEMA"))
+                .signWith(key, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    private JsonNode get(String token, String base, String path, Object... values) {
         try {
             var uri =
                     UriComponentsBuilder.fromUriString(base)
@@ -165,11 +203,11 @@ public class ServiciosHttpAdapter implements ServiciosPort {
             if (path.contains("?")) {
                 uri.query(path.substring(path.indexOf('?') + 1));
             }
-            JsonNode response =
-                    http.get()
-                            .uri(uri.buildAndExpand(values).encode().toUri())
-                            .retrieve()
-                            .body(JsonNode.class);
+            var request = http.get().uri(uri.buildAndExpand(values).encode().toUri());
+            if (!token.isBlank()) {
+                request.headers(headers -> headers.setBearerAuth(token));
+            }
+            JsonNode response = request.retrieve().body(JsonNode.class);
             if (response == null || !response.isObject()) {
                 throw unavailable();
             }
