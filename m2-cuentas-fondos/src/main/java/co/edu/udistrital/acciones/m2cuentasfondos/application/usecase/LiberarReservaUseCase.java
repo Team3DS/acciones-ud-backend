@@ -82,7 +82,8 @@ public class LiberarReservaUseCase {
         }
 
         outbox.registrar("Reserva", reserva.getId().toString(), RoutingKeys.FONDOS_LIBERADOS,
-                new FondosLiberadosPayload(reserva.getId(), request.reason()));
+                new FondosLiberadosPayload(reserva.getId(), request.reason(), pendiente,
+                        cuenta.getUserId(), reserva.getOrderId()));
 
         return respuesta(cuenta, reserva);
     }

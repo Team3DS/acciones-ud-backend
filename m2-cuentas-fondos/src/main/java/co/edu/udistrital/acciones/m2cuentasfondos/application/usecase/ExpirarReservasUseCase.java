@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -82,18 +83,20 @@ public class ExpirarReservasUseCase {
         }
 
         Instant ahora = Instant.now(clock);
-        cuenta.liberarReserva(reserva.getMontoPendiente(), ahora);
+        BigDecimal pendiente = reserva.getMontoPendiente();
+        cuenta.liberarReserva(pendiente, ahora);
         cuentas.save(cuenta);
 
         reserva.expirar(ahora);
         reservas.save(reserva);
 
-        libro.registrar(cuenta, TipoMovimiento.LIBERACION, reserva.getMonto(), TipoMovimiento.LIBERACION.name(),
+        libro.registrar(cuenta, TipoMovimiento.LIBERACION, pendiente, TipoMovimiento.LIBERACION.name(),
                 LiberarReservaUseCase.PREFIJO_MOVIMIENTO + reserva.getId(),
                 "Expiración de la reserva " + reserva.getId());
 
         outbox.registrar("Reserva", reserva.getId().toString(), RoutingKeys.FONDOS_LIBERADOS,
-                new FondosLiberadosPayload(reserva.getId(), MOTIVO));
+                new FondosLiberadosPayload(reserva.getId(), MOTIVO, pendiente,
+                        cuenta.getUserId(), reserva.getOrderId()));
         return true;
     }
 }

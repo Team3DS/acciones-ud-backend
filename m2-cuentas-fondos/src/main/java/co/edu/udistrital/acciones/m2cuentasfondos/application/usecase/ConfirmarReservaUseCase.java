@@ -107,7 +107,8 @@ public class ConfirmarReservaUseCase {
         }
 
         outbox.registrar("Reserva", reserva.getId().toString(), RoutingKeys.FONDOS_CONFIRMADOS,
-                new FondosConfirmadosPayload(reserva.getId(), request.executionId(), ejecutado));
+                new FondosConfirmadosPayload(reserva.getId(), request.executionId(), ejecutado,
+                        cuenta.getUserId(), reserva.getOrderId()));
 
         return respuesta(cuenta, reserva);
     }

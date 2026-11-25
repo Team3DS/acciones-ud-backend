@@ -103,7 +103,34 @@ class LiberarReservaUseCaseTest {
         ArgumentCaptor<Object> captorEvento = ArgumentCaptor.forClass(Object.class);
         verify(outbox).registrar(eq("Reserva"), eq("77"), eq("m2.fondos.liberados"), captorEvento.capture());
         assertThat(captorEvento.getValue()).isEqualTo(
-                new FondosLiberadosPayload(77L, "OrdenCancelada"));
+                new FondosLiberadosPayload(77L, "OrdenCancelada", new BigDecimal("300.00"), 5L, "orden-77"));
+    }
+
+    @Test
+    void liberarTrasFillParcialPublicaSoloElRemanenteYElPropietarioUnaVez() {
+        Cuenta cuenta = cuentaConReserva(10L, 5L, "800.00", "100.00");
+        Reserva reserva = reserva(77L, 10L, "300.00");
+        reserva.aplicarEjecucion("fill-parcial", new BigDecimal("200.00"), false, null, AHORA);
+        prepararBloqueo(cuenta, reserva);
+        when(movimientos.save(any(Movimiento.class))).thenAnswer(invocacion -> {
+            Movimiento movimiento = invocacion.getArgument(0);
+            ReflectionTestUtils.setField(movimiento, "id", 99L);
+            return movimiento;
+        });
+
+        ReservaResponse respuesta = casoDeUso.ejecutar(77L,
+                new LiberarReservaRequest("OrdenCancelada"), new Actor(5L, false));
+        casoDeUso.ejecutar(77L, new LiberarReservaRequest("OrdenCancelada"), new Actor(5L, false));
+
+        assertThat(respuesta.status()).isEqualTo("RELEASED");
+        assertThat(respuesta.available()).isEqualByComparingTo("800.00");
+        assertThat(respuesta.reserved()).isEqualByComparingTo("0.00");
+        assertThat(respuesta.total()).isEqualByComparingTo("800.00");
+        ArgumentCaptor<Movimiento> movimiento = ArgumentCaptor.forClass(Movimiento.class);
+        verify(movimientos).save(movimiento.capture());
+        assertThat(movimiento.getValue().getMonto()).isEqualByComparingTo("100.00");
+        verify(outbox).registrar("Reserva", "77", "m2.fondos.liberados",
+                new FondosLiberadosPayload(77L, "OrdenCancelada", new BigDecimal("100.00"), 5L, "orden-77"));
     }
 
     @Test

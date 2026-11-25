@@ -117,7 +117,28 @@ class ExpirarReservasUseCaseTest {
         ArgumentCaptor<Object> captorEvento = ArgumentCaptor.forClass(Object.class);
         verify(outbox).registrar(eq("Reserva"), eq("77"), eq(RoutingKeys.FONDOS_LIBERADOS),
                 captorEvento.capture());
-        assertThat(captorEvento.getValue()).isEqualTo(new FondosLiberadosPayload(77L, "EXPIRADA"));
+        assertThat(captorEvento.getValue()).isEqualTo(
+                new FondosLiberadosPayload(77L, "EXPIRADA", new BigDecimal("300.00"), 5L, "orden-77"));
+    }
+
+    @Test
+    void noExpiraNiPublicaLiberacionSiYaHayUnFillParcial() {
+        Reserva vencida = reserva(77L, 10L, AHORA.minus(TTL).minusSeconds(60));
+        vencida.aplicarEjecucion("fill-parcial", new BigDecimal("200.00"), false, null, AHORA.minusSeconds(30));
+        cuandoHayVencidas(vencida);
+        when(reservas.findByIdForUpdate(77L)).thenReturn(Optional.of(vencida));
+        Cuenta cuenta = cuentaConReserva(10L, 5L, "700.00", "100.00");
+        when(cuentas.findByIdForUpdate(10L)).thenReturn(Optional.of(cuenta));
+
+        assertThat(casoDeUso.ejecutar()).isZero();
+        assertThat(casoDeUso.ejecutar()).isZero();
+
+        assertThat(vencida.getEstado()).isEqualTo(EstadoReserva.PENDING);
+        assertThat(cuenta.getSaldoDisponible()).isEqualByComparingTo("700.00");
+        assertThat(cuenta.getSaldoReservado()).isEqualByComparingTo("100.00");
+        verify(cuentas, never()).save(any());
+        verify(reservas, never()).save(any());
+        verifyNoInteractions(movimientos, outbox);
     }
 
     @Test

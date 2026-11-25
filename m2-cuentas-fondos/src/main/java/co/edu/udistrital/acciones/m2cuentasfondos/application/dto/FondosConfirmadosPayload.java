@@ -5,5 +5,7 @@ import java.math.BigDecimal;
 public record FondosConfirmadosPayload(
         Long reservationId,
         String executionId,
-        BigDecimal amount) {
+        BigDecimal amount,
+        Long userId,
+        String orderId) {
 }

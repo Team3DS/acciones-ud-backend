@@ -67,7 +67,11 @@ class ExpiracionReservasIntegrationTest extends AbstractIntegrationTest {
                     "select payload from outbox_evento where aggregate_id = ? and event_type = ? "
                             + "order by creado_en desc limit 1",
                     String.class, String.valueOf(reservaId), RoutingKeys.FONDOS_LIBERADOS);
-            assertThat(objectMapper.readTree(payload).get("reason").asText()).isEqualTo("EXPIRADA");
+            var evento = objectMapper.readTree(payload);
+            assertThat(evento.get("reason").asText()).isEqualTo("EXPIRADA");
+            assertThat(evento.get("userId").asLong()).isEqualTo(userId);
+            assertThat(evento.get("orderId").asText()).isEqualTo("orden-exp-9911");
+            assertThat(evento.get("amount").decimalValue()).isEqualByComparingTo("200.00");
         });
 
         long movimientosAntes = jdbcTemplate.queryForObject(

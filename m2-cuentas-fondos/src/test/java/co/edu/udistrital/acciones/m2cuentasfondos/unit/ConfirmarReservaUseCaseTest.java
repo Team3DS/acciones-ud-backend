@@ -196,7 +196,7 @@ class ConfirmarReservaUseCaseTest {
         ArgumentCaptor<Object> captorEvento = ArgumentCaptor.forClass(Object.class);
         verify(outbox).registrar(eq("Reserva"), eq("77"), eq("m2.fondos.confirmados"), captorEvento.capture());
         assertThat(captorEvento.getValue()).isEqualTo(
-                new FondosConfirmadosPayload(77L, "ejecucion-1", new BigDecimal("290.50")));
+                new FondosConfirmadosPayload(77L, "ejecucion-1", new BigDecimal("290.50"), 5L, "orden-77"));
     }
 
     @Test

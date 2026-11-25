@@ -107,6 +107,8 @@ class ConfirmarLiberarReservaIntegrationTest extends AbstractIntegrationTest {
         assertThat(((Number) confirmados.get("reservationId")).longValue()).isEqualTo(reservaId);
         assertThat(confirmados.get("executionId")).isEqualTo("ejecucion-9701");
         assertThat(numero(confirmados.get("amount"))).isEqualByComparingTo("290.50");
+        assertThat(((Number) confirmados.get("userId")).longValue()).isEqualTo(userId);
+        assertThat(confirmados.get("orderId")).isEqualTo("orden-9701");
     }
 
     @Test
@@ -134,6 +136,9 @@ class ConfirmarLiberarReservaIntegrationTest extends AbstractIntegrationTest {
                 where tipo in ('DEBITO_COMPRA', 'LIBERACION')
                   and cuenta_id = (select id from cuenta where user_id = ?)
                 """, Long.class, userId)).isEqualTo(2L);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from outbox_evento where aggregate_id = ? and event_type = ?
+                """, Long.class, Long.toString(reservaId), RoutingKeys.FONDOS_CONFIRMADOS)).isEqualTo(1L);
     }
 
     @Test
@@ -231,12 +236,18 @@ class ConfirmarLiberarReservaIntegrationTest extends AbstractIntegrationTest {
                 select count(*) from movimiento
                 where tipo = 'LIBERACION' and cuenta_id = (select id from cuenta where user_id = ?)
                 """, Long.class, userId)).isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from outbox_evento where aggregate_id = ? and event_type = ?
+                """, Long.class, Long.toString(reservaId), RoutingKeys.FONDOS_LIBERADOS)).isEqualTo(1L);
 
         Map<String, Map<String, Object>> eventos = esperarEventos("trace-libera-9706",
                 Set.of(RoutingKeys.FONDOS_LIBERADOS));
         Map<?, ?> liberados = (Map<?, ?>) eventos.get(RoutingKeys.FONDOS_LIBERADOS).get("payload");
         assertThat(((Number) liberados.get("reservationId")).longValue()).isEqualTo(reservaId);
         assertThat(liberados.get("reason")).isEqualTo("OrdenCancelada");
+        assertThat(numero(liberados.get("amount"))).isEqualByComparingTo("300.00");
+        assertThat(((Number) liberados.get("userId")).longValue()).isEqualTo(userId);
+        assertThat(liberados.get("orderId")).isEqualTo("orden-9706");
     }
 
     @Test
