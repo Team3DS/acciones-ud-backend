@@ -119,6 +119,8 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
         EstadoOrden nuevoEstado = (ejecutadoTotal >= orden.getCantidad())
                 ? EstadoOrden.EJECUTADA
                 : EstadoOrden.PARCIALMENTE_EJECUTADA;
+        boolean finalExecution = nuevoEstado == EstadoOrden.EJECUTADA;
+        Integer expectedExecutionCount = finalExecution ? previas.size() : null;
 
         orden.setEstadoOrden(nuevoEstado);
         orden.setActualizadaEn(Instant.now());
@@ -137,7 +139,8 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
                     BigDecimal montoTotalEjecucion = comando.precioEjecucion()
                             .multiply(BigDecimal.valueOf(comando.cantidad()))
                             .add(comision);
-                    fondosClient.confirmarReserva(orden.getReservaFondosId(), comando.brokerExecutionId(), montoTotalEjecucion);
+                    fondosClient.confirmarReserva(orden.getReservaFondosId(), orden.getUsuarioId(), comando.brokerExecutionId(),
+                            montoTotalEjecucion, finalExecution, expectedExecutionCount);
                     confirmacionRepository.save(new ConfirmacionEjecucion(
                             ejecucion.getId(), ServicioParticipante.FONDOS, null, Instant.now()));
                 }
@@ -187,7 +190,7 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
         }
 
         // 6. Registrar en Outbox y publicar evento
-        registrarOutboxEjecutada(eventId, comando.brokerExecutionId(), ejecucion, orden);
+        registrarOutboxEjecutada(eventId, comando.brokerExecutionId(), ejecucion, orden, finalExecution, expectedExecutionCount);
         publicador.publicarOrdenEjecutada(
                 eventId,
                 comando.brokerExecutionId(),
@@ -198,19 +201,22 @@ public class ProcesarEjecucionUseCaseImpl implements ProcesarEjecucionUseCase {
                 ejecucion.getCantidad(),
                 ejecucion.getPrecioEjecucion(),
                 ejecucion.getComision(),
-                ejecutadaEn
+                ejecutadaEn,
+                finalExecution,
+                expectedExecutionCount
         );
 
         return ejecucion;
     }
 
     /** Guarda en el outbox el evento OrdenEjecutada con el mismo sobre y eventId que el publicador directo. */
-    private void registrarOutboxEjecutada(UUID eventId, String executionId, EjecucionOrden ejecucion, Orden orden) {
+    private void registrarOutboxEjecutada(UUID eventId, String executionId, EjecucionOrden ejecucion, Orden orden,
+                                         boolean finalExecution, Integer expectedExecutionCount) {
         try {
             Map<String, Object> carga = EventosOrden.sobre(eventId, EventosOrden.ORDEN_EJECUTADA, orden.getId(),
                     EventosOrden.ejecutada(executionId, orden.getId(), orden.getUsuarioId(), orden.getTicker(),
                             orden.getLadoOrden().name(), ejecucion.getCantidad(), ejecucion.getPrecioEjecucion(),
-                            ejecucion.getComision(), ejecucion.getEjecutadaEn()));
+                            ejecucion.getComision(), ejecucion.getEjecutadaEn(), finalExecution, expectedExecutionCount));
             String json = objectMapper.writeValueAsString(carga);
             outboxRepository.save(OutboxEvento.crear("EJECUCION_ORDEN", String.valueOf(ejecucion.getId()), "OrdenEjecutada", json));
         } catch (Exception ignored) {

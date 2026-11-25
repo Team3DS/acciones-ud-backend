@@ -59,11 +59,14 @@ public final class EventosOrden {
      * {@code totalAmount} es el efectivo que mueve la ejecución en M2: en una compra, precio por cantidad más la
      * comisión (lo que se confirma de la reserva); en una venta, precio por cantidad menos la comisión (lo que se
      * acredita). {@code executionId} es el id de la ejecución del broker: el mismo que M5 envía por REST a M2 y M6,
-     * para que descarten la ejecución si ya la aplicaron por ese camino.
+     * para que descarten la ejecución si ya la aplicaron por ese camino. {@code finalExecution} indica a M2 cuándo
+     * puede cerrar la reserva y liberar el sobrante; una ejecución parcial mantiene reservado el resto.
+     * {@code expectedExecutionCount} en el último fill permite esperar los anteriores si REST y RabbitMQ se adelantan.
      */
     public static Map<String, Object> ejecutada(String ejecucionId, Long ordenId, Long usuarioId, String symbol,
                                                 String lado, Integer cantidad, BigDecimal precio,
-                                                BigDecimal comision, Instant ejecutadaEn) {
+                                                BigDecimal comision, Instant ejecutadaEn, boolean finalExecution,
+                                                Integer expectedExecutionCount) {
         String side = lado(lado);
         Instant momento = ejecutadaEn != null ? ejecutadaEn : Instant.now();
         Map<String, Object> fill = new LinkedHashMap<>();
@@ -79,6 +82,10 @@ public final class EventosOrden {
         payload.put("commission", comision != null ? comision : BigDecimal.ZERO);
         payload.put("totalAmount", totalAmount(side, cantidad, precio, comision));
         payload.put("executedAt", momento.toString());
+        payload.put("finalExecution", finalExecution);
+        if (expectedExecutionCount != null) {
+            payload.put("expectedExecutionCount", expectedExecutionCount);
+        }
         return payload;
     }
 

@@ -21,6 +21,8 @@ import co.edu.udistrital.acciones.m5ordenesejecucion.domain.ServicioParticipante
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -137,7 +139,7 @@ class ProcesarEjecucionUseCaseImplTest {
         when(comisionRepository.findById(5L)).thenReturn(Optional.of(comisionCfg));
         when(ejecucionRepository.save(any())).thenReturn(ejecucionGuardada);
         when(ejecucionRepository.findByOrdenId(10L)).thenReturn(List.of(ejecucionGuardada));
-        doNothing().when(fondosClient).confirmarReserva(eq(100L), eq("exec-123"), eq(new BigDecimal("1530.00")));
+        doNothing().when(fondosClient).confirmarReserva(eq(100L), eq(1L), eq("exec-123"), eq(new BigDecimal("1530.00")), eq(true), eq(1));
         when(portafolioClient.actualizarPosicion(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new BigDecimal("152.00"));
 
@@ -149,11 +151,11 @@ class ProcesarEjecucionUseCaseImplTest {
 
         assertEquals(1L, resultado.getId());
         assertEquals(EstadoOrden.EJECUTADA, orden.getEstadoOrden());
-        verify(fondosClient).confirmarReserva(eq(100L), eq("exec-123"), eq(new BigDecimal("1530.00")));
+        verify(fondosClient).confirmarReserva(eq(100L), eq(1L), eq("exec-123"), eq(new BigDecimal("1530.00")), eq(true), eq(1));
         verify(portafolioClient).actualizarPosicion(
                 eq("10"), eq("exec-123"), eq(1L), eq("AAPL"), eq(LadoOrden.COMPRA), eq(10), eq(new BigDecimal("150.00")), any(), any()
         );
-        verify(publicador).publicarOrdenEjecutada(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(publicador).publicarOrdenEjecutada(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -189,7 +191,7 @@ class ProcesarEjecucionUseCaseImplTest {
         verify(portafolioClient).actualizarPosicion(
                 eq("11"), eq("exec-456"), eq(2L), eq("MSFT"), eq(LadoOrden.VENTA), eq(5), eq(new BigDecimal("200.00")), any(), any()
         );
-        verify(publicador).publicarOrdenEjecutada(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(publicador).publicarOrdenEjecutada(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -226,6 +228,50 @@ class ProcesarEjecucionUseCaseImplTest {
         service.ejecutar(cmd);
 
         assertEquals(EstadoOrden.PARCIALMENTE_EJECUTADA, orden.getEstadoOrden());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @SuppressWarnings("unchecked")
+    void informaElMismoCierreDeReservaPorRestEventoYOutbox(boolean finalExecution) throws Exception {
+        Orden orden = new Orden();
+        orden.setId(12L);
+        orden.setUsuarioId(42L);
+        orden.setTicker("AAPL");
+        orden.setLadoOrden(LadoOrden.COMPRA);
+        orden.setCantidad(10);
+        orden.setReservaFondosId(7L);
+
+        EjecucionOrden actual = new EjecucionOrden();
+        actual.setId(2L);
+        actual.setOrdenId(12L);
+        actual.setCantidad(4);
+        actual.setPrecioEjecucion(new BigDecimal("100.00"));
+        actual.setComision(BigDecimal.ZERO);
+        EjecucionOrden previa = new EjecucionOrden();
+        previa.setCantidad(6);
+
+        when(ejecucionRepository.findByBrokerExecutionId("fill-2")).thenReturn(Optional.empty());
+        when(ordenRepository.findById(12L)).thenReturn(Optional.of(orden));
+        when(ejecucionRepository.save(any())).thenReturn(actual);
+        when(ejecucionRepository.findByOrdenId(12L)).thenReturn(finalExecution ? List.of(previa, actual) : List.of(actual));
+        when(portafolioClient.actualizarPosicion(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new BigDecimal("100.00"));
+        when(objectMapper.writeValueAsString(any(Map.class))).thenReturn("{}");
+
+        service.ejecutar(new ProcesarEjecucionUseCase.ProcesarEjecucionCommand(
+                12L, "fill-2", null, 4, new BigDecimal("100.00"), BigDecimal.ZERO, null));
+
+        assertEquals(finalExecution ? EstadoOrden.EJECUTADA : EstadoOrden.PARCIALMENTE_EJECUTADA, orden.getEstadoOrden());
+        verify(fondosClient).confirmarReserva(7L, 42L, "fill-2", new BigDecimal("400.00"), finalExecution, finalExecution ? 2 : null);
+        verify(publicador).publicarOrdenEjecutada(any(), eq("fill-2"), eq(12L), eq(42L), eq("AAPL"),
+                eq("COMPRA"), eq(4), eq(new BigDecimal("100.00")), eq(BigDecimal.ZERO), any(), eq(finalExecution), eq(finalExecution ? 2 : null));
+        ArgumentCaptor<Map> sobre = ArgumentCaptor.forClass(Map.class);
+        verify(objectMapper).writeValueAsString(sobre.capture());
+        Map<String, Object> payload = (Map<String, Object>) sobre.getValue().get("payload");
+        assertEquals(finalExecution, payload.get("finalExecution"));
+        assertEquals(finalExecution ? 2 : null, payload.get("expectedExecutionCount"));
+        assertEquals("fill-2", payload.get("executionId"));
     }
 
     @Test
@@ -356,7 +402,7 @@ class ProcesarEjecucionUseCaseImplTest {
         when(comisionRepository.findById(5L)).thenReturn(Optional.of(comisionCfg));
         when(ejecucionRepository.save(any())).thenReturn(ejecucionGuardada);
         when(ejecucionRepository.findByOrdenId(16L)).thenReturn(List.of(ejecucionGuardada));
-        doThrow(new RuntimeException("M2/M6 error")).when(fondosClient).confirmarReserva(anyLong(), anyString(), any());
+        doThrow(new RuntimeException("M2/M6 error")).when(fondosClient).confirmarReserva(anyLong(), anyLong(), anyString(), any(), anyBoolean(), any());
 
         ProcesarEjecucionUseCase.ProcesarEjecucionCommand cmd = new ProcesarEjecucionUseCase.ProcesarEjecucionCommand(
                 16L, "exec-333", null, 10, new BigDecimal("30.00"), null, null
@@ -366,7 +412,9 @@ class ProcesarEjecucionUseCaseImplTest {
 
         assertEquals(7L, resultado.getId());
         assertEquals(EstadoOrden.EJECUTADA, orden.getEstadoOrden());
-        verify(fondosClient).confirmarReserva(eq(200L), eq("exec-333"), any());
+        verify(fondosClient).confirmarReserva(eq(200L), eq(7L), eq("exec-333"), any(), eq(true), eq(1));
+        verifyNoInteractions(confirmacionRepository);
+        verify(publicador).publicarOrdenEjecutada(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test

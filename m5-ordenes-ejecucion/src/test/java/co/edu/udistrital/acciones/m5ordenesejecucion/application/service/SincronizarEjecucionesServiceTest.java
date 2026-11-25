@@ -159,6 +159,39 @@ class SincronizarEjecucionesServiceTest {
     }
 
     @Test
+    void guardaElIdRecuperadoAunqueTodaviaNoHayaEjecuciones() {
+        String referencia = AlpacaOrderPort.PREFIJO_PENDIENTE + java.util.UUID.randomUUID();
+        Orden orden = orden(10L, referencia, TipoOrden.LIMIT, LadoOrden.COMPRA, 10);
+        when(ordenRepository.findPendientesDeEjecucion()).thenReturn(List.of(orden));
+        when(ejecucionRepository.findByOrdenId(10L)).thenReturn(List.of());
+        when(alpaca.consultarOrden(referencia)).thenReturn(
+                new AlpacaOrderResponse("broker-real", null, "accepted", "AAPL", 10, null, 0));
+
+        assertEquals(0, service.sincronizar());
+
+        assertEquals("broker-real", orden.getBrokerOrderId());
+        verify(ordenRepository).save(orden);
+        verifyNoInteractions(procesarEjecucion, datosMercado);
+    }
+
+    @Test
+    void envioPendienteNoEncontradoConservaReferenciaSinEjecutarNiReenviar() {
+        String referencia = AlpacaOrderPort.PREFIJO_PENDIENTE + java.util.UUID.randomUUID();
+        Orden orden = orden(10L, referencia, TipoOrden.MARKET, LadoOrden.COMPRA, 10);
+        when(ordenRepository.findPendientesDeEjecucion()).thenReturn(List.of(orden));
+        when(ejecucionRepository.findByOrdenId(10L)).thenReturn(List.of());
+        when(alpaca.consultarOrden(referencia)).thenReturn(null);
+
+        assertEquals(0, service.sincronizar());
+        assertEquals(0, service.sincronizar());
+
+        assertEquals(referencia, orden.getBrokerOrderId());
+        verify(ordenRepository, never()).save(any());
+        verify(alpaca, never()).enviarOrden(any());
+        verifyNoInteractions(procesarEjecucion, datosMercado);
+    }
+
+    @Test
     void unaOrdenConErrorNoDetieneLasDemas() {
         Orden mala = orden(10L, "alpaca-1", TipoOrden.MARKET, LadoOrden.COMPRA, 1);
         Orden buena = orden(11L, AlpacaOrderPort.PREFIJO_SIMULADO + "b", TipoOrden.MARKET, LadoOrden.COMPRA, 2);

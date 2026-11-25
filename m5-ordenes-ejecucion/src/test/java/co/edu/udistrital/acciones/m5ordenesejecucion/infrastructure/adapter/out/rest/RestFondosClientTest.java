@@ -109,7 +109,7 @@ class RestFondosClientTest {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(Map.of());
 
-        client.confirmarReserva(456L, "exec-1", new BigDecimal("1500.00"));
+        client.confirmarReserva(456L, 100L, "exec-1", new BigDecimal("1500.00"), true, 1);
 
         verify(restTemplate).postForObject(
                 eq("http://m2-cuentas-fondos:8082/api/v1/funds/reservations/456/confirm"),
@@ -122,7 +122,7 @@ class RestFondosClientTest {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(Map.of());
 
-        client.confirmarReserva(456L, "exec-1", new BigDecimal("1500.00"));
+        client.confirmarReserva(456L, 100L, "exec-1", new BigDecimal("1500.00"), true, 1);
 
         ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
         verify(restTemplate).postForObject(anyString(), captor.capture(), eq(Map.class));
@@ -134,11 +134,11 @@ class RestFondosClientTest {
     }
 
     @Test
-    void confirmarReserva_noPropagaExcepcion() {
+    void confirmarReserva_propagaFalloRemoto() {
         doThrow(new RuntimeException("Error")).when(restTemplate)
                 .postForObject(anyString(), any(HttpEntity.class), eq(Map.class));
 
-        assertDoesNotThrow(() -> client.confirmarReserva(456L, "exec-1", new BigDecimal("1500.00")));
+        assertThrows(IllegalStateException.class, () -> client.confirmarReserva(456L, 100L, "exec-1", new BigDecimal("1500.00"), true, 1));
     }
 
     @Test
@@ -146,7 +146,7 @@ class RestFondosClientTest {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(Map.of());
 
-        client.liberarReserva(456L, "Orden cancelada");
+        client.liberarReserva(456L, 100L, "Orden cancelada");
 
         verify(restTemplate).postForObject(
                 eq("http://m2-cuentas-fondos:8082/api/v1/funds/reservations/456/release"),
@@ -159,7 +159,7 @@ class RestFondosClientTest {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(Map.of());
 
-        client.liberarReserva(456L, "Fondos insuficientes");
+        client.liberarReserva(456L, 100L, "Fondos insuficientes");
 
         ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
         verify(restTemplate).postForObject(anyString(), captor.capture(), eq(Map.class));
@@ -170,11 +170,11 @@ class RestFondosClientTest {
     }
 
     @Test
-    void liberarReserva_noPropagaExcepcion() {
+    void liberarReserva_propagaFalloRemoto() {
         doThrow(new RuntimeException("Error")).when(restTemplate)
                 .postForObject(anyString(), any(HttpEntity.class), eq(Map.class));
 
-        assertDoesNotThrow(() -> client.liberarReserva(456L, "Error test"));
+        assertThrows(IllegalStateException.class, () -> client.liberarReserva(456L, 100L, "Error test"));
     }
 
     @Test

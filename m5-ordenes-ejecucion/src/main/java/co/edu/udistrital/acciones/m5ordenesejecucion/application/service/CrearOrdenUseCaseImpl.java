@@ -21,6 +21,8 @@ import co.edu.udistrital.acciones.m5ordenesejecucion.domain.OutboxEvento;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.TipoActor;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.TipoOrden;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,8 @@ import java.util.UUID;
 @Service
 @Transactional
 public class CrearOrdenUseCaseImpl implements CrearOrdenUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(CrearOrdenUseCaseImpl.class);
 
     private final OrdenRepositoryPort ordenRepository;
     private final ConfiguracionComisionRepositoryPort comisionRepository;
@@ -180,7 +184,9 @@ public class CrearOrdenUseCaseImpl implements CrearOrdenUseCase {
 
             historialRepository.save(HistorialEstadoOrden.registrar(
                     orden.getId(), EstadoOrden.ENVIADA, TipoActor.SISTEMA, null,
-                    "Reserva completada y enviada a Alpaca Paper Trading con brokerOrderId: " + alpacaResp.id()));
+                    alpacaResp.id().startsWith(AlpacaOrderPort.PREFIJO_PENDIENTE)
+                            ? "Alpaca aún no confirma la recepción de la orden; se mantienen las reservas"
+                            : "Reserva completada y enviada a Alpaca Paper Trading con brokerOrderId: " + alpacaResp.id()));
 
             UUID eventoCreada = UUID.randomUUID();
             registrarOutbox(eventoCreada, orden);
@@ -196,6 +202,13 @@ public class CrearOrdenUseCaseImpl implements CrearOrdenUseCase {
             );
 
         } catch (Exception ex) {
+            if (orden.getBrokerOrderId() != null && !orden.getBrokerOrderId().isBlank()) {
+                // Tras recibir una referencia del broker, un fallo de registro o publicación no demuestra rechazo.
+                // Conservar la orden y su respaldo para el sincronizador; no emitir un evento que libere las reservas.
+                log.error("La orden {} conserva su envío al broker pese a un fallo al registrar o publicar su creación",
+                        orden.getId(), ex);
+                return ordenRepository.save(orden);
+            }
             orden.setEstadoOrden(EstadoOrden.RECHAZADA);
             orden.setActualizadaEn(Instant.now());
             historialRepository.save(HistorialEstadoOrden.registrar(

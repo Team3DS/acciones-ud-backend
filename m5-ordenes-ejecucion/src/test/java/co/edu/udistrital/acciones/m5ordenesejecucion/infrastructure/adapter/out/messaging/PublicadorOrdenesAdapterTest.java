@@ -82,7 +82,7 @@ class PublicadorOrdenesAdapterTest {
         Instant executedAt = Instant.parse("2026-11-22T15:30:00Z");
 
         adapter.publicarOrdenEjecutada(eventId, "exec-500", 1L, 10L, "MSFT", "COMPRA", 50,
-                new BigDecimal("200.50"), new BigDecimal("2.00"), executedAt);
+                new BigDecimal("200.50"), new BigDecimal("2.00"), executedAt, true, 1);
 
         Map<String, Object> sobre = sobreEnviado("m5.orden.ejecutada");
         verificarSobre(sobre, eventId, "m5.orden.ejecutada", "1");
@@ -92,6 +92,8 @@ class PublicadorOrdenesAdapterTest {
         assertEquals(10L, payload.get("userId"));
         assertEquals("BUY", payload.get("side"));
         assertEquals(0, new BigDecimal("10027.00").compareTo((BigDecimal) payload.get("totalAmount")));
+        assertEquals(true, payload.get("finalExecution"));
+        assertEquals(1, payload.get("expectedExecutionCount"));
         List<Map<String, Object>> fills = (List<Map<String, Object>>) payload.get("fills");
         assertEquals(1, fills.size());
         assertEquals(new BigDecimal("200.50"), fills.get(0).get("price"));
@@ -102,11 +104,22 @@ class PublicadorOrdenesAdapterTest {
     @Test
     void publicarOrdenEjecutadaDeVentaDescuentaLaComision() {
         adapter.publicarOrdenEjecutada(UUID.randomUUID(), "exec-501", 2L, 10L, "TSLA", "VENTA", 10,
-                new BigDecimal("100.00"), new BigDecimal("20.00"), null);
+                new BigDecimal("100.00"), new BigDecimal("20.00"), null, true, 1);
 
         Map<String, Object> payload = payload(sobreEnviado("m5.orden.ejecutada"));
         assertEquals("SELL", payload.get("side"));
         assertEquals(0, new BigDecimal("980.00").compareTo((BigDecimal) payload.get("totalAmount")));
+    }
+
+    @Test
+    void ejecucionParcialNoCierraLaReservaDeFondos() {
+        adapter.publicarOrdenEjecutada(UUID.randomUUID(), "fill-parcial", 2L, 10L, "TSLA", "COMPRA", 4,
+                new BigDecimal("100.00"), new BigDecimal("0.80"), null, false, null);
+
+        Map<String, Object> payload = payload(sobreEnviado("m5.orden.ejecutada"));
+        assertEquals(false, payload.get("finalExecution"));
+        assertFalse(payload.containsKey("expectedExecutionCount"));
+        assertEquals("fill-parcial", payload.get("executionId"));
     }
 
     @Test

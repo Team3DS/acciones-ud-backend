@@ -4,6 +4,7 @@ import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.Alpaca
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.AlpacaOrderPort.AlpacaOrderRequest;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.AlpacaOrderPort.AlpacaOrderResponse;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.ConfirmacionEjecucionRepositoryPort;
+import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.EjecucionOrdenRepositoryPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.FondosClientPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.HistorialEstadoOrdenRepositoryPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.OrdenRepositoryPort;
@@ -45,6 +46,7 @@ public class OrdenMessageConsumer {
     private final AlpacaOrderPort alpacaOrderPort;
     private final PublicadorOrdenesPort publicador;
     private final ObjectMapper objectMapper;
+    private final EjecucionOrdenRepositoryPort ejecucionRepository;
 
     public OrdenMessageConsumer(OrdenRepositoryPort ordenRepository,
                                 HistorialEstadoOrdenRepositoryPort historialRepository,
@@ -53,7 +55,8 @@ public class OrdenMessageConsumer {
                                 PortafolioClientPort portafolioClient,
                                 AlpacaOrderPort alpacaOrderPort,
                                 PublicadorOrdenesPort publicador,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                EjecucionOrdenRepositoryPort ejecucionRepository) {
         this.ordenRepository = ordenRepository;
         this.historialRepository = historialRepository;
         this.confirmacionRepository = confirmacionRepository;
@@ -62,6 +65,7 @@ public class OrdenMessageConsumer {
         this.alpacaOrderPort = alpacaOrderPort;
         this.publicador = publicador;
         this.objectMapper = objectMapper;
+        this.ejecucionRepository = ejecucionRepository;
     }
 
     @RabbitListener(queues = RabbitConfig.COLA_ORDENES, containerFactory = "m5ListenerContainerFactory")
@@ -84,6 +88,11 @@ public class OrdenMessageConsumer {
             }
         } catch (Exception ex) {
             log.error("Error al procesar mensaje con routingKey {}: {}", routingKey, ex.getMessage(), ex);
+            if (RabbitConfig.ROUTING_M2_FONDOS_CONFIRMADOS.equals(routingKey)
+                    || RabbitConfig.ROUTING_M6_POSICIONES_ACTUALIZADAS.equals(routingKey)) {
+                // El acuse puede adelantar el commit de la ejecución de M5. Usar el reintento configurado y la DLQ.
+                throw new IllegalStateException("No se pudo registrar la confirmación de ejecución", ex);
+            }
         }
     }
 
@@ -133,7 +142,9 @@ public class OrdenMessageConsumer {
 
                 historialRepository.save(HistorialEstadoOrden.registrar(
                         orden.getId(), EstadoOrden.ENVIADA, TipoActor.SISTEMA, null,
-                        "Apertura de mercado: orden encolada enviada al broker con brokerOrderId: " + resp.id()));
+                        resp.id().startsWith(AlpacaOrderPort.PREFIJO_PENDIENTE)
+                                ? "Envío de la orden encolada pendiente de confirmación de Alpaca; se mantienen las reservas"
+                                : "Apertura de mercado: orden encolada enviada al broker con brokerOrderId: " + resp.id()));
 
                 publicador.publicarOrdenCreada(
                         UUID.randomUUID(),
@@ -151,23 +162,31 @@ public class OrdenMessageConsumer {
     }
 
     private void procesarConfirmacionFondos(JsonNode json) {
-        if (json.has("executionId")) {
-            try {
-                Long executionId = json.get("executionId").asLong();
-                confirmacionRepository.save(new ConfirmacionEjecucion(
-                        executionId, ServicioParticipante.FONDOS, null, Instant.now()));
-            } catch (Exception ignored) {}
-        }
+        registrarConfirmacion(payload(json), ServicioParticipante.FONDOS, null);
     }
 
     private void procesarConfirmacionPortafolio(JsonNode json) {
-        if (json.has("executionId") && json.has("averageCost")) {
-            try {
-                Long executionId = json.get("executionId").asLong();
-                BigDecimal cost = new BigDecimal(json.get("averageCost").asText());
-                confirmacionRepository.save(new ConfirmacionEjecucion(
-                        executionId, ServicioParticipante.PORTAFOLIO, cost, Instant.now()));
-            } catch (Exception ignored) {}
+        JsonNode datos = payload(json);
+        if (datos.has("executionId") && datos.has("averageCost")) {
+            registrarConfirmacion(datos, ServicioParticipante.PORTAFOLIO,
+                    new BigDecimal(datos.get("averageCost").asText()));
         }
+    }
+
+    private static JsonNode payload(JsonNode json) {
+        return json.has("payload") ? json.get("payload") : json;
+    }
+
+    private void registrarConfirmacion(JsonNode datos, ServicioParticipante servicio, BigDecimal costoPromedio) {
+        if (!datos.has("executionId")) {
+            return;
+        }
+        String brokerExecutionId = datos.get("executionId").asText();
+        var ejecucion = ejecucionRepository.findByBrokerExecutionId(brokerExecutionId)
+                .orElseThrow(() -> new IllegalStateException("La ejecución " + brokerExecutionId + " aún no está registrada en M5"));
+        if (confirmacionRepository.findByEjecucionIdAndServicio(ejecucion.getId(), servicio).isPresent()) {
+            return;
+        }
+        confirmacionRepository.save(new ConfirmacionEjecucion(ejecucion.getId(), servicio, costoPromedio, Instant.now()));
     }
 }

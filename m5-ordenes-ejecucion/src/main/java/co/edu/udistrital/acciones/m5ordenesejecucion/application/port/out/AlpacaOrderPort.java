@@ -8,11 +8,14 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface AlpacaOrderPort {
-    /** Prefijo de los ids que genera el simulador de paper trading cuando no hay claves de Alpaca o la llamada falla. */
+    /** Prefijo de los ids del modo de simulación local sin claves de Alpaca. */
     String PREFIJO_SIMULADO = "alpaca-paper-";
+    /** Referencia interna de un envío sin confirmación; se consulta por client_order_id, nunca se simula ni se reenvía. */
+    String PREFIJO_PENDIENTE = "alpaca-pending-client-";
 
     AlpacaOrderResponse enviarOrden(AlpacaOrderRequest request);
-    void cancelarOrden(String brokerOrderId);
+    /** Devuelve el estado terminal confirmado; si la cancelación sigue pendiente debe lanzar una excepción. */
+    AlpacaOrderResponse cancelarOrden(String brokerOrderId);
     AlpacaOrderResponse consultarOrden(String brokerOrderId);
 
     record AlpacaOrderRequest(

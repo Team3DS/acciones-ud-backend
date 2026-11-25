@@ -101,31 +101,27 @@ class RestPortafolioClientTest {
     }
 
     @Test
-    void actualizarPosicion_retornaPrecioEjecucionCuandoFaltaAverageCost() {
+    void actualizarPosicion_rechazaRespuestaSinAverageCost() {
         Map<String, Object> position = Map.of();
         Map<String, Object> response = Map.of("position", position);
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(response);
 
         BigDecimal price = new BigDecimal("150.00");
-        BigDecimal result = client.actualizarPosicion(
+        assertThrows(IllegalStateException.class, () -> client.actualizarPosicion(
                 "order-1", "exec-1", 100L, "AAPL", LadoOrden.VENTA, 10,
-                price, Instant.now(), "event-1");
-
-        assertEquals(price, result);
+                price, Instant.now(), "event-1"));
     }
 
     @Test
-    void actualizarPosicion_retornaPrecioEjecucionCuandoExcepcion() {
+    void actualizarPosicion_propagaFalloRemoto() {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenThrow(new RuntimeException("Timeout"));
 
         BigDecimal price = new BigDecimal("150.00");
-        BigDecimal result = client.actualizarPosicion(
+        assertThrows(IllegalStateException.class, () -> client.actualizarPosicion(
                 "order-1", "exec-1", 100L, "AAPL", LadoOrden.COMPRA, 10,
-                price, Instant.now(), "event-1");
-
-        assertEquals(price, result);
+                price, Instant.now(), "event-1"));
     }
 
     @Test
@@ -142,7 +138,7 @@ class RestPortafolioClientTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> body = (Map<String, Object>) captor.getValue().getBody();
-        assertEquals("COMPRA", body.get("side"));
+        assertEquals("BUY", body.get("side"));
     }
 
     @Test
@@ -159,7 +155,7 @@ class RestPortafolioClientTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> body = (Map<String, Object>) captor.getValue().getBody();
-        assertEquals("VENTA", body.get("side"));
+        assertEquals("SELL", body.get("side"));
     }
 
     @Test
@@ -167,7 +163,7 @@ class RestPortafolioClientTest {
         when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(Map.of());
 
-        client.liberarReserva(123L, "Orden cancelada");
+        client.liberarReserva(123L, 100L, "Orden cancelada");
 
         verify(restTemplate).postForObject(
                 eq("http://m6-portafolio:8086/api/v1/positions/reservations/123/release"),
@@ -176,11 +172,11 @@ class RestPortafolioClientTest {
     }
 
     @Test
-    void liberarReserva_noPropagaExcepcion() {
+    void liberarReserva_propagaFalloRemoto() {
         doThrow(new RuntimeException("Error")).when(restTemplate)
                 .postForObject(anyString(), any(HttpEntity.class), eq(Map.class));
 
-        assertDoesNotThrow(() -> client.liberarReserva(123L, "Error test"));
+        assertThrows(IllegalStateException.class, () -> client.liberarReserva(123L, 100L, "Error test"));
     }
 
     @Test

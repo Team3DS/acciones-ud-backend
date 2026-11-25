@@ -2,12 +2,14 @@ package co.edu.udistrital.acciones.m5ordenesejecucion.infrastructure.adapter.in.
 
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.AlpacaOrderPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.ConfirmacionEjecucionRepositoryPort;
+import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.EjecucionOrdenRepositoryPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.FondosClientPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.HistorialEstadoOrdenRepositoryPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.OrdenRepositoryPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.PortafolioClientPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.application.port.out.PublicadorOrdenesPort;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.ConfirmacionEjecucion;
+import co.edu.udistrital.acciones.m5ordenesejecucion.domain.EjecucionOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.EstadoOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.LadoOrden;
 import co.edu.udistrital.acciones.m5ordenesejecucion.domain.Orden;
@@ -61,13 +63,16 @@ class OrdenMessageConsumerTest {
     @Mock
     ObjectMapper objectMapper;
 
+    @Mock
+    EjecucionOrdenRepositoryPort ejecucionRepository;
+
     private OrdenMessageConsumer consumer;
 
     @BeforeEach
     void setUp() {
         consumer = new OrdenMessageConsumer(
                 ordenRepository, historialRepository, confirmacionRepository,
-                fondosClient, portafolioClient, alpacaOrderPort, publicador, objectMapper
+                fondosClient, portafolioClient, alpacaOrderPort, publicador, objectMapper, ejecucionRepository
         );
     }
 
@@ -92,9 +97,13 @@ class OrdenMessageConsumerTest {
         String cuerpo = "{\"executionId\": 42}";
         JsonNode jsonNode = mock(JsonNode.class);
         when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("payload")).thenReturn(false);
         when(jsonNode.has("executionId")).thenReturn(true);
         when(jsonNode.get("executionId")).thenReturn(mock(JsonNode.class));
-        when(jsonNode.get("executionId").asLong()).thenReturn(42L);
+        when(jsonNode.get("executionId").asText()).thenReturn("broker-fill-42");
+        EjecucionOrden ejecucion = new EjecucionOrden();
+        ejecucion.setId(42L);
+        when(ejecucionRepository.findByBrokerExecutionId("broker-fill-42")).thenReturn(java.util.Optional.of(ejecucion));
 
         Message mensaje = crearMensaje(routingKey, cuerpo);
 
@@ -113,10 +122,14 @@ class OrdenMessageConsumerTest {
         String cuerpo = "{\"executionId\": 99, \"averageCost\": \"150.25\"}";
         JsonNode jsonNode = mock(JsonNode.class);
         when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("payload")).thenReturn(false);
         when(jsonNode.has("executionId")).thenReturn(true);
         when(jsonNode.has("averageCost")).thenReturn(true);
         when(jsonNode.get("executionId")).thenReturn(mock(JsonNode.class));
-        when(jsonNode.get("executionId").asLong()).thenReturn(99L);
+        when(jsonNode.get("executionId").asText()).thenReturn("broker-fill-99");
+        EjecucionOrden ejecucion = new EjecucionOrden();
+        ejecucion.setId(99L);
+        when(ejecucionRepository.findByBrokerExecutionId("broker-fill-99")).thenReturn(java.util.Optional.of(ejecucion));
         when(jsonNode.get("averageCost")).thenReturn(mock(JsonNode.class));
         when(jsonNode.get("averageCost").asText()).thenReturn("150.25");
 
@@ -228,19 +241,20 @@ class OrdenMessageConsumerTest {
     }
 
     @Test
-    void procesarConfirmacionFondosJsonInvalidoCatchIgnorado() throws Exception {
+    void acuseAnteriorALaEjecucionSeReintentaEnLugarDePerderse() throws Exception {
         String routingKey = RabbitConfig.ROUTING_M2_FONDOS_CONFIRMADOS;
         String cuerpo = "{\"executionId\": \"no-es-numero\"}";
         JsonNode jsonNode = mock(JsonNode.class);
         when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("payload")).thenReturn(false);
         when(jsonNode.has("executionId")).thenReturn(true);
         JsonNode executionIdNode = mock(JsonNode.class);
         when(jsonNode.get("executionId")).thenReturn(executionIdNode);
-        when(executionIdNode.asLong()).thenThrow(new NumberFormatException());
+        when(executionIdNode.asText()).thenReturn("broker-fill-todavia-no-registrado");
 
         Message mensaje = crearMensaje(routingKey, cuerpo);
 
-        assertDoesNotThrow(() -> consumer.recibirMensaje(mensaje));
+        assertThrows(IllegalStateException.class, () -> consumer.recibirMensaje(mensaje));
         verify(confirmacionRepository, never()).save(any());
     }
 
@@ -250,6 +264,7 @@ class OrdenMessageConsumerTest {
         String cuerpo = "{}";
         JsonNode jsonNode = mock(JsonNode.class);
         when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("payload")).thenReturn(false);
         when(jsonNode.has("executionId")).thenReturn(false);
 
         Message mensaje = crearMensaje(routingKey, cuerpo);
@@ -265,6 +280,7 @@ class OrdenMessageConsumerTest {
         String cuerpo = "{\"executionId\": 99}";
         JsonNode jsonNode = mock(JsonNode.class);
         when(objectMapper.readTree(cuerpo)).thenReturn(jsonNode);
+        when(jsonNode.has("payload")).thenReturn(false);
         when(jsonNode.has("executionId")).thenReturn(true);
         when(jsonNode.has("averageCost")).thenReturn(false);
 

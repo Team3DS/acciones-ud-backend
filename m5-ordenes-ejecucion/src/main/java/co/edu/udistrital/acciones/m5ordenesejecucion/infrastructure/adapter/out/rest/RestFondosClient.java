@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Component
@@ -45,31 +46,36 @@ public class RestFondosClient implements FondosClientPort {
     }
 
     @Override
-    public void confirmarReserva(Long reservationId, String executionId, BigDecimal amount) {
+    public void confirmarReserva(Long reservationId, Long userId, String executionId, BigDecimal amount,
+                                  boolean finalExecution, Integer expectedExecutionCount) {
         String url = baseUrl + "/api/v1/funds/reservations/" + reservationId + "/confirm";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Roles", "USER,ADMIN");
+        headers.setBearerAuth(emisorToken.paraUsuario(userId));
 
-        Map<String, Object> body = Map.of(
-                "executionId", executionId,
-                "amount", amount
-        );
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("executionId", executionId);
+        body.put("amount", amount);
+        body.put("finalExecution", finalExecution);
+        if (expectedExecutionCount != null) {
+            body.put("expectedExecutionCount", expectedExecutionCount);
+        }
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         try {
             restTemplate.postForObject(url, request, Map.class);
         } catch (Exception ex) {
             log.warn("Error comunicando con M2 confirmarReserva: {}", ex.getMessage());
+            throw new IllegalStateException("No se pudo confirmar la reserva de fondos " + reservationId, ex);
         }
     }
 
     @Override
-    public void liberarReserva(Long reservationId, String reason) {
+    public void liberarReserva(Long reservationId, Long userId, String reason) {
         String url = baseUrl + "/api/v1/funds/reservations/" + reservationId + "/release";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Roles", "USER,ADMIN");
+        headers.setBearerAuth(emisorToken.paraUsuario(userId));
 
         Map<String, Object> body = Map.of("reason", reason);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
@@ -77,6 +83,7 @@ public class RestFondosClient implements FondosClientPort {
             restTemplate.postForObject(url, request, Map.class);
         } catch (Exception ex) {
             log.warn("Error comunicando con M2 liberarReserva: {}", ex.getMessage());
+            throw new IllegalStateException("No se pudo liberar la reserva de fondos " + reservationId, ex);
         }
     }
 }

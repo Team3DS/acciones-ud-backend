@@ -55,10 +55,9 @@ public class RestPortafolioClient implements PortafolioClientPort {
         String url = baseUrl + "/api/v1/positions/updates";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Id", String.valueOf(userId));
-        headers.set("X-User-Roles", "USER,ADMIN");
+        headers.setBearerAuth(emisorToken.paraUsuario(userId));
 
-        String ladoM6 = side == LadoOrden.COMPRA ? "COMPRA" : "VENTA";
+        String ladoM6 = side == LadoOrden.COMPRA ? "BUY" : "SELL";
 
         Map<String, Object> body = Map.of(
                 "orderId", orderId,
@@ -84,17 +83,17 @@ public class RestPortafolioClient implements PortafolioClientPort {
             }
         } catch (Exception ex) {
             log.warn("Error comunicando con M6 actualizarPosicion ({}): {}", url, ex.getMessage());
+            throw new IllegalStateException("No se pudo actualizar la posición de la ejecución " + executionId, ex);
         }
-        // Fallback: si no devuelve averageCost, usar el precio de ejecución para mantener consistencia
-        return price;
+        throw new IllegalStateException("M6 no devolvió averageCost para la ejecución " + executionId);
     }
 
     @Override
-    public void liberarReserva(Long reservationId, String reason) {
+    public void liberarReserva(Long reservationId, Long userId, String reason) {
         String url = baseUrl + "/api/v1/positions/reservations/" + reservationId + "/release";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-User-Roles", "USER,ADMIN");
+        headers.setBearerAuth(emisorToken.paraUsuario(userId));
 
         Map<String, Object> body = Map.of("reason", reason);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
@@ -102,6 +101,7 @@ public class RestPortafolioClient implements PortafolioClientPort {
             restTemplate.postForObject(url, request, Map.class);
         } catch (Exception ex) {
             log.warn("Error comunicando con M6 liberarReserva: {}", ex.getMessage());
+            throw new IllegalStateException("No se pudo liberar la reserva de posición " + reservationId, ex);
         }
     }
 }

@@ -99,6 +99,13 @@ public class SincronizarEjecucionesService implements SincronizarEjecucionesUseC
 
     private boolean consultarAlpaca(Orden orden, List<EjecucionOrden> previas, int ejecutado) {
         AlpacaOrderResponse estado = alpaca.consultarOrden(orden.getBrokerOrderId());
+        if (estado != null && orden.getBrokerOrderId().startsWith(AlpacaOrderPort.PREFIJO_PENDIENTE)
+                && estado.id() != null && !estado.id().startsWith(AlpacaOrderPort.PREFIJO_PENDIENTE)
+                && !estado.id().startsWith(AlpacaOrderPort.PREFIJO_SIMULADO)) {
+            orden.setBrokerOrderId(estado.id());
+            orden.setActualizadaEn(Instant.now());
+            ordenRepository.save(orden);
+        }
         if (estado == null || estado.filledQty() == null || estado.filledAvgPrice() == null) {
             return false;
         }
