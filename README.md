@@ -314,6 +314,8 @@ POST /api/v1/positions/updates        { execution } → 200
 GET  /api/v1/portfolio/{userId}       → 200 { positions[], totalValue }
 ```
 
+La respuesta de `positions/updates` conserva `applied` y `position` y añade `averageCost`, el coste histórico de esa ejecución. En una venta total, `position.averageCost` puede quedar en cero mientras `averageCost` conserva el coste usado para calcular la ganancia. Los reintentos devuelven el coste persistido de la ejecución original. Al actualizar ambos participantes, desplegar primero M6 y después M5.
+
 **Eventos async (RabbitMQ)**
 ```
 M1 → M8: UsuarioRegistrado { userId, email, tipo }

@@ -10,6 +10,7 @@ import java.util.UUID;
 @Repository
 public interface JpaEjecucionAplicadaRepository extends JpaRepository<EjecucionAplicada, Long> {
     Optional<EjecucionAplicada> findByClaveIdempotencia(UUID claveIdempotencia);
+    Optional<EjecucionAplicada> findByEjecucionOrdenId(String ejecucionOrdenId);
     boolean existsByClaveIdempotencia(UUID claveIdempotencia);
     boolean existsByEjecucionOrdenId(String ejecucionOrdenId);
 }

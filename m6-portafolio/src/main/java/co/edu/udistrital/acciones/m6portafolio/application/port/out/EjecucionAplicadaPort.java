@@ -15,5 +15,7 @@ public interface EjecucionAplicadaPort {
 
     Optional<EjecucionAplicada> findByClaveIdempotencia(UUID claveIdempotencia);
 
+    Optional<EjecucionAplicada> findByExecutionId(String executionId);
+
     EjecucionAplicada save(EjecucionAplicada ejecucion);
 }

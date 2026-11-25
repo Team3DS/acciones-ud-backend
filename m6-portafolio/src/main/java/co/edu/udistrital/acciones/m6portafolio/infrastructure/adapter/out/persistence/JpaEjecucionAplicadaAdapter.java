@@ -32,6 +32,11 @@ public class JpaEjecucionAplicadaAdapter implements EjecucionAplicadaPort {
     }
 
     @Override
+    public Optional<EjecucionAplicada> findByExecutionId(String executionId) {
+        return repositorio.findByEjecucionOrdenId(executionId);
+    }
+
+    @Override
     public EjecucionAplicada save(EjecucionAplicada ejecucion) {
         return repositorio.save(ejecucion);
     }
