@@ -7,6 +7,7 @@ import co.edu.udistrital.acciones.m1identidad.application.dto.RegisterUserReques
 import co.edu.udistrital.acciones.m1identidad.application.service.UserApplicationService;
 import co.edu.udistrital.acciones.m1identidad.infrastructure.service.JwtService;
 import co.edu.udistrital.acciones.m1identidad.infrastructure.service.RefreshTokenService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,13 +27,13 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterUserRequest req) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterUserRequest req) {
         var user = service.register(req);
         return ResponseEntity.ok().body(Map.of("id", user.getId(), "correo", user.getCorreo()));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
         var tokens = service.login(req);
         return ResponseEntity.ok(tokens);
     }
@@ -54,6 +55,13 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestBody RefreshRequest req) {
+        if (req.userId() == null || req.userId() <= 0 || req.refreshToken() == null || req.refreshToken().isBlank()) {
+            return ResponseEntity.status(401).body(Map.of("error", "invalid refresh"));
+        }
+        String stored = refreshTokenService.get(req.userId());
+        if (stored == null || !stored.equals(req.refreshToken())) {
+            return ResponseEntity.status(401).body(Map.of("error", "invalid refresh"));
+        }
         service.logout(req.userId());
         return ResponseEntity.ok().body(Map.of("message", "Logged out"));
     }

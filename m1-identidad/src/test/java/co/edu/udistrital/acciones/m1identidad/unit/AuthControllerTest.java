@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -158,6 +159,7 @@ class AuthControllerTest {
     @Test
     void logoutReturns200AndDelegatesToService() {
         RefreshRequest req = new RefreshRequest(1L, "refresh-token");
+        when(refreshTokenService.get(1L)).thenReturn("refresh-token");
 
         ResponseEntity<?> response = controller.logout(req);
 
@@ -165,6 +167,35 @@ class AuthControllerTest {
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         assertEquals("Logged out", body.get("message"));
         verify(service).logout(1L);
+    }
+
+    @Test
+    void logoutReturns401ForAnotherUsersRefreshTokenWithoutRevoking() {
+        when(refreshTokenService.get(42L)).thenReturn("token-of-user-42");
+
+        ResponseEntity<?> response = controller.logout(new RefreshRequest(42L, "token-of-user-1"));
+
+        assertEquals(401, response.getStatusCode().value());
+        assertEquals("invalid refresh", ((Map<?, ?>) response.getBody()).get("error"));
+        verifyNoInteractions(service, jwtService);
+    }
+
+    @Test
+    void logoutReturns401ForUnknownOrExpiredRefreshTokenWithoutRevoking() {
+        ResponseEntity<?> response = controller.logout(new RefreshRequest(42L, "expired-token"));
+
+        assertEquals(401, response.getStatusCode().value());
+        verifyNoInteractions(service, jwtService);
+    }
+
+    @Test
+    void logoutReturns401ForMissingTokenOrUserWithoutLookingUpSession() {
+        assertEquals(401, controller.logout(new RefreshRequest(42L, null)).getStatusCode().value());
+        assertEquals(401, controller.logout(new RefreshRequest(42L, " ")).getStatusCode().value());
+        assertEquals(401, controller.logout(new RefreshRequest(null, "token")).getStatusCode().value());
+        assertEquals(401, controller.logout(new RefreshRequest(0L, "token")).getStatusCode().value());
+
+        verifyNoInteractions(service, jwtService, refreshTokenService);
     }
 
     private void setId(User user, Long id) throws Exception {
